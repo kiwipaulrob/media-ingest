@@ -48,13 +48,25 @@ def _person_rows(uid: str) -> Dict[str, Dict[str, Any]]:
 
 
 def build_plan(parent_id: str, limit: Optional[int] = None,
-               min_bio: int = MIN_BIO) -> Dict[str, Any]:
-    """Read-only. Which credited people have no bio, and what can the chain fill?"""
+               min_bio: int = MIN_BIO,
+               out_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Read-only. Which credited people have no bio, and what can the chain fill?
+
+    `out_path` exists because tests (and concurrent runs) must never be able to
+    overwrite the real plan artefact — a unit test with fake rows once clobbered
+    a completed 425-row plan.
+    """
+    plan_path = Path(out_path) if out_path else PLAN
     uid = jellyfin.user_id()
     counts = _credited_people(uid, parent_id)
     rows = _person_rows(uid)
-    gaps = [(n, c) for n, c in counts.items()
-            if (rows.get(n) or {}).get('Overview', '') or '' == '']
+    # Parenthesised deliberately: `(x.get('Overview') or '') or '' == ''` parses
+    # as `x or ('' == '')` and is True for EVERY row, which silently turns a
+    # ~420-name gap list into all 2,720 credited names.
+    def _no_bio(row: Optional[Dict[str, Any]]) -> bool:
+        return not str((row or {}).get('Overview') or '').strip()
+
+    gaps = [(n, c) for n, c in counts.items() if _no_bio(rows.get(n))]
     gaps.sort(key=lambda x: -x[1])
     if limit:
         gaps = gaps[:limit]
@@ -78,9 +90,16 @@ def build_plan(parent_id: str, limit: Optional[int] = None,
             entry.update(status='error', error=str(exc)[:120])
             plan.append(entry)
             continue
+        status = ('ready' if res['bio_len'] >= min_bio else
+                  ('thin' if res['bio_len'] else 'gap'))
+        if res.get('birth_suspect') and status in ('ready', 'thin'):
+            # Only a pre-1900 subject was found: almost certainly a different
+            # person with the same name. Never auto-applied.
+            status = 'review-birth'
         entry.update(
-            status='ready' if res['bio_len'] >= min_bio else
-                   ('thin' if res['bio_len'] else 'gap'),
+            status=status,
+            birth_year=res.get('birth_year'),
+            birth_suspect=bool(res.get('birth_suspect')),
             bio_len=res['bio_len'],
             source=res['provenance'].get('biography'),
             portrait=res['fields'].get('portrait'),
@@ -93,15 +112,21 @@ def build_plan(parent_id: str, limit: Optional[int] = None,
         plan.append(entry)
         if i % 25 == 0:
             print(f'  planned {i}/{len(gaps)}', flush=True)
+            # checkpoint: a kill must not discard completed work
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text(json.dumps({'partial': True, 'library': parent_id,
+                                        'planned': i, 'people_gaps': len(gaps),
+                                        'rows': plan}, indent=1))
         time.sleep(0.1)
 
     out = {'library': parent_id, 'people_gaps': len(gaps), 'rows': plan,
            'ready': sum(1 for r in plan if r['status'] == 'ready'),
            'thin': sum(1 for r in plan if r['status'] == 'thin'),
+           'review_birth': sum(1 for r in plan if r['status'] == 'review-birth'),
            'gap': sum(1 for r in plan if r['status'] == 'gap'),
            'no_row': sum(1 for r in plan if r['status'] == 'no-row')}
-    PLAN.parent.mkdir(parents=True, exist_ok=True)
-    PLAN.write_text(json.dumps(out, indent=1))
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(json.dumps(out, indent=1))
     return out
 
 

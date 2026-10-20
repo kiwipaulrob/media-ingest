@@ -99,6 +99,12 @@ def _name_key(value: Any) -> str:
     return re.sub(r'[^a-z0-9]+', '', s.lower())
 
 
+#: Providers that may never supply a biography, even as a last resort. Their
+#: same-name collisions are not detectable (a 2,000-char bio about a French
+#: power-metal band was returned for the Sarah Records band 'Heavenly').
+BIOGRAPHY_BLOCKED = frozenset({'theaudiodb'})
+
+
 def merge(records: List[Record],
           prose_priority: List[str],
           portrait_priority: List[str]) -> Dict[str, Any]:
@@ -121,6 +127,8 @@ def merge(records: List[Record],
 
     for name in ('biography',):
         for p in prose_order:
+            if p in BIOGRAPHY_BLOCKED:
+                continue
             rec = next((r for r in records if r.provider == p), None)
             if rec and rec.fields.get(name):
                 fields[name] = rec.fields[name]

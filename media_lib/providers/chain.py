@@ -65,6 +65,29 @@ def search(name: str, kind: str = 'person',
             'errors': errors, 'skipped': skipped}
 
 
+def _birth_year(rec) -> Optional[int]:
+    try:
+        y = rec.fields.get('birth_year')
+        return int(str(y)[:4]) if y and str(y)[:4].isdigit() else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _split_plausible(records):
+    """Separate modern subjects from pre-1900 collisions.
+
+    A film/music library is modern by construction: a 'born 1853' biography for
+    a name credited in a 2010s documentary is almost always a same-name
+    historical figure. Younger candidates win; pre-1900 records are only used
+    when nothing else exists, and then flagged for human review.
+    """
+    plausible, suspect = [], []
+    for r in records:
+        y = _birth_year(r)
+        (suspect if (y is not None and y < 1900) else plausible).append(r)
+    return plausible, suspect
+
+
 def _name_ok(query: str, found: str, aliases=None) -> bool:
     """Is `found` plausibly the same subject as `query`?
 
@@ -151,7 +174,15 @@ def resolve(name: str, kind: str = 'person',
                 continue
             records.append(rec)
 
-    merged = merge(records, PROSE_PRIORITY, PORTRAIT_PRIORITY)
+    plausible, suspect = _split_plausible(records)
+    for r in suspect:
+        if plausible:                       # younger candidate exists -> drop
+            rejected.append({'provider': r.provider,
+                             'name': r.fields.get('name'),
+                             'reason': 'birth-year-pre-1900',
+                             'birth_year': _birth_year(r)})
+    use = plausible or suspect              # pre-1900 only as a last resort
+    merged = merge(use, PROSE_PRIORITY, PORTRAIT_PRIORITY)
     # A name 'conflict' between the query and a documented alias is not a
     # conflict: 'William Hammond Talbot' IS Billy Talbot.
     conflicts = dict(merged['conflicts'])
@@ -167,6 +198,8 @@ def resolve(name: str, kind: str = 'person',
         'conflicts': conflicts,
         'rejected': rejected,
         'identity': identity,
+        'birth_year': merged['fields'].get('birth_year'),
+        'birth_suspect': bool(suspect and not plausible),
         'sources': [r.to_dict() for r in records],
         'errors': found['errors'],
         'skipped': found['skipped'],

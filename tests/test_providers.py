@@ -304,3 +304,84 @@ def test_parenthetical_disambiguator_is_not_a_different_person():
     assert _name_ok('The Edge', 'The Edge (Guitarist)')
     assert not _name_ok('Betty Palik', 'Betty White')
     assert not _name_ok('Valentin Greutert', 'Valentín Elizalde')
+
+
+# ------------------------------------------------- birth-year plausibility
+def _rec_b(provider, year, **kw):
+    r = Record(provider=provider, id='x')
+    r.set('name', kw.pop('name', 'Someone'))
+    r.set('birth_year', year)
+    for k, v in kw.items():
+        r.set(k, v)
+    return r
+
+
+def test_pre1900_subject_is_dropped_when_a_younger_one_exists():
+    from media_lib.providers.chain import _split_plausible
+    plausible, suspect = _split_plausible([
+        _rec_b('wikipedia', '1853', biography='historian'),
+        _rec_b('lastfm', '1990', biography='musician'),
+    ])
+    assert len(plausible) == 1 and len(suspect) == 1
+    assert plausible[0].fields['birth_year'] == '1990'
+
+
+def test_unknown_birth_year_counts_as_plausible():
+    from media_lib.providers.chain import _split_plausible
+    plausible, suspect = _split_plausible([_rec_b('tmdb', None, biography='x')])
+    assert len(plausible) == 1 and not suspect
+
+
+def test_resolve_marks_pre1900_only_as_suspect():
+    class Old(Provider):
+        name = 'old'
+        requires_key = False
+
+        def search(self, query, kind='person'):
+            return [Candidate(provider='old', id='1', name=query, score=1.0)]
+
+        def fetch(self, cand):
+            return _rec_b('old', '1841', name=cand.name, biography='C' * 200)
+
+    out = chain.resolve('Anyone', providers=[Old()])
+    assert out['birth_suspect'] is True
+    assert out['birth_year'] == '1841'
+
+
+def test_resolve_ignores_pre1900_when_a_younger_candidate_exists():
+    class Oldest(Provider):
+        name = 'older'
+        requires_key = False
+
+        def search(self, query, kind='person'):
+            return [Candidate(provider='older', id='1', name=query, score=1.0)]
+
+        def fetch(self, cand):
+            return _rec_b('older', '1860', name=cand.name, biography='OLD' * 60)
+
+    class Younger(Provider):
+        name = 'younger'
+        requires_key = False
+
+        def search(self, query, kind='person'):
+            return [Candidate(provider='younger', id='2', name=query, score=1.0)]
+
+        def fetch(self, cand):
+            return _rec_b('younger', '1985', name=cand.name, biography='NEW' * 60)
+
+    out = chain.resolve('Anyone', providers=[Oldest(), Younger()])
+    assert out['fields']['biography'].startswith('NEW')
+    assert out['birth_suspect'] is False
+    assert any(r['reason'] == 'birth-year-pre-1900' for r in out['rejected'])
+
+
+def test_theaudiodb_can_never_supply_a_biography_even_as_fallback():
+    # Regression: the "unknown providers rank last, but still count" fallback
+    # let a demoted provider supply 2-3K-character bios for two people.
+    tad = _rec('theaudiodb', name='X', biography='power metal band bio ' * 40)
+    out = merge([tad], chain.PROSE_PRIORITY, chain.PORTRAIT_PRIORITY)
+    assert 'biography' not in out['fields']
+    # ...but its portrait/banner is still usable
+    tad.set('portrait', 'p.jpg')
+    out2 = merge([tad], chain.PROSE_PRIORITY, chain.PORTRAIT_PRIORITY)
+    assert out2['fields'].get('portrait') == 'p.jpg'
