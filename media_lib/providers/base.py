@@ -11,6 +11,7 @@ tested without a network.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -88,6 +89,16 @@ CONFLICT_FIELDS = frozenset({'name', 'year', 'birth_year', 'tmdb_id',
                              'imdb_id', 'mbid'})
 
 
+def _name_key(value: Any) -> str:
+    """Comparison form for names: drop parentheticals and punctuation.
+
+    'The Chills (NZL)' and 'The Chills' are the same act; only the mattering
+    difference (a genuinely different name) should be reported as a conflict.
+    """
+    s = re.sub(r'\([^)]*\)', ' ', str(value or ''))
+    return re.sub(r'[^a-z0-9]+', '', s.lower())
+
+
 def merge(records: List[Record],
           prose_priority: List[str],
           portrait_priority: List[str]) -> Dict[str, Any]:
@@ -144,8 +155,10 @@ def merge(records: List[Record],
                 fields[name] = value
                 prov[name] = rec.provider
             elif fields[name] != value and name in CONFLICT_FIELDS:
-                seen.setdefault(name, [{'provider': prov[name], 'value': fields[name]}])
-                seen[name].append({'provider': rec.provider, 'value': value})
+                same = (name == 'name' and _name_key(fields[name]) == _name_key(value))
+                if not same:
+                    seen.setdefault(name, [{'provider': prov[name], 'value': fields[name]}])
+                    seen[name].append({'provider': rec.provider, 'value': value})
 
     return {'fields': fields, 'provenance': prov,
             'conflicts': {k: v for k, v in seen.items()}}

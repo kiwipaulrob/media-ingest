@@ -21,16 +21,22 @@ from . import cache
 from .deezer import DeezerProvider
 from .genius import GeniusProvider
 from .lastfm import LastfmProvider
+from .theaudiodb import TheAudioDbProvider
 from .tmdb_p import TmdbProvider
 from .wikipedia import WikipediaProvider
 
+#: TheAudioDB is NOT trusted for prose. Proven live: querying 'Heavenly' (the
+#: Sarah Records indie-pop band) returns exactly ONE exact-name artist — a French
+#: power-metal band — so an ambiguity guard cannot catch it and a 2,000-char bio
+#: about the wrong band is the result. It is used for banners/portraits only
+#: (it is the only provider here that supplies banners), unless a caller opts in.
 PROSE_PRIORITY = ['tmdb', 'lastfm', 'genius', 'wikipedia']
-PORTRAIT_PRIORITY = ['tmdb', 'deezer', 'lastfm', 'wikipedia']
+PORTRAIT_PRIORITY = ['tmdb', 'deezer', 'lastfm', 'theaudiodb', 'wikipedia']
 
 
 def default_providers() -> List[Provider]:
     return [TmdbProvider(), LastfmProvider(), GeniusProvider(),
-            DeezerProvider(), WikipediaProvider()]
+            DeezerProvider(), WikipediaProvider(), TheAudioDbProvider()]
 
 
 def search(name: str, kind: str = 'person',
@@ -64,8 +70,15 @@ def resolve(name: str, kind: str = 'person',
     found = search(name, kind, providers)
     by_name = {p.name: p for p in providers}
     records: List[Record] = []
+    # ONE candidate per provider: fetching every fuzzy hit makes unrelated
+    # artists (The Kills, The Chicks for 'The Chills') part of the merge and
+    # floods the conflict list. Best hit only, highest score first.
+    best_per_provider: Dict[str, Candidate] = {}
     for cand in found['_candidates']:
-        provider = by_name.get(cand.provider)
+        if cand.provider not in best_per_provider:
+            best_per_provider[cand.provider] = cand
+    for provider_name, cand in best_per_provider.items():
+        provider = by_name.get(provider_name)
         if not provider:
             continue
         try:

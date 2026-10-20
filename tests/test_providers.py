@@ -169,3 +169,74 @@ def test_source_url_belongs_to_the_prose_provider():
     out = merge([tmdb, lastfm], chain.PROSE_PRIORITY, chain.PORTRAIT_PRIORITY)
     assert out['provenance']['source_url'] == 'tmdb'
     assert out['fields']['source_url'] == 'https://tmdb/x'
+
+
+# ------------------------------------------------------------- TheAudioDB
+def test_theaudiodb_refuses_when_two_artists_share_the_exact_name(monkeypatch):
+    from media_lib.providers import theaudiodb as tad
+
+    p = tad.TheAudioDbProvider()
+    monkeypatch.setattr(p, '_search', lambda q: {'artists': [
+        {'strArtist': 'Heavenly', 'strGenre': 'Power Metal', 'strBiography': 'metal'},
+        {'strArtist': 'Heavenly', 'strGenre': 'Indie', 'strBiography': 'indie'},
+    ]})
+    cands = p.search('Heavenly')
+    assert len(cands) == 1
+    assert cands[0].extra['ambiguous'] == 2
+    # And it must NOT fetch a biography for an ambiguous name.
+    assert p.fetch(cands[0]) is None
+
+
+def test_theaudiodb_accepts_a_single_exact_match(monkeypatch):
+    from media_lib.providers import theaudiodb as tad
+
+    p = tad.TheAudioDbProvider()
+    monkeypatch.setattr(p, '_search', lambda q: {'artists': [
+        {'strArtist': 'The Chills', 'strBiography': 'Dunedin band',
+         'strArtistThumb': 'thumb.jpg', 'strMusicBrainzID': 'mb-1',
+         'strGenre': 'Indie', 'intFormedYear': '1980'},
+    ]})
+    cands = p.search('The Chills')
+    assert len(cands) == 1 and not cands[0].extra.get('ambiguous')
+    rec = p.fetch(cands[0])
+    assert rec.fields['biography'] == 'Dunedin band'
+    assert rec.fields['formed_year'] == '1980'
+
+
+def test_theaudiodb_ignores_fuzzy_non_exact_hits(monkeypatch):
+    from media_lib.providers import theaudiodb as tad
+
+    p = tad.TheAudioDbProvider()
+    monkeypatch.setattr(p, '_search', lambda q: {'artists': [
+        {'strArtist': 'Heavenly Bodies', 'strBiography': 'not it'},
+    ]})
+    assert p.search('Heavenly') == []
+
+
+def test_parenthetical_variant_is_not_a_name_conflict():
+    out = merge([_rec('lastfm', name='The Chills'),
+                 _rec('genius', name='The Chills (NZL)')],
+                chain.PROSE_PRIORITY, chain.PORTRAIT_PRIORITY)
+    assert 'name' not in out['conflicts']
+
+
+def test_theaudiodb_is_never_a_default_prose_source():
+    # Proven live: 'Heavenly' resolves to a power-metal band with a 2,000-char
+    # bio and no ambiguity signal. Never trust it for prose.
+    assert 'theaudiodb' not in chain.PROSE_PRIORITY
+
+
+def test_resolve_fetches_one_candidate_per_provider():
+    class _Many(Provider):
+        name = 'many'
+        requires_key = False
+
+        def search(self, query, kind='person'):
+            return [Candidate(provider='many', id=str(i), name=f'{query} {i}',
+                              score=1.0 - i * 0.1) for i in range(4)]
+
+        def fetch(self, cand):
+            return _rec('many', biography='bio')
+
+    out = chain.resolve('Anyone', providers=[_Many()])
+    assert len(out['sources']) == 1
