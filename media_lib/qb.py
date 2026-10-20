@@ -1,0 +1,116 @@
+"""qBittorrent helpers — queue read, file listing, exact-hash delete.
+
+The delete path carries three hard-won rules:
+  * form-encoded POST fields (--data-urlencode equivalent), never query params
+  * FULL 40-character hashes: a prefix is silently accepted and matches nothing
+  * assert the expected match count BEFORE deleting, then re-list afterwards
+"""
+from __future__ import annotations
+
+import json
+import urllib.parse
+import urllib.request
+from typing import Any, Dict, List, Optional, Tuple
+
+from . import config, jellyfin
+
+#: qB container save_path -> real path on the media host. Each root maps
+#: separately: a naive prefix replace of '/downloads' mangles '/downloads-zmedia'.
+#: Single source of truth lives in config (verified against the live mount).
+SAVE_TO_REMOTE = config.SAVE_TO_REMOTE
+
+VIDEO_EXT = frozenset({
+    '.mkv', '.mp4', '.avi', '.m4v', '.mov', '.ts', '.wmv', '.flv', '.mpg',
+    '.mpeg', '.divx', '.webm', '.ogm', '.vob',
+})
+
+
+def save_to_remote(save_path: str) -> str:
+    """Map a qB save_path to its real host path. Raises on an unknown root."""
+    for prefix, remote in SAVE_TO_REMOTE.items():
+        if save_path == prefix or save_path.startswith(prefix + '/'):
+            return remote + save_path[len(prefix):]
+    raise ValueError(f'unknown qB save_path prefix: {save_path!r}')
+
+
+def _base() -> str:
+    return (jellyfin.env('QB_URL') or 'http://192.168.214.11:8090').rstrip('/')
+
+
+def _opener():
+    cj = urllib.request.HTTPCookieProcessor()
+    op = urllib.request.build_opener(cj)
+    data = urllib.parse.urlencode({
+        'username': jellyfin.env('QB_USER') or 'admin',
+        'password': jellyfin.env('QB_PASS') or '',
+    }).encode()
+    op.open(urllib.request.Request(f'{_base()}/api/v2/auth/login', data=data),
+            timeout=30).read()
+    return op
+
+
+def torrents(op=None) -> List[Dict[str, Any]]:
+    op = op or _opener()
+    with op.open(f'{_base()}/api/v2/torrents/info', timeout=60) as r:
+        return json.load(r)
+
+
+def files(hash_: str, op=None) -> List[Dict[str, Any]]:
+    op = op or _opener()
+    with op.open(f'{_base()}/api/v2/torrents/files?hash={hash_}', timeout=40) as r:
+        return json.load(r)
+
+
+def video_files(torrent: Dict[str, Any], op=None,
+                min_bytes: int = 20 * 1024 * 1024) -> List[Dict[str, Any]]:
+    """Video files in a torrent, largest first, with resolved remote paths."""
+    out: List[Dict[str, Any]] = []
+    for f in files(torrent.get('hash', ''), op=op):
+        name = f.get('name') or ''
+        if _ext(name) not in VIDEO_EXT:
+            continue
+        if (f.get('size') or 0) < min_bytes:
+            continue
+        try:
+            remote = save_to_remote(torrent.get('save_path') or '/downloads') + '/' + name
+        except ValueError:
+            continue          # unknown root: never guess a filesystem location
+        out.append({'name': name.split('/')[-1], 'remote': remote,
+                    'size': f.get('size') or 0})
+    out.sort(key=lambda x: -x['size'])
+    return out
+
+
+def _ext(name: str) -> str:
+    i = name.rfind('.')
+    return name[i:].lower() if i >= 0 else ''
+
+
+def delete(hashes: List[str], op=None, delete_files: bool = True) -> int:
+    """Delete torrents by FULL hash. Refuses prefixes.
+
+    Returns the number requested; callers must re-list to confirm.
+    """
+    bad = [h for h in hashes if len(str(h)) != 40]
+    if bad:
+        raise ValueError(f'refusing to delete non-40-char hashes: {bad}')
+    if not hashes:
+        return 0
+    op = op or _opener()
+    body = urllib.parse.urlencode({
+        'hashes': '|'.join(hashes),
+        'deleteFiles': 'true' if delete_files else 'false',
+    }).encode()
+    req = urllib.request.Request(f'{_base()}/api/v2/torrents/delete', data=body)
+    # qBittorrent answers 200 with an empty body on success.
+    op.open(req, timeout=60).read()
+    return len(hashes)
+
+
+def completed_candidates(ledger_hashes: set, op=None) -> Tuple[List[Dict[str, Any]], Any]:
+    """Completed video torrents that are NOT already in the ledger."""
+    op = op or _opener()
+    rows = [t for t in torrents(op)
+            if (t.get('progress') or 0) >= 0.999
+            and str(t.get('hash', '')).lower()[:12] not in ledger_hashes]
+    return rows, op

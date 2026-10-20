@@ -90,3 +90,12 @@ def test_gate_is_annotate_only_and_never_raises_on_empty_name():
     v = tmdb.gate('')
     assert v['status'] == 'no-match'
     assert set(v) >= {'status', 'query'}
+
+
+def test_fields_param_never_splits_a_string_into_characters():
+    # The bug: ','.join('Path,MediaSources') -> 'P,a,t,h,...', which the server
+    # accepts and answers with NO Path field at all.
+    assert jellyfin._fields_param('Path,MediaSources') == 'Path,MediaSources'
+    assert jellyfin._fields_param(['Path', 'MediaSources']) == 'Path,MediaSources'
+    assert jellyfin._fields_param(None) is None
+    assert jellyfin._fields_param([]) is None

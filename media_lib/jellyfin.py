@@ -165,10 +165,24 @@ def post_item(item_id: str, body: Dict[str, Any], *, key: Optional[str] = None) 
         return 204
 
 
+def _fields_param(fields: Optional[Iterable[str]]) -> Optional[str]:
+    """Normalise a fields argument to a comma list.
+
+    A STRING must pass through unchanged: ','.join('Path,MediaSources') yields
+    'P,a,t,h,...', which the server accepts and then returns no Path at all —
+    a silent empty-field bug that reads as "library has no paths".
+    """
+    if not fields:
+        return None
+    if isinstance(fields, str):
+        return fields
+    return ','.join(fields)
+
+
 def item(uid: str, item_id: str, fields: Optional[Iterable[str]] = None,
          key: Optional[str] = None) -> Dict[str, Any]:
     """User-scoped single-item read (the only route that works on this build)."""
-    params = {'Fields': ','.join(fields)} if fields else None
+    params = {'Fields': _fields_param(fields)} if fields else None
     return get_json(f'/Users/{uid}/Items/{item_id}', params=params, key=key)
 
 
@@ -193,7 +207,7 @@ def list_items(uid: str, *, recursive: bool = True,
         if parent_id:
             params['ParentId'] = parent_id
         if fields:
-            params['Fields'] = ','.join(fields)
+            params['Fields'] = _fields_param(fields)
         page = get_json(f'/Users/{uid}/Items', params=params, key=key)
         rows = page.get('Items') or []
         if not rows:

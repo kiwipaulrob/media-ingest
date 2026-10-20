@@ -1,13 +1,15 @@
 """Central configuration for media ingest.
 
-Every value here was extracted from jellyfin-media-intake.py (v4). The comments
-record WHY each threshold exists, because each one was added after a real
-misdirected write — see the source script's "WHY THIS IS SO CAREFUL" header.
+IMPORTANT — topology (re-verified 2026-10-20 against the running containers):
+the media library and the downloads are BOTH only visible from CT105 on prox2.
+`proxmox3:/mnt/zmedia/videos` holds a stale, partial copy (musicdocos only) and
+has no `/mnt/zmedia/downloads` at all — file operations issued there silently
+fail with ENOENT. The mapping below was read from
+`docker inspect jellyfin --format {{.Mounts}}`, not from memory.
 
-Path changes from v4 (deliberate, approved 2026-10-20):
-  * state now lives under this profile, not the default profile's /root/.hermes/state
-  * STATE_DIR is a Path, so a missing directory is an explicit error, not a
-    silent str concatenation into the wrong place
+There is no ffprobe on prox2 or in CT105. The only binaries are inside the
+jellyfin image, so probing/decode runs as a throwaway container with
+/mnt/zmedia bind-mounted, using the same image tag the compose file pins.
 """
 from __future__ import annotations
 
@@ -23,50 +25,55 @@ LOCK = STATE_DIR / 'intake.lock'
 PROBE_CACHE = STATE_DIR / 'probe-cache.json'
 LIB_CACHE = STATE_DIR / 'library-cache.json'
 
-# The media host. All MEDIA_ROOT paths below are only valid inside commands run
-# over ssh to this host — this agent host cannot see the pools locally.
-PROXMOX3 = 'root@192.168.214.131'
-MEDIA_ROOT = '/mnt/zmedia/videos'
+#: Host that can see BOTH trees, and the namespace wrapper that reaches them.
+#: CT105 is unprivileged; media paths are only valid inside it.
+MEDIA_HOST = 'root@192.168.214.109'
+MEDIA_CT = 'pct exec 105 --'
+#: Volume to bind into the throwaway probe container.
+MEDIA_VOLUME = '/mnt/zmedia'
+#: Image tag used for ffprobe/ffmpeg. Must match the compose pin; override with
+#: MEDIA_IMAGE if the server is upgraded.
+DEFAULT_MEDIA_IMAGE = 'jellyfin/jellyfin:12.2'
+FFPROBE_ENTRY = '/usr/lib/jellyfin-ffmpeg/ffprobe'
+FFMPEG_ENTRY = '/usr/lib/jellyfin-ffmpeg/ffmpeg'
 
-#: Jellyfin container path -> path on the share host. Case differs across the
-#: container/host boundary (container lowercase, share CamelCase) — a
-#: case-sensitive comparison against the host form misses every row.
+#: Jellyfin container path -> real path on the media host (case matters).
+#: Read from docker inspect; 8 libraries, two of which the old map lacked.
 JF_TO_DISK = {
-    '/data/musicdocos-series': f'{MEDIA_ROOT}/musicdocos-series',
-    '/data/documentaries': f'{MEDIA_ROOT}/Documentaries',
-    '/data/movies': f'{MEDIA_ROOT}/Films',
-    '/data/filmnoir': f'{MEDIA_ROOT}/filmnoir',
-    '/data/tvshows': f'{MEDIA_ROOT}/TV',
-    '/data/musicdocos': f'{MEDIA_ROOT}/musicdocos',
+    '/data/documentaries': f'{MEDIA_VOLUME}/videos/Documentaries',
+    '/data/docuseries': f'{MEDIA_VOLUME}/videos/DocuSeries',
+    '/data/filmdocos': f'{MEDIA_VOLUME}/videos/FilmDocumentaries',
+    '/data/filmnoir': f'{MEDIA_VOLUME}/videos/filmnoir',
+    '/data/movies': f'{MEDIA_VOLUME}/videos/Films',
+    '/data/musicdocos': f'{MEDIA_VOLUME}/videos/musicdocos',
+    '/data/musicdocos-series': f'{MEDIA_VOLUME}/videos/musicdocos-series',
+    '/data/tvshows': f'{MEDIA_VOLUME}/videos/TV',
+}
+
+#: qBittorrent container save_path -> real host path. Resolved per torrent from
+#: its own save_path; never assume a single mapping.
+SAVE_TO_REMOTE = {
+    '/downloads-zmedia': f'{MEDIA_VOLUME}/downloads',
+    '/downloads': f'{MEDIA_VOLUME}/downloads',
 }
 
 # ---------------------------------------------------------------- costing
-#: Measured sustained download -> array copy throughput on proxmox3 (2026-09-13,
-#: three fsync-enforced passes, 143-171 MB/s). dd WITHOUT conv=fsync reports
-#: page-cache speed (~4x optimistic) and would size batches far too large.
+#: Measured sustained copy throughput (fsync-enforced). dd without conv=fsync
+#: reports page-cache speed and overstates by ~4x.
 COPY_MBPS = 158
-PER_ITEM_OVERHEAD_S = 20   # ffprobe + mid-file decode + delete + ledger write
+PER_ITEM_OVERHEAD_S = 20
 REFRESH_COST_S = 20
 LIB_CACHE_STALE_S = 600
 DUMP_REBUILD_COST_S = 90
 
 # ---------------------------------------------------------------- matching
-#: String similarity required before a REPLACE is considered at all.
 MIN_SQUASH = 0.80
-#: At least this many real title words must be shared (filler alone never counts).
 MIN_SHARED_DISTINCTIVE = 1
-#: Share of the RELEASE's identifying words the target must also carry. This is
-#: the guard that catches 'Good.Hair' -> 'Good' (the target has no 'hair').
 MIN_CAND_COVERAGE = 0.60
-#: A copied file may differ from the original by this fraction of its duration.
 DURATION_TOLERANCE = 0.15
-#: Containment ('abc' inside 'abcdef') is only treated as evidence when the
-#: shorter string is at least this share of the longer. 'good' inside
-#: 'goodhair' is 0.5 and must never be boosted to a confident match.
 MIN_CONTAINMENT_SHARE = 0.60
-#: A squash-exact match shorter than this is too weak to auto-accept; a 2-char
-#: title ('Up') collides with too much.
 MIN_EXACT_SQUASH_LEN = 6
+MIN_VIDEO_BYTES = 20 * 1024 * 1024
 
 #: Words that appear in so many titles they carry no identity on their own.
 STOPWORDS = frozenset({
@@ -80,16 +87,20 @@ STOPWORDS = frozenset({
     'movie', 'film', 'documentary', 'doc', 'bbc', 'itv', 'ch4', 'pbs', 'hbo',
 })
 
-#: Video container extensions stripped from the END of a name only. Never use
-#: os.path.splitext on a release/folder name: it splits at the last dot, so
-#: 'Good.Hair' becomes 'Good' and 'Anvil...x264-GRP' loses '-GRP'.
+#: Video container extensions. Never use os.path.splitext on a release name:
+#: it splits at the LAST dot, so 'Good.Hair' becomes 'Good'.
 VIDEO_EXTS = frozenset({
     '.mkv', '.mp4', '.avi', '.m4v', '.mov', '.ts', '.wmv', '.flv', '.mpg',
     '.mpeg', '.divx', '.webm', '.ogm', '.vob', '.iso',
 })
 
 
+def media_image() -> str:
+    """Image tag for probe containers (env override, then the pinned default)."""
+    import os
+    return os.environ.get('MEDIA_IMAGE') or DEFAULT_MEDIA_IMAGE
+
+
 def ensure_state_dir() -> Path:
-    """Create the state directory if absent and return it."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     return STATE_DIR
