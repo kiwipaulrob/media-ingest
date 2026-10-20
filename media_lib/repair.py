@@ -52,8 +52,16 @@ def repair(person_id: str, name: str, *, new_bio: Optional[str],
                                        'Overview': new_bio or '',
                                        'LockedFields': row.get('LockedFields', [])})
     time.sleep(0.6)
-    back = jellyfin.item(uid, person_id, fields='Overview')
-    got = (back.get('Overview') or '').strip()
+    # Jellyfin's read-after-write can lag: a first attempt was reported FAILED
+    # while the write had in fact succeeded. Poll before calling it a failure.
+    got = ''
+    for delay in (0, 1.0, 2.0, 3.0):
+        if delay:
+            time.sleep(delay)
+        back = jellyfin.item(uid, person_id, fields='Overview')
+        got = (back.get('Overview') or '').strip()
+        if got == (new_bio or '').strip():
+            break
     ok = (got == (new_bio or '').strip())
     rec = {'id': person_id, 'name': name, 'action': 'replace' if new_bio else 'clear',
            'source': source, 'old_len': len(before), 'new_len': len(got),
