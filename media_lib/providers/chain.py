@@ -21,6 +21,7 @@ from . import cache
 from .deezer import DeezerProvider
 from .genius import GeniusProvider
 from .lastfm import LastfmProvider
+from .musicbrainz import MusicBrainzProvider
 from .theaudiodb import TheAudioDbProvider
 from .tmdb_p import TmdbProvider
 from .wikipedia import WikipediaProvider
@@ -36,7 +37,8 @@ PORTRAIT_PRIORITY = ['tmdb', 'deezer', 'lastfm', 'theaudiodb', 'wikipedia']
 
 def default_providers() -> List[Provider]:
     return [TmdbProvider(), LastfmProvider(), GeniusProvider(),
-            DeezerProvider(), WikipediaProvider(), TheAudioDbProvider()]
+            DeezerProvider(), WikipediaProvider(), TheAudioDbProvider(),
+            MusicBrainzProvider()]
 
 
 def search(name: str, kind: str = 'person',
@@ -63,6 +65,38 @@ def search(name: str, kind: str = 'person',
             'errors': errors, 'skipped': skipped}
 
 
+def _name_ok(query: str, found: str, aliases=None) -> bool:
+    """Is `found` plausibly the same subject as `query`?
+
+    Provider search is fuzzy by design, so a record must not be trusted just
+    because it came back. Proven live: Deezer answers 'Nick Banks' with
+    'Nickelback' — a nickname mismatch that would have put a Nickelback photo on
+    the Pulp drummer's row.
+
+    `aliases` are documented alternate names (MusicBrainz), which is how a real
+    alias like 'William Hammond Talbot' passes while a lookalike still fails.
+    """
+    import difflib
+
+    from .. import matcher
+
+    def sq(v):
+        return matcher.squash(matcher.clean_release(v))
+
+    q, f = sq(query), sq(found)
+    if not q or not f:
+        return False
+    if q == f:
+        return True
+    if any(sq(a) == f for a in (aliases or [])):
+        return True
+    ratio = difflib.SequenceMatcher(None, q, f).ratio()
+    if ratio >= 0.86:
+        return True
+    short, long_ = sorted((q, f), key=len)
+    return short in long_ and len(short) / max(1, len(long_)) >= 0.6
+
+
 def resolve(name: str, kind: str = 'person',
             providers: Optional[List[Provider]] = None) -> Dict[str, Any]:
     """Search, fetch details, and merge with per-field provenance."""
@@ -70,6 +104,19 @@ def resolve(name: str, kind: str = 'person',
     found = search(name, kind, providers)
     by_name = {p.name: p for p in providers}
     records: List[Record] = []
+    rejected: List[Dict[str, Any]] = []
+    # Identity first: MusicBrainz supplies documented aliases and an MBID for
+    # the gate below. Identity-only — it never supplies prose.
+    identity: Dict[str, Any] = {}
+    mb = next((p for p in providers if p.name == 'musicbrainz'), None)
+    mb_ident = getattr(mb, 'identity', None)
+    if callable(mb_ident):
+        try:
+            raw = mb_ident(name) or {}
+            identity = raw if isinstance(raw, dict) else {}
+        except Exception:                       # noqa: BLE001
+            identity = {}
+    aliases = identity.get('aliases') or []
     # ONE candidate per provider: fetching every fuzzy hit makes unrelated
     # artists (The Kills, The Chicks for 'The Chills') part of the merge and
     # floods the conflict list. Best hit only, highest score first.
@@ -90,15 +137,31 @@ def resolve(name: str, kind: str = 'person',
             found['errors'][provider.name] = f'{type(exc).__name__}: {str(exc)[:120]}'
             continue
         if rec:
+            found_name = str(rec.fields.get('name') or '')
+            if not _name_ok(name, found_name, aliases):
+                # Fuzzy search answers are not identities. Drop the record
+                # rather than let a wrong bio or photo into the merge.
+                rejected.append({'provider': provider_name, 'name': found_name,
+                                 'reason': 'name-mismatch'})
+                continue
             records.append(rec)
 
     merged = merge(records, PROSE_PRIORITY, PORTRAIT_PRIORITY)
+    # A name 'conflict' between the query and a documented alias is not a
+    # conflict: 'William Hammond Talbot' IS Billy Talbot.
+    conflicts = dict(merged['conflicts'])
+    if 'name' in conflicts and aliases:
+        values = [v.get('value') for v in conflicts['name']]
+        if all(_name_ok(name, str(v), aliases) for v in values if v):
+            conflicts.pop('name')
     out = {
         'query': name,
         'kind': kind,
         'fields': merged['fields'],
         'provenance': merged['provenance'],
-        'conflicts': merged['conflicts'],
+        'conflicts': conflicts,
+        'rejected': rejected,
+        'identity': identity,
         'sources': [r.to_dict() for r in records],
         'errors': found['errors'],
         'skipped': found['skipped'],

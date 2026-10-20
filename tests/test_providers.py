@@ -236,7 +236,64 @@ def test_resolve_fetches_one_candidate_per_provider():
                               score=1.0 - i * 0.1) for i in range(4)]
 
         def fetch(self, cand):
-            return _rec('many', biography='bio')
+            # providers always report the matched name; the identity gate needs it
+            return _rec('many', name=cand.name.split(' ')[0], biography='bio')
 
     out = chain.resolve('Anyone', providers=[_Many()])
     assert len(out['sources']) == 1
+
+
+# --------------------------------------------------------- identity gate
+def test_fuzzy_name_mismatch_is_rejected():
+    # Deezer answers 'Nick Banks' with 'Nickelback'. The bio may be right, but
+    # its portrait is not this man.
+    from media_lib.providers.chain import _name_ok
+    assert not _name_ok('Nick Banks', 'Nickelback')
+    assert not _name_ok('The Chills', 'The Kills')
+    assert not _name_ok('Heavenly', 'Heavenly Bodies')
+
+
+def test_exact_and_variant_names_pass_the_gate():
+    from media_lib.providers.chain import _name_ok
+    assert _name_ok('Nick Banks', 'Nick Banks')
+    assert _name_ok('The Chills', 'The Chills (NZL)')
+    assert _name_ok('Steven Van Zandt', 'Steven van Zandt')
+
+
+def test_resolve_reports_rejected_providers():
+    class _Wrong(Provider):
+        name = 'wrong'
+        requires_key = False
+
+        def search(self, query, kind='person'):
+            return [Candidate(provider='wrong', id='1', name='Nickelback', score=1.0)]
+
+        def fetch(self, cand):
+            return _rec('wrong', name='Nickelback', biography='metal band', portrait='x.jpg')
+
+    out = chain.resolve('Nick Banks', providers=[_Wrong()])
+    assert out['bio_len'] == 0
+    assert out['rejected'][0]['provider'] == 'wrong'
+    assert out['rejected'][0]['reason'] == 'name-mismatch'
+
+
+# ------------------------------------------------------------- MusicBrainz
+def test_musicbrainz_never_supplies_prose():
+    from media_lib.providers.musicbrainz import MusicBrainzProvider
+    p = MusicBrainzProvider()
+    assert 'musicbrainz' not in chain.PROSE_PRIORITY
+    # identity is the only thing it is trusted for
+    assert hasattr(p, 'identity')
+
+
+def test_documented_alias_passes_the_identity_gate():
+    from media_lib.providers.chain import _name_ok
+    # MusicBrainz lists 'William Hammond Talbot' as an alias of Billy Talbot.
+    assert not _name_ok('Billy Talbot', 'William Hammond Talbot')
+    assert _name_ok('Billy Talbot', 'William Hammond Talbot',
+                    aliases=['William Hammond Talbot'])
+
+
+def test_lookalike_still_fails_even_with_unrelated_aliases():
+    from media_lib.providers.chain import _name_ok
+    assert not _name_ok('Nick Banks', 'Nickelback', aliases=['William Talbot'])
