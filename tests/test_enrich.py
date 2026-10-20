@@ -116,3 +116,50 @@ def test_gap_filter_is_not_fooled_by_precedence(monkeypatch, tmp_path):
     out = enrich.build_plan('lib', out_path=tmp_path / 'plan.json')
     names = [r['name'] for r in out['rows']]
     assert names == ['No Bio'], names
+
+
+# ---------------------------------------------------------------- repairs
+def test_repair_refuses_when_the_bio_already_changed(monkeypatch, tmp_path):
+    from media_lib import repair as rp
+
+    class JF:
+        def user_id(self):
+            return 'uid'
+
+        def item(self, uid, iid, fields=None):
+            return {'Id': iid, 'Name': 'X', 'Overview': 'a modern bio, no old year',
+                    'LockedFields': []}
+
+        def post_item(self, *a, **kw):
+            raise AssertionError('must not write')
+
+    monkeypatch.setattr(rp, 'jellyfin', JF())
+    monkeypatch.setattr(rp, 'REPAIR_LOG', tmp_path / 'r.jsonl')
+    out = rp.repair('p1', 'X', new_bio='better ' * 20, source='tmdb', expect_year=1863)
+    assert out['status'] == 'SKIP-CHANGED'
+
+
+def test_repair_clears_a_bad_bio_and_journals(monkeypatch, tmp_path):
+    from media_lib import repair as rp
+    state = {'ov': 'James Franklin Hanly (April 4, 1863 - 1920) was an American politician.'}
+
+    class JF:
+        def user_id(self):
+            return 'uid'
+
+        def item(self, uid, iid, fields=None):
+            return {'Id': iid, 'Name': 'Francis Hanly', 'Overview': state['ov'],
+                    'LockedFields': []}
+
+        def post_item(self, iid, body, key=None):
+            state['ov'] = body.get('Overview', '')
+            return 204
+
+    j = tmp_path / 'r.jsonl'
+    monkeypatch.setattr(rp, 'jellyfin', JF())
+    monkeypatch.setattr(rp, 'REPAIR_LOG', j)
+    out = rp.repair('p2', 'Francis Hanly', new_bio=None, source='audit', expect_year=1863)
+    assert out['status'] == 'CLEARED'
+    assert state['ov'] == ''
+    rec = json.loads(j.read_text().splitlines()[-1])
+    assert rec['action'] == 'clear' and '1863' in rec['old_head']

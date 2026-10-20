@@ -111,7 +111,7 @@ class _Quiet(Provider):
         return [Candidate(provider='quiet', id='1', name=query, score=0.5)]
 
     def fetch(self, cand):
-        return _rec('quiet', name=cand.name, biography='quiet bio')
+        return _rec('quiet', name=cand.name, biography='quiet bio ' * 6)
 
 
 class _Keyed(Provider):
@@ -142,9 +142,9 @@ def test_unavailable_provider_is_skipped_not_errored():
 
 def test_resolve_returns_provenance_and_bio_len():
     out = chain.resolve('Anyone', providers=[_Quiet()])
-    assert out['fields']['biography'] == 'quiet bio'
+    assert out['fields']['biography'].startswith('quiet bio')
     assert out['provenance']['biography'] == 'quiet'
-    assert out['bio_len'] == len('quiet bio')
+    assert out['bio_len'] > 50
 
 
 def test_resolve_never_writes_anything():
@@ -385,3 +385,28 @@ def test_theaudiodb_can_never_supply_a_biography_even_as_fallback():
     tad.set('portrait', 'p.jpg')
     out2 = merge([tad], chain.PROSE_PRIORITY, chain.PORTRAIT_PRIORITY)
     assert out2['fields'].get('portrait') == 'p.jpg'
+
+
+# ------------------------------------------------------- bio text guards
+def test_pre1900_birth_inside_the_prose_is_rejected():
+    from media_lib.providers.chain import bio_implausible
+    # Wikipedia exposes no birth_year field, so the text is the only signal.
+    assert bio_implausible('Reverend Arthur Meagher Cave (1883–1948), was a male '
+                           'Irish badminton player and chaplain.') == 'pre-1900-birth-in-text'
+    assert bio_implausible('Joel Hinman (January 27, 1802 – February 21, 1870) was '
+                           'born in New York.') == 'pre-1900-birth-in-text'
+
+
+def test_junk_multiartist_blurbs_are_rejected():
+    from media_lib.providers.chain import bio_implausible
+    assert bio_implausible('There are at least three artists with this name: '
+                           'one is a band, another is a dj.') == 'junk-multiartist-or-disambiguation'
+    assert bio_implausible('John McDermott may refer to several people, including '
+                           'a boxer and a musician.') == 'junk-multiartist-or-disambiguation'
+
+
+def test_a_real_modern_bio_passes():
+    from media_lib.providers.chain import bio_implausible
+    assert bio_implausible(
+        'John Robb is a British music journalist, author and singer, best known '
+        'for fronting Goldblade and writing about punk rock.') is None

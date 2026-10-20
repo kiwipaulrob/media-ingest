@@ -14,6 +14,8 @@ A failing provider is REPORTED per provider, never silently treated as
 """
 from __future__ import annotations
 
+import json
+import re
 from typing import Any, Dict, List, Optional
 
 from .base import Candidate, Provider, Record, merge
@@ -86,6 +88,33 @@ def _split_plausible(records):
         y = _birth_year(r)
         (suspect if (y is not None and y < 1900) else plausible).append(r)
     return plausible, suspect
+
+
+#: Bio text that is not a biography at all: Last.fm's multi-artist blurbs,
+#: disambiguation pages, and stub one-liners. These were being proposed as
+#: "replacements" during the pre-1900 repair pass.
+_BIO_JUNK = re.compile(
+    r'(there are at least|may refer to|can refer to|multiple artists|'
+    r'is a disambiguation|this is a disambiguation)', re.I)
+#: Any pre-1900 year in the opening of the prose. Birth dates live in the first
+#: sentence, and Wikipedia exposes no birth_year field at all — so this is the
+#: only signal that caught 'Reverend Arthur Meagher Cave (1883-1948)' and
+#: 'Joel Hinman (January 27, 1802 - ...)' arriving as "modern" replacements.
+#: Deliberately strict: a genuine modern bio rarely opens with a 19th-century
+#: year, and a false reject only costs a gap, never a wrong biography.
+_BIO_OLD_BIRTH = re.compile(r'\b1[6-8]\d{2}\b')
+
+
+def bio_implausible(text: str) -> Optional[str]:
+    """Why this text must not be used as a biography, or None if it is fine."""
+    t = (text or '').strip()
+    if len(t) < 40:
+        return 'too-short'
+    if _BIO_JUNK.search(t[:300]):
+        return 'junk-multiartist-or-disambiguation'
+    if _BIO_OLD_BIRTH.search(t[:400]):
+        return 'pre-1900-birth-in-text'
+    return None
 
 
 def _name_ok(query: str, found: str, aliases=None) -> bool:
@@ -173,6 +202,21 @@ def resolve(name: str, kind: str = 'person',
                                  'reason': 'name-mismatch'})
                 continue
             records.append(rec)
+
+    # Reject biographies that are junk or describe a pre-1900 life. Portraits
+    # from the same record are kept — an image can still be right when the prose
+    # is not, and portraits are byte-verified separately.
+    for r in records:
+        bio = r.fields.get('biography')
+        if not bio:
+            continue
+        why = bio_implausible(bio)
+        if why:
+            r.fields.pop('biography', None)
+            r.provenance.pop('biography', None)
+            rejected.append({'provider': r.provider,
+                             'name': r.fields.get('name'),
+                             'reason': why})
 
     plausible, suspect = _split_plausible(records)
     for r in suspect:
