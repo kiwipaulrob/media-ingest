@@ -17,6 +17,7 @@ import random
 import sys
 import time
 from typing import Any, Dict, List
+from pathlib import Path
 
 from media_lib import config, jellyfin
 from media_lib.providers import chain
@@ -25,6 +26,16 @@ MUSIC_DOCOS = '5f95760bae4c07e31d840d70c3a46111'
 SAMPLE = 10
 PEOPLE_PER_DOC = 3
 SEED = 20261020
+
+
+def _args():
+    import argparse
+    ap = argparse.ArgumentParser(description='Compare chain output vs library metadata')
+    ap.add_argument('--seed', type=int, default=SEED)
+    ap.add_argument('--sample', type=int, default=SAMPLE)
+    ap.add_argument('--people', type=int, default=PEOPLE_PER_DOC)
+    ap.add_argument('--out', default=None)
+    return ap.parse_args()
 
 
 def docs(uid: str) -> List[Dict[str, Any]]:
@@ -60,11 +71,13 @@ def resolve_person(name: str, prefer: str = 'artist') -> Dict[str, Any]:
 
 
 def main() -> int:
+    args = _args()
     uid = jellyfin.user_id()
     rows = docs(uid)
-    rnd = random.Random(SEED)
-    sample = rnd.sample(rows, min(SAMPLE, len(rows)))
-    print(f'musicdocos items: {len(rows)} | sample: {len(sample)} (seed {SEED})', flush=True)
+    rnd = random.Random(args.seed)
+    sample = rnd.sample(rows, min(args.sample, len(rows)))
+    print(f'musicdocos items: {len(rows)} | sample: {len(sample)} (seed {args.seed})', flush=True)
+    per_doc = args.people
 
     report: List[Dict[str, Any]] = []
     for i, row in enumerate(sample, 1):
@@ -74,10 +87,10 @@ def main() -> int:
         # Prefer people with NO bio (the real gaps), then fill up with anyone.
         unbiographed = [p for p in people
                         if not (p.get('Overview') or '').strip()]
-        picks = unbiographed[:PEOPLE_PER_DOC]
-        if len(picks) < PEOPLE_PER_DOC:
+        picks = unbiographed[:per_doc]
+        if len(picks) < per_doc:
             rest = [p for p in people if p not in picks]
-            picks += rest[:PEOPLE_PER_DOC - len(picks)]
+            picks += rest[:per_doc - len(picks)]
 
         entries = []
         for p in picks:
@@ -101,6 +114,11 @@ def main() -> int:
                 'chain_portrait_source': res['provenance'].get('portrait'),
                 'chain_bio_head': str(res['fields'].get('biography') or '')[:160],
                 'conflicts': list(res['conflicts']),
+                'rejected': res['rejected'],
+                'mbid': res['identity'].get('mbid'),
+                'country': res['identity'].get('country'),
+                'type': res['identity'].get('type'),
+                'aliases': res['identity'].get('aliases'),
                 'errors': res['errors'],
                 'kind': res.get('kind_tried'),
             })
@@ -110,9 +128,9 @@ def main() -> int:
                                 if e.get('existing_bio_len', 0) == 0
                                 and e.get('chain_bio_len', 0) > 0]})
 
-    out = {'seed': SEED, 'sampled': len(sample), 'library': 'Music Docos',
+    out = {'seed': args.seed, 'sampled': len(sample), 'library': 'Music Docos',
            'docs': report}
-    path = config.STATE_DIR / 'meta-test-10.json'
+    path = Path(args.out) if args.out else (config.STATE_DIR / f'meta-test-{args.seed}.json')
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, indent=1))
     print(f'\nwrote {path}', flush=True)

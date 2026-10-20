@@ -297,3 +297,10 @@ def test_documented_alias_passes_the_identity_gate():
 def test_lookalike_still_fails_even_with_unrelated_aliases():
     from media_lib.providers.chain import _name_ok
     assert not _name_ok('Nick Banks', 'Nickelback', aliases=['William Talbot'])
+
+
+def test_parenthetical_disambiguator_is_not_a_different_person():
+    from media_lib.providers.chain import _name_ok
+    assert _name_ok('The Edge', 'The Edge (Guitarist)')
+    assert not _name_ok('Betty Palik', 'Betty White')
+    assert not _name_ok('Valentin Greutert', 'Valentín Elizalde')

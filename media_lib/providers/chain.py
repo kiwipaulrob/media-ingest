@@ -81,7 +81,12 @@ def _name_ok(query: str, found: str, aliases=None) -> bool:
     from .. import matcher
 
     def sq(v):
-        return matcher.squash(matcher.clean_release(v))
+        # Strip parenthetical disambiguators before comparing: Wikipedia and
+        # Genius routinely answer 'The Edge (Guitarist)' for 'The Edge', and
+        # treating that as a different person is a false reject.
+        import re as _re
+        base = _re.sub(r'\([^)]*\)', ' ', v or '')
+        return matcher.squash(matcher.clean_release(base))
 
     q, f = sq(query), sq(found)
     if not q or not f:
