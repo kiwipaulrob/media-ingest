@@ -1,0 +1,49 @@
+name: tests
+
+# Why this exists: the local checkout is what the running homelab executes, so a
+# PR that arrives green-in-principle still had to be hand-tested before merge.
+# This runs the same suite on the PR itself, so a bad change is refused at the
+# PR rather than discovered after it lands in production.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The live host runs 3.14; 3.12 is what most contributors have. Both,
+        # so a version-specific break is caught before it reaches the homelab.
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+
+      - name: media_lib + CLI suite
+        run: python -m pytest tests/ -q
+
+      - name: plugin suite
+        run: python -m pytest plugins/media-ingest/tests -q
+
+      - name: import every module (catches a syntax/import break no test touches)
+        run: |
+          set -e
+          for f in $(find media_lib cli plugins -name '*.py' -not -path '*/__pycache__/*'); do
+            mod=$(echo "$f" | sed 's|/|.|g; s|\.py$||')
+            python -c "import importlib; importlib.import_module('$mod')" \
+              || { echo "IMPORT FAILED: $f"; exit 1; }
+          done
+          echo "all modules import"

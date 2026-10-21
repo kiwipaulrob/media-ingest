@@ -88,15 +88,42 @@ def test_repo_slug_parses_both_remote_forms(monkeypatch):
         assert sync.repo_slug() == "kiwipaulrob/media-ingest"
 
 
-def test_plugin_drift_detects_a_differing_file(monkeypatch, tmp_path):
-    installed = tmp_path / "installed"; installed.mkdir()
-    vendored = tmp_path / "vendored"; vendored.mkdir()
+def test_plugin_must_be_a_symlink_into_the_repo(monkeypatch, tmp_path):
+    """A real directory means the old copy drift is back: edits stop reaching GitHub."""
+    installed = tmp_path / "plugins" / "media-ingest"; installed.mkdir(parents=True)
+    (installed / "plugin.yaml").write_text("name: media-ingest\n")
     monkeypatch.setattr(sync, "INSTALLED_PLUGIN", installed)
-    monkeypatch.setattr(sync, "VENDORED_PLUGIN", vendored)
-    monkeypatch.setattr(sync, "run", lambda cmd, cwd=None, check=False: (
-        1, f"Files {installed}/tools.py and {vendored}/tools.py differ"))
-    drift = sync.plugin_drift()
-    assert len(drift) == 1 and "tools.py" in drift[0]
+    monkeypatch.setattr(sync, "REPO_PLUGIN", tmp_path / "repo" / "media-ingest")
+    problems = sync.plugin_link_status()
+    assert problems and "real directory" in problems[0]
+
+
+def test_plugin_symlink_must_point_at_the_repo(monkeypatch, tmp_path):
+    repo_plugin = tmp_path / "repo" / "media-ingest"; repo_plugin.mkdir(parents=True)
+    elsewhere = tmp_path / "elsewhere"; elsewhere.mkdir()
+    installed = tmp_path / "plugins" / "media-ingest"
+    installed.parent.mkdir(parents=True)
+    installed.symlink_to(elsewhere, target_is_directory=True)
+    monkeypatch.setattr(sync, "INSTALLED_PLUGIN", installed)
+    monkeypatch.setattr(sync, "REPO_PLUGIN", repo_plugin)
+    problems = sync.plugin_link_status()
+    assert problems and "expected" in problems[0]
+
+    installed.unlink()
+    installed.symlink_to(repo_plugin, target_is_directory=True)
+    assert sync.plugin_link_status() == []
+
+
+def test_broken_skill_link_is_reported(monkeypatch, tmp_path):
+    skills = tmp_path / "skills" / "media"
+    skills.mkdir(parents=True)
+    good_target = tmp_path / "repo" / "good"; good_target.mkdir(parents=True)
+    (good_target / "SKILL.md").write_text("---\nname: good\n---\n")
+    (skills / "good").symlink_to(good_target, target_is_directory=True)
+    (skills / "broken").symlink_to(tmp_path / "gone", target_is_directory=True)
+    monkeypatch.setattr(sync, "SKILLS_INSTALLED", tmp_path / "skills")
+    problems = sync.skill_link_status()
+    assert len(problems) == 1 and "broken" in problems[0]
 
 
 def test_conflict_detection(monkeypatch):

@@ -19,10 +19,24 @@ class FakeCtx:
                             'handler': handler, 'check_fn': check_fn}
 
 
-def test_register_exposes_exactly_four_tools():
+def test_register_exposes_exactly_the_declared_tools():
+    """Registered tools must equal `provides_tools` in plugin.yaml, both ways.
+
+    A literal set in this test drifted twice: the count was hardcoded to four and
+    stayed green-in-spirit while two source verbs were added. Reading the manifest
+    catches a tool registered but undeclared, and one declared but never wired.
+    """
+    import yaml
+    from pathlib import Path
+
     ctx = FakeCtx()
     pkg.register(ctx)
-    assert set(ctx.tools) == {'media_scan', 'media_plan', 'media_apply', 'media_verify'}
+    manifest = yaml.safe_load((Path(__file__).parents[1] / "plugin.yaml").read_text())
+    declared = set(manifest["provides_tools"])
+    assert set(ctx.tools) == declared, (
+        f"registered-only: {set(ctx.tools) - declared}, "
+        f"declared-only: {declared - set(ctx.tools)}"
+    )
     for name, t in ctx.tools.items():
         assert t['toolset'] == 'media', name
         assert t['handler'] is not None, name

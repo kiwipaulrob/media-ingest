@@ -19,16 +19,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
-INSTALLED_PLUGIN = Path(
-    "/root/.hermes/profiles/media-maintainer/plugins/media-ingest"
-)
-VENDORED_PLUGIN = REPO / "vendor" / "plugins" / "media-ingest"
+PROFILE = Path("/root/.hermes/profiles/media-maintainer")
+INSTALLED_PLUGIN = PROFILE / "plugins" / "media-ingest"
+REPO_PLUGIN = REPO / "plugins" / "media-ingest"
+SKILLS_INSTALLED = PROFILE / "skills"
+SKILLS_REPO = REPO / "skills"
 
 
 def run(cmd: List[str], cwd: Optional[Path] = None, check: bool = False) -> Tuple[int, str]:
@@ -72,18 +74,36 @@ def conflict_in_progress() -> bool:
     return rc == 0
 
 
-def plugin_drift() -> List[str]:
-    """Files that differ between the installed plugin and the vendored copy."""
-    if not INSTALLED_PLUGIN.is_dir() or not VENDORED_PLUGIN.is_dir():
-        return []
-    rc, out = run(["diff", "-rq", str(INSTALLED_PLUGIN), str(VENDORED_PLUGIN)])
-    drift = []
-    for line in out.splitlines():
-        if "__pycache__" in line or not line.strip():
+def plugin_link_status() -> List[str]:
+    """Problems with the installed plugin <-> repo wiring. Empty list means healthy.
+
+    The plugin used to be a real directory with a second copy vendored into the
+    repo, so the two could silently diverge (they did). It is now a symlink into
+    the repo: one source of truth, and drift is structurally impossible. A plain
+    directory here means someone restored a copy and edits will stop reaching
+    GitHub.
+    """
+    problems: List[str] = []
+    if not INSTALLED_PLUGIN.exists():
+        return [f"{INSTALLED_PLUGIN} does not exist"]
+    if not INSTALLED_PLUGIN.is_symlink():
+        return [f"{INSTALLED_PLUGIN} is a real directory, not a symlink — "
+                f"edits there will not reach GitHub"]
+    target = Path(os.path.realpath(INSTALLED_PLUGIN))
+    if target != Path(os.path.realpath(REPO_PLUGIN)):
+        problems.append(f"plugin symlink -> {target}, expected {REPO_PLUGIN}")
+    return problems
+
+
+def skill_link_status() -> List[str]:
+    """Repo-owned skills must be symlinked from the profile, and every link must resolve."""
+    problems: List[str] = []
+    for link in sorted(SKILLS_INSTALLED.rglob("*")):
+        if not link.is_symlink():
             continue
-        drift.append(line.replace(str(INSTALLED_PLUGIN), "installed")
-                         .replace(str(VENDORED_PLUGIN), "vendored"))
-    return drift
+        if not (link / "SKILL.md").exists():
+            problems.append(f"broken skill link: {link}")
+    return problems
 
 
 # ------------------------------------------------------------------- status
@@ -110,14 +130,13 @@ def cmd_status(args) -> int:
     if ahead != "0" and behind != "0":
         print("!! DIVERGED — resolve before pushing (pull first, then push)")
 
-    drift = plugin_drift()
-    if drift:
-        print("\n!! PLUGIN DRIFT (installed vs vendored copy in the repo):")
-        for d in drift[:8]:
-            print("   ", d)
-        print("    fix:  cp -r plugins/media-ingest/* vendor/plugins/media-ingest/ && commit")
+    problems = plugin_link_status() + skill_link_status()
+    if problems:
+        print("\n!! WIRING PROBLEMS:")
+        for problem in problems[:8]:
+            print("   ", problem)
     else:
-        print("\nplugin copy: in sync")
+        print("\nplugin + skills: symlinked into the repo (single source of truth)")
 
     rc, prs = gh("pr", "list", "--state", "open",
                  "--json", "number,title,author,headRefName",
