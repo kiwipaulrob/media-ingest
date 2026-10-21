@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>media-ingest — tested modular media ingest for Jellyfin (Hermes plugin)</title>
+<meta name="description" content="A tested, modular media ingest pipeline for Jellyfin homelabs: scan, plan, apply and place stages, a Hermes agent plugin, a metadata provider chain, and 147 tests. Every safety rule maps to the real incident that produced it.">
+<meta name="keywords" content="jellyfin, media ingest, jellyfin metadata, hermes agent, hermes plugin, qbittorrent api, prowlarr, sabnzbd, ffprobe, media library automation, python">
+<meta name="author" content="Paul Robertson">
+<link rel="canonical" href="https://kiwipaulrob.github.io/media-ingest/">
+<meta name="robots" content="index, follow">
+
+<!-- Google Search Console verification: paste the meta tag from Search Console here -->
+<!-- google-site-verification: REPLACE_WITH_SEARCH_CONSOLE_TOKEN -->
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="media-ingest — tested modular media ingest for Jellyfin">
+<meta property="og:description" content="Stage pipeline (scan → plan → apply → place), a Hermes agent plugin, and a metadata provider chain with 147 tests. Each safety rule traces to the incident that produced it.">
+<meta property="og:url" content="https://kiwipaulrob.github.io/media-ingest/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="media-ingest — tested modular media ingest for Jellyfin">
+<meta name="twitter:description" content="Stage pipeline, Hermes plugin and metadata chain for Jellyfin. 147 tests, standard library only.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "media-ingest",
+  "description": "Tested, modular media ingest for a Jellyfin homelab: a stage pipeline (scan, plan, apply, place, verify), a Hermes agent plugin, and a metadata provider chain. Every safety rule is paired with the incident that produced it and pinned by a test.",
+  "url": "https://github.com/kiwipaulrob/media-ingest",
+  "codeRepository": "https://github.com/kiwipaulrob/media-ingest",
+  "programmingLanguage": "Python",
+  "license": "https://github.com/kiwipaulrob/media-ingest",
+  "author": {"@type": "Person", "name": "Paul Robertson"},
+  "keywords": "jellyfin, media ingest, home lab, automation, python, hermes agent"
+}
+</script>
+
+<style>
+  :root { --fg:#101418; --muted:#5b6672; --line:#e3e8ee; --accent:#0b63c4; --bg:#fff; --code:#f5f7fa; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8edf3; --muted:#9aa7b4; --line:#242b33; --accent:#63a4ff; --bg:#0d1117; --code:#161c23; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  main { max-width: 880px; margin: 0 auto; padding: 48px 22px 80px; }
+  header { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:30px; }
+  h1 { font-size: 2rem; line-height:1.2; margin:0 0 10px; letter-spacing:-.02em; }
+  h2 { font-size: 1.2rem; margin:38px 0 12px; letter-spacing:-.01em; }
+  .lede { font-size:1.08rem; color:var(--muted); margin:0; }
+  .cta { display:flex; gap:12px; flex-wrap:wrap; margin:26px 0 0; }
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; text-decoration:none;
+         font-weight:600; border:1px solid var(--line); color:var(--fg); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  code, pre { background:var(--code); border-radius:6px; }
+  code { padding:2px 6px; font-size:.92em; }
+  pre { padding:14px 16px; overflow:auto; font-size:.88rem; border:1px solid var(--line); }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:.95rem; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:.85rem; text-transform:uppercase; letter-spacing:.04em; }
+  a { color:var(--accent); }
+  footer { margin-top:52px; padding-top:20px; border-top:1px solid var(--line);
+           color:var(--muted); font-size:.9rem; }
+  .pill { display:inline-block; font-size:.78rem; padding:2px 9px; border-radius:999px;
+          border:1px solid var(--line); color:var(--muted); margin-right:6px; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>media-ingest</h1>
+  <p class="lede">A tested, modular media ingest pipeline for a Jellyfin homelab —
+  with a Hermes agent plugin, a metadata provider chain, and 147 tests.
+  Every safety rule is paired with the incident that produced it.</p>
+  <p style="margin:14px 0 0">
+    <span class="pill">Python · stdlib only</span>
+    <span class="pill">147 tests</span>
+    <span class="pill">Jellyfin 12.2</span>
+    <span class="pill">Hermes plugin</span>
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/kiwipaulrob/media-ingest">View the source on GitHub →</a>
+    <a class="btn" href="https://github.com/kiwipaulrob/media-ingest/blob/master/README.md">Read the README</a>
+    <a class="btn" href="https://github.com/kiwipaulrob/media-ingest/blob/master/docs/INGEST.md">Stage contracts</a>
+  </div>
+</header>
+
+<h2>What it does</h2>
+<p>Ingesting media means answering four questions safely: <em>what finished
+downloading</em>, <em>does the library already have it</em>, <em>replace or add</em>,
+and <em>did the write actually land and is it playable</em>. The hard part is that
+each step is destructive if it guesses — a half-copied file, a mis-matched title,
+or a wrong synopsis written over a good one is silent damage that surfaces days later.</p>
+<p>So the design rule is simple: <strong>read-only stages do all the thinking, and
+mutating stages only execute explicit ids.</strong></p>
+
+<h2>The pipeline</h2>
+<pre>Prowlarr ──▶ source plan ──▶ shortlist ──┐
+qBittorrent ─▶ scan ──▶ plan ──▶ ids ─────┼──▶ apply (replace existing file)
+library dump ─────────────────────────────┘    ingest_new (place new file)
+                                              verify (4-field gate)</pre>
+
+<table>
+  <tr><th>Stage</th><th>Mutating</th><th>Contract</th></tr>
+  <tr><td><code>scan</code></td><td>no</td><td>completed downloads, probed for real resolution and codec</td></tr>
+  <tr><td><code>plan</code></td><td>no</td><td>REPLACE candidates as numbered ids, plus rows for a human</td></tr>
+  <tr><td><code>apply</code></td><td>yes</td><td>explicit ids only — there is no "all" switch, by design</td></tr>
+  <tr><td><code>place</code></td><td>yes</td><td>adds a file that has no row yet, with five gates</td></tr>
+  <tr><td><code>verify</code></td><td>no</td><td>Tmdb / Imdb / image / overview gate per item</td></tr>
+</table>
+
+<h2>Why it exists</h2>
+<p>Ad-hoc ingest scripts written per task kept failing in the same ways. Two
+examples from the README, both now pinned by tests:</p>
+<ul>
+  <li><strong>Advertised seeders lie.</strong> Postings showing 63 and 95 seeds both
+  delivered zero bytes and zero peers — so seed counts are a floor for offering a
+  pick, never evidence it is alive.</li>
+  <li><strong>TMDB episode numbers do not match a hand-built library.</strong>
+  Resolving by number wrote Tom Petty's synopsis onto a John Lennon episode, and
+  Def Leppard's onto a Sex Pistols one. Episodes are now resolved <em>by name</em>.</li>
+</ul>
+
+<h2>Install</h2>
+<pre>git clone https://github.com/kiwipaulrob/media-ingest.git
+cd media-ingest
+python3 -m pytest tests/ -q     # 147 tests, standard library only</pre>
+<p>The Hermes plugin lives in <code>vendor/plugins/media-ingest/</code> and exposes
+<code>media_scan</code>, <code>media_plan</code>, <code>media_apply</code>,
+<code>media_verify</code>, <code>media_source_plan</code> and
+<code>media_source_queue</code> as agent tools.</p>
+
+<footer>
+  <p><strong>Source code:</strong>
+  <a href="https://github.com/kiwipaulrob/media-ingest">github.com/kiwipaulrob/media-ingest</a></p>
+  <p>Private homelab tooling published for reference. No warranty.</p>
+</footer>
+
+</main>
+</body>
+</html>
