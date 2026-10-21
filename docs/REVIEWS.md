@@ -8,9 +8,10 @@ recorded below with the reason it was adopted or rejected.
 
 ## Where the code runs (this is why adoption is immediate)
 
-The Hermes plugin executes **this checkout**:
+The Hermes plugin executes **this checkout**, and the profile links into it:
 
 ```
+profile/plugins/media-ingest -> media-ops/plugins/media-ingest   (symlink, not a copy)
 plugins/media-ingest/tools.py:  MEDIA_OPS = /root/.hermes/profiles/media-maintainer/media-ops
                                 subprocess.run([... '-m', 'cli.<stage>'], cwd=MEDIA_OPS)
 ```
@@ -18,7 +19,8 @@ plugins/media-ingest/tools.py:  MEDIA_OPS = /root/.hermes/profiles/media-maintai
 So there is no build or deploy step — a change merged to `master` here is what
 the next tool call runs. Two consequences:
 
-1. **Test before merge**, always. `python3 -m pytest tests/ -q` (147 tests).
+1. **Test before merge**, always. `python3 -m pytest tests/ -q` (162 tests), and
+   CI (`.github/workflows/tests.yml`) runs the same suite on the PR.
 2. A change to the **plugin's own** `tools.py` / `plugin.yaml` additionally needs
    a gateway restart, because the plugin is imported at start-up:
    `hermes -p default gateway restart`.
@@ -77,6 +79,55 @@ These look like improvements and are not. Each has an incident behind it.
 | 3 | 2026-10-21 | Jules (PR #2) | Removed `jellyfin`/`config` from `cli/meta.py`, `safety` from `enrich.py`, `json` from `chain.py`, `Path` from `repair.py`, `matcher` from `source.py` | **Adopt** | Each verified unreferenced by AST name analysis *and* by importing all 34 modules. One stale docstring resulted (fixed in `4f0d1c0`). | `48f9642` |
 | 4 | 2026-10-21 | Jules (PR #2) | Removed `rejected: List[Dict[str, Any]] = []` in `enrich.py` | **Adopt** | Dead declaration — `rejected` appears later only as a keyword argument name, not a variable. | `48f9642` |
 | 5 | 2026-10-21 | Jules (PR #2) | Extracted `re.search(r'COPIED=(\w+)', stage)` into `copied_match` in `place.py` | **Adopt** | Independently identical to the Optional-handling fix made earlier; strictly safer. | `48f9642` |
+
+## Deferred — under review (decided, not rejected)
+
+Items judged sound but not worth doing yet. Each carries the **evidence that would
+reopen it**, so it is not relitigated from scratch.
+
+### Packaging `media-ops` (`pyproject.toml`, `pip install -e .`, import instead of `subprocess`)
+
+**Verdict: Defer (2026-10-22). Keep under review.**
+
+The plugin shells out (`subprocess.run([... '-m', 'cli.<stage>'], cwd=MEDIA_OPS)`)
+rather than importing `media_lib`. Packaging would remove the hardcoded path, make
+errors real exceptions instead of parseable strings, let mypy follow the imports,
+and let tests drive the entry point in-process.
+
+**Why deferred:** the strongest argument for packaging was eliminating two copies
+of the code, and the **symlink already solved that** at a fraction of the risk. The
+remaining benefits do not currently justify the costs:
+
+- **It would not have prevented either bug this session.** The duplicate
+  `wait_rows` block and the false "row MISSING" report were *behaviour* defects
+  that a green 147-test suite passed straight through. Packaging buys ergonomics,
+  not correctness.
+- **The process boundary is load-bearing.** A crash or hang in `cli.scan` currently
+  kills a subprocess and returns an exit code. Imported, it can take the **gateway**
+  down — a real availability regression for long copies and hung HTTP calls.
+- **It would break "changes apply on the next tool call."** An imported `media_lib`
+  is frozen at gateway start, so a `.env` or code change would need a restart —
+  losing a property the whole workflow depends on.
+- `subprocess` gives timeouts and cancellation for free; in-process needs threads
+  or signals.
+
+**Reopen if any of these becomes true:**
+
+1. A plugin/`media_lib` version skew causes a real failure (the plugin running
+   against an incompatible `media_lib`).
+2. A second consumer of `media_lib` appears — the package boundary starts paying.
+3. Subprocess startup becomes material to a workflow (measure first; it is ~0.3 s
+   per call today).
+4. Type checking across the boundary is wanted for a change that is otherwise
+   unsafe to make.
+5. The checkout stops being the live code (a real deploy step appears), which
+   removes the freshness argument in its favour.
+
+**Narrower step available instead** (not taken; no trigger met): keep the
+subprocess, but have `tools.py` import `media_lib.config` for paths and a version
+check, so the plugin refuses to run against a mismatched `media_lib` instead of
+failing mid-placement. Reversible, and it captures the one benefit with a real
+incident behind it (skew), not a hypothetical.
 
 ## How to hand a review over
 

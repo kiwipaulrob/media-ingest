@@ -214,6 +214,12 @@ tool catalog is built at start-up.
 - A failed placement re-copies from zero; `.part` files are removed rather than
   resumed.
 - `cli/meta.py` hardcodes one library's parent id; it should be a flag.
+- **Not packaged** (`pip install -e .`), so the plugin shells out to `cli.*` with a
+  hardcoded `MEDIA_OPS` path. Decided 2026-10-22 and **kept under review** — the
+  full reasoning and the five conditions that would reopen it are in
+  `docs/REVIEWS.md` § Deferred. Short version: the symlink already removed the
+  duplicated-copy problem packaging was meant to fix, and importing would lose the
+  process boundary and the "changes apply on the next tool call" property.
 - Provider cache has no eviction.
 
 ## Licence
