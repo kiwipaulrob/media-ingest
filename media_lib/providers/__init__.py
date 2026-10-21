@@ -7,7 +7,8 @@
 Prose priority   tmdb > lastfm > genius > wikipedia
 Portrait priority tmdb > deezer > lastfm > wikipedia
 """
+
 from . import chain
 from .base import Candidate, Provider, Record, merge
 
-__all__ = ['chain', 'Candidate', 'Provider', 'Record', 'merge']
+__all__ = ["chain", "Candidate", "Provider", "Record", "merge"]

@@ -32,6 +32,7 @@ Placement does not make Jellyfin notice the file — call `jellyfin.notify_media
 afterwards (a library Refresh re-resolves KNOWN rows and will not discover new
 ones; that omission is why two placements sat invisible until forced).
 """
+
 from __future__ import annotations
 
 import json
@@ -42,9 +43,9 @@ from typing import Any, Dict, Optional
 from . import config, probe
 
 DECODE_SPANS = (0.05, 0.50, 0.95)
-M_SRC = '@@SRC@@'
-M_DST = '@@DST@@'
-M_END = '@@END@@'
+M_SRC = "@@SRC@@"
+M_DST = "@@DST@@"
+M_END = "@@END@@"
 
 
 def to_disk(path: str) -> str:
@@ -72,7 +73,7 @@ def _block(out: str, marker: str) -> Optional[Dict[str, Any]]:
     if end < 0:
         return None
     try:
-        return json.loads(out[start:end].strip() or '{}')
+        return json.loads(out[start:end].strip() or "{}")
     except json.JSONDecodeError:
         return None
 
@@ -80,23 +81,30 @@ def _block(out: str, marker: str) -> Optional[Dict[str, Any]]:
 def _stats(blob: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     if not blob:
         return {}
-    s = (blob.get('streams') or [{}])[0] if blob.get('streams') else {}
-    fmt = blob.get('format') or {}
+    s = (blob.get("streams") or [{}])[0] if blob.get("streams") else {}
+    fmt = blob.get("format") or {}
     try:
-        dur = float(fmt.get('duration') or 0)
+        dur = float(fmt.get("duration") or 0)
     except (TypeError, ValueError):
         dur = 0.0
-    return {'w': s.get('width'), 'h': s.get('height'), 'codec': s.get('codec_name'),
-            'duration': dur, 'title': (fmt.get('tags') or {}).get('title') or ''}
+    return {
+        "w": s.get("width"),
+        "h": s.get("height"),
+        "codec": s.get("codec_name"),
+        "duration": dur,
+        "title": (fmt.get("tags") or {}).get("title") or "",
+    }
 
 
 def _stage_script(src_d: str, dst_d: str) -> str:
     """Stage the copy and probe BOTH ends in a single remote call."""
     ffp = probe.probe_wrap(config.FFPROBE_ENTRY)
-    probe_expr = ('-v error -select_streams v:0 '
-                  '-show_entries stream=width,height,codec_name:format=duration:format_tags=title '
-                  '-of json')
-    return f'''
+    probe_expr = (
+        "-v error -select_streams v:0 "
+        "-show_entries stream=width,height,codec_name:format=duration:format_tags=title "
+        "-of json"
+    )
+    return f"""
 set -u
 SRC={shlex.quote(src_d)}; DST={shlex.quote(dst_d)}
 [ -s "$SRC" ] || {{ echo STAGE=SRC-MISSING; exit 3; }}
@@ -122,77 +130,110 @@ echo {M_END}
 echo {M_DST}
 {ffp} {probe_expr} "$DST" 2>/dev/null || true
 echo {M_END}
-'''
+"""
 
 
 def _decode_script(dst_d: str, duration: float) -> str:
     """Every decode span in ONE remote call."""
     fff = probe.probe_wrap(config.FFMPEG_ENTRY)
-    lines = ['set -u', f'DST={shlex.quote(dst_d)}']
+    lines = ["set -u", f"DST={shlex.quote(dst_d)}"]
     for frac in DECODE_SPANS:
         ss = max(0.0, duration * frac)
         lines.append(
             f'if {fff} -v error -ss {ss:.1f} -t 5 -i "$DST" -f null - -xerror >/dev/null 2>&1; '
-            f'then echo DECODE={frac:.2f}=OK; else echo DECODE={frac:.2f}=FAIL; fi')
-    return '\n'.join(lines)
+            f"then echo DECODE={frac:.2f}=OK; else echo DECODE={frac:.2f}=FAIL; fi"
+        )
+    return "\n".join(lines)
 
 
-def place_new(src: str, dest: str, *, expect_duration: Optional[float] = None,
-              min_height: int = 0, max_duration_delta: float = 3.0) -> Dict[str, Any]:
+def place_new(
+    src: str,
+    dest: str,
+    *,
+    expect_duration: Optional[float] = None,
+    min_height: int = 0,
+    max_duration_delta: float = 3.0,
+) -> Dict[str, Any]:
     """Copy `src` to `dest` and pass every gate before calling it placed."""
     src_d, dst_d = to_disk(src), to_disk(dest)
-    if not dst_d.lower().endswith(('.mkv', '.mp4', '.avi')):
-        return {'ok': False, 'stage': 'BAD-DEST', 'dest': dest}
+    if not dst_d.lower().endswith((".mkv", ".mp4", ".avi")):
+        return {"ok": False, "stage": "BAD-DEST", "dest": dest}
 
     try:
         stage = probe.on_media(_stage_script(src_d, dst_d), timeout=3600)
-    except Exception as exc:                            # noqa: BLE001
-        return {'ok': False, 'stage': 'STAGE-EXEC-FAIL',
-                'detail': f'{type(exc).__name__}: {str(exc)[:160]}', 'dest': dest}
-    if 'STAGE=' in stage:
-        return {'ok': False, 'stage': stage.split('STAGE=')[1].split()[0], 'dest': dest}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "stage": "STAGE-EXEC-FAIL",
+            "detail": f"{type(exc).__name__}: {str(exc)[:160]}",
+            "dest": dest,
+        }
+    if "STAGE=" in stage:
+        return {"ok": False, "stage": stage.split("STAGE=")[1].split()[0], "dest": dest}
 
     def _rm() -> None:
         """A failed gate must never leave a half-good file in the library."""
         try:
-            probe.on_media(f'rm -f {shlex.quote(dst_d)} {shlex.quote(dst_d)}.part', timeout=60)
-        except Exception:                               # noqa: BLE001
+            probe.on_media(
+                f"rm -f {shlex.quote(dst_d)} {shlex.quote(dst_d)}.part", timeout=60
+            )
+        except Exception:  # noqa: BLE001
             pass
 
-    size_src = _num(r'SIZE_SRC=(\d+)', stage)
-    size_dst = _num(r'SIZE_DST=(\d+)', stage)
+    size_src = _num(r"SIZE_SRC=(\d+)", stage)
+    size_dst = _num(r"SIZE_DST=(\d+)", stage)
     if size_src and size_dst != size_src:
         _rm()
-        return {'ok': False, 'stage': 'SIZE-MISMATCH',
-                'detail': f'{size_dst} != {size_src}', 'dest': dest}
+        return {
+            "ok": False,
+            "stage": "SIZE-MISMATCH",
+            "detail": f"{size_dst} != {size_src}",
+            "dest": dest,
+        }
 
     src_s, dst_s = _stats(_block(stage, M_SRC)), _stats(_block(stage, M_DST))
-    if not dst_s.get('h'):
+    if not dst_s.get("h"):
         _rm()
-        return {'ok': False, 'stage': 'DST-PROBE-FAIL', 'dest': dest}
-    if dst_s['h'] < min_height:
+        return {"ok": False, "stage": "DST-PROBE-FAIL", "dest": dest}
+    if dst_s["h"] < min_height:
         _rm()
-        return {'ok': False, 'stage': f"BELOW-MIN-HEIGHT({dst_s['h']}<{min_height})",
-                'dest': dest}
+        return {
+            "ok": False,
+            "stage": f"BELOW-MIN-HEIGHT({dst_s['h']}<{min_height})",
+            "dest": dest,
+        }
 
-    ref = expect_duration or src_s.get('duration') or 0
-    if ref and abs(dst_s['duration'] - ref) > max_duration_delta:
+    ref = expect_duration or src_s.get("duration") or 0
+    if ref and abs(dst_s["duration"] - ref) > max_duration_delta:
         _rm()
-        return {'ok': False, 'stage': 'DURATION-MISMATCH',
-                'detail': f"{dst_s['duration']:.1f}s vs {ref:.1f}s", 'dest': dest}
+        return {
+            "ok": False,
+            "stage": "DURATION-MISMATCH",
+            "detail": f"{dst_s['duration']:.1f}s vs {ref:.1f}s",
+            "dest": dest,
+        }
 
     try:
-        dec = probe.on_media(_decode_script(dst_d, dst_s['duration']), timeout=600)
-    except Exception as exc:                            # noqa: BLE001
-        dec = f'DECODE=err=FAIL {type(exc).__name__}'
-    if 'FAIL' in dec:
+        dec = probe.on_media(_decode_script(dst_d, dst_s["duration"]), timeout=600)
+    except Exception as exc:  # noqa: BLE001
+        dec = f"DECODE=err=FAIL {type(exc).__name__}"
+    if "FAIL" in dec:
         _rm()
-        return {'ok': False, 'stage': 'DECODE-FAIL',
-                'detail': dec.strip().replace('\n', ' ')[:120], 'dest': dest}
+        return {
+            "ok": False,
+            "stage": "DECODE-FAIL",
+            "detail": dec.strip().replace("\n", " ")[:120],
+            "dest": dest,
+        }
 
-    return {'ok': True, 'stage': 'PLACED', 'dest': dest,
-            'res': f"{dst_s['w']}x{dst_s['h']} {dst_s['codec']}",
-            'duration': round(dst_s['duration'], 1),
-            'size_gb': round(size_dst / 1e9, 2),
-            'copied': (re.search(r'COPIED=(\w+)', stage).group(1)
-                       if re.search(r'COPIED=(\w+)', stage) else 'unknown')}
+    copied_match = re.search(r"COPIED=(\w+)", stage)
+    copied = copied_match.group(1) if copied_match else "unknown"
+    return {
+        "ok": True,
+        "stage": "PLACED",
+        "dest": dest,
+        "res": f"{dst_s['w']}x{dst_s['h']} {dst_s['codec']}",
+        "duration": round(dst_s["duration"], 1),
+        "size_gb": round(size_dst / 1e9, 2),
+        "copied": copied,
+    }

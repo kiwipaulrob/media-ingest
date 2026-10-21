@@ -13,6 +13,7 @@ gets its own scoped env), then from the shared .env file (so a cron CLI works
 without a shell wrapper). The admin user id is never hardcoded: four scripts
 used to carry the same literal id, so a re-created user silently broke all four.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-ENV_FILE = Path('/root/.hermes/.env')
+ENV_FILE = Path("/root/.hermes/.env")
 _RETRIES = 5
 _RETRY_SLEEP = 4
 
@@ -39,9 +40,9 @@ def load_env_file(path: Path = ENV_FILE) -> Dict[str, str]:
     try:
         for line in path.read_text().splitlines():
             line = line.strip()
-            if not line or line.startswith('#') or '=' not in line:
+            if not line or line.startswith("#") or "=" not in line:
                 continue
-            k, _, v = line.partition('=')
+            k, _, v = line.partition("=")
             out[k.strip()] = v.strip().strip('"').strip("'")
     except OSError:
         pass
@@ -56,16 +57,16 @@ def env(name: str, default: Optional[str] = None) -> Optional[str]:
 
 
 def base_url() -> str:
-    url = env('JELLYFIN_URL')
+    url = env("JELLYFIN_URL")
     if not url:
-        raise JellyfinError('JELLYFIN_URL is not set')
-    return url.rstrip('/')
+        raise JellyfinError("JELLYFIN_URL is not set")
+    return url.rstrip("/")
 
 
 def api_key() -> str:
-    key = env('JELLYFIN_API_KEY')
+    key = env("JELLYFIN_API_KEY")
     if not key:
-        raise JellyfinError('JELLYFIN_API_KEY is not set')
+        raise JellyfinError("JELLYFIN_API_KEY is not set")
     return key
 
 
@@ -76,16 +77,17 @@ def user_id() -> str:
     user-scoped route needs this id, so a stale literal breaks every caller at
     once with a confusing error.
     """
-    uid = env('JELLYFIN_USER_ID')
+    uid = env("JELLYFIN_USER_ID")
     if not uid:
         raise JellyfinError(
-            'JELLYFIN_USER_ID is not set. Set it in the environment or in '
-            f'{ENV_FILE} (get it from GET /Users).')
+            "JELLYFIN_USER_ID is not set. Set it in the environment or in "
+            f"{ENV_FILE} (get it from GET /Users)."
+        )
     return uid
 
 
 def auth_header(key: Optional[str] = None) -> Dict[str, str]:
-    return {'Authorization': f'MediaBrowser Token="{key or api_key()}"'}
+    return {"Authorization": f'MediaBrowser Token="{key or api_key()}"'}
 
 
 def coerce_bio(value: Any) -> str:
@@ -96,38 +98,47 @@ def coerce_bio(value: Any) -> str:
     write 400s with 'JsonStringConverter read too much or not enough'.
     """
     if isinstance(value, (tuple, list)):
-        value = value[0] if value else ''
+        value = value[0] if value else ""
     if value is None:
-        return ''
+        return ""
     return value if isinstance(value, str) else str(value)
 
 
 # ---------------------------------------------------------------- transport
-def _request(path: str, *, method: str = 'GET',
-             body: Optional[Dict[str, Any]] = None,
-             key: Optional[str] = None,
-             timeout: int = 60) -> str:
+def _request(
+    path: str,
+    *,
+    method: str = "GET",
+    body: Optional[Dict[str, Any]] = None,
+    key: Optional[str] = None,
+    timeout: int = 60,
+) -> str:
     """One HTTP call. Returns the raw text (possibly empty)."""
-    url = path if path.startswith('http') else base_url() + path
+    url = path if path.startswith("http") else base_url() + path
     data = json.dumps(body).encode() if body is not None else None
     headers = dict(auth_header(key))
     if data is not None:
-        headers['Content-Type'] = 'application/json'
+        headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode('utf-8', 'replace')
+            return r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode('utf-8', 'replace')[:400]
-        raise JellyfinError(f'{method} {path} -> {exc.code} {detail}') from exc
+        detail = exc.read().decode("utf-8", "replace")[:400]
+        raise JellyfinError(f"{method} {path} -> {exc.code} {detail}") from exc
 
 
-def get_json(path: str, *, params: Optional[Dict[str, Any]] = None,
-             key: Optional[str] = None, retries: int = _RETRIES,
-             timeout: int = 60) -> Dict[str, Any]:
+def get_json(
+    path: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    key: Optional[str] = None,
+    retries: int = _RETRIES,
+    timeout: int = 60,
+) -> Dict[str, Any]:
     """GET with the empty-body retry. Returns {} only after exhausting retries."""
     if params:
-        path = f'{path}?{urllib.parse.urlencode(params)}'
+        path = f"{path}?{urllib.parse.urlencode(params)}"
     for attempt in range(retries):
         try:
             text = _request(path, key=key, timeout=timeout)
@@ -140,7 +151,7 @@ def get_json(path: str, *, params: Optional[Dict[str, Any]] = None,
             except json.JSONDecodeError:
                 time.sleep(_RETRY_SLEEP)
                 continue
-        time.sleep(_RETRY_SLEEP)      # empty body == busy server, retry
+        time.sleep(_RETRY_SLEEP)  # empty body == busy server, retry
     return {}
 
 
@@ -152,16 +163,17 @@ def post_item(item_id: str, body: Dict[str, Any], *, key: Optional[str] = None) 
     write to an unrelated field would be a silent metadata loss.
     """
     try:
-        _request(f'/Items/{item_id}', method='POST', body=body, key=key)
+        _request(f"/Items/{item_id}", method="POST", body=body, key=key)
         return 204
     except JellyfinError as exc:
-        if '-> 400' not in str(exc):
+        if "-> 400" not in str(exc):
             raise
-        minimal = {k: body[k] for k in ('Id', 'Name', 'Overview', 'LockedFields')
-                   if k in body}
+        minimal: dict[str, Any] = {
+            k: body[k] for k in ("Id", "Name", "Overview", "LockedFields") if k in body
+        }
         if not minimal:
             raise
-        _request(f'/Items/{item_id}', method='POST', body=minimal, key=key)
+        _request(f"/Items/{item_id}", method="POST", body=minimal, key=key)
         return 204
 
 
@@ -176,21 +188,30 @@ def _fields_param(fields: Optional[Iterable[str]]) -> Optional[str]:
         return None
     if isinstance(fields, str):
         return fields
-    return ','.join(fields)
+    return ",".join(fields)
 
 
-def item(uid: str, item_id: str, fields: Optional[Iterable[str]] = None,
-         key: Optional[str] = None) -> Dict[str, Any]:
+def item(
+    uid: str,
+    item_id: str,
+    fields: Optional[Iterable[str]] = None,
+    key: Optional[str] = None,
+) -> Dict[str, Any]:
     """User-scoped single-item read (the only route that works on this build)."""
-    params = {'Fields': _fields_param(fields)} if fields else None
-    return get_json(f'/Users/{uid}/Items/{item_id}', params=params, key=key)
+    params = {"Fields": _fields_param(fields)} if fields else None
+    return get_json(f"/Users/{uid}/Items/{item_id}", params=params, key=key)
 
 
-def list_items(uid: str, *, recursive: bool = True,
-               include_types: Optional[str] = None,
-               parent_id: Optional[str] = None,
-               fields: Optional[Iterable[str]] = None,
-               limit: int = 500, key: Optional[str] = None) -> List[Dict[str, Any]]:
+def list_items(
+    uid: str,
+    *,
+    recursive: bool = True,
+    include_types: Optional[str] = None,
+    parent_id: Optional[str] = None,
+    fields: Optional[Iterable[str]] = None,
+    limit: int = 500,
+    key: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Paginated item listing.
 
     Limit=0 returns ZERO items on this build — it is not an 'unlimited'
@@ -199,22 +220,22 @@ def list_items(uid: str, *, recursive: bool = True,
     out: List[Dict[str, Any]] = []
     start = 0
     while True:
-        params: Dict[str, Any] = {'StartIndex': start, 'Limit': limit}
+        params: Dict[str, Any] = {"StartIndex": start, "Limit": limit}
         if recursive:
-            params['Recursive'] = 'true'
+            params["Recursive"] = "true"
         if include_types:
-            params['IncludeItemTypes'] = include_types
+            params["IncludeItemTypes"] = include_types
         if parent_id:
-            params['ParentId'] = parent_id
+            params["ParentId"] = parent_id
         if fields:
-            params['Fields'] = _fields_param(fields)
-        page = get_json(f'/Users/{uid}/Items', params=params, key=key)
-        rows = page.get('Items') or []
+            params["Fields"] = _fields_param(fields)
+        page = get_json(f"/Users/{uid}/Items", params=params, key=key)
+        rows = page.get("Items") or []
         if not rows:
             break
         out.extend(rows)
         start += len(rows)
-        if start >= (page.get('TotalRecordCount') or 0):
+        if start >= (page.get("TotalRecordCount") or 0):
             break
     return out
 
@@ -227,15 +248,16 @@ def refresh_library(lib_id: str) -> int:
     passed to the library-level route, and a full library rescan would purge
     the ghost rows that are deliberately kept.
     """
-    params = {'Recursive': 'true',
-              'ReplaceAllMetadata': 'false',
-              'ReplaceAllImages': 'false'}
-    _request(f'/Items/{lib_id}/Refresh?{urllib.parse.urlencode(params)}',
-             method='POST')
+    params = {
+        "Recursive": "true",
+        "ReplaceAllMetadata": "false",
+        "ReplaceAllImages": "false",
+    }
+    _request(f"/Items/{lib_id}/Refresh?{urllib.parse.urlencode(params)}", method="POST")
     return 204
 
 
-def notify_media(paths: Iterable[str], update_type: str = 'Created') -> int:
+def notify_media(paths: Iterable[str], update_type: str = "Created") -> int:
     """Tell the scanner that files appeared.
 
     A library-scoped Refresh re-resolves metadata for KNOWN rows and does NOT
@@ -243,6 +265,6 @@ def notify_media(paths: Iterable[str], update_type: str = 'Created') -> int:
     the next full discovery. This is the surgical route that actually adds them.
     A file already queued for refresh makes this a no-op, not an error.
     """
-    body = {'Updates': [{'Path': p, 'UpdateType': update_type} for p in paths]}
-    _request('/Library/Media/Updated', method='POST', body=body)
+    body = {"Updates": [{"Path": p, "UpdateType": update_type} for p in paths]}
+    _request("/Library/Media/Updated", method="POST", body=body)
     return 204

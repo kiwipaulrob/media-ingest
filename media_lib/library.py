@@ -4,6 +4,7 @@ Built from the REST API, not the filesystem, and cached with an explicit age.
 A stale dump holds item ids that stop resolving the moment anything swaps a
 file, so the cache is timestamped and callers must rebuild past the threshold.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,28 +24,28 @@ def _lib_for(jf_path: str) -> Optional[str]:
 
 
 def _row(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    path = item.get('Path') or ''
+    path = item.get("Path") or ""
     lib_path = _lib_for(path)
-    if lib_path is None or not item.get('Name'):
+    if lib_path is None or not item.get("Name"):
         return None
     streams: List[Dict[str, Any]] = []
-    for src in item.get('MediaSources') or []:
-        streams = src.get('MediaStreams') or []
+    for src in item.get("MediaSources") or []:
+        streams = src.get("MediaStreams") or []
         break
-    video = next((s for s in streams if s.get('Type') == 'Video'), {})
-    name = item['Name']
+    video = next((s for s in streams if s.get("Type") == "Video"), {})
+    name = item["Name"]
     return {
-        'id': item.get('Id'),
-        'Name': name,
-        'path': path,
-        'lib': lib_path,
-        'disk': config.JF_TO_DISK[lib_path] + path[len(lib_path):],
-        'tokens': sorted(matcher.tokens(matcher.clean_release(name))),
-        'squash': matcher.squash(matcher.clean_release(name)),
-        'w': video.get('Width'),
-        'h': video.get('Height'),
-        'codec': video.get('Codec'),
-        'nsrc': len(item.get('MediaSources') or []) or 1,
+        "id": item.get("Id"),
+        "Name": name,
+        "path": path,
+        "lib": lib_path,
+        "disk": config.JF_TO_DISK[lib_path] + path[len(lib_path):],
+        "tokens": sorted(matcher.tokens(matcher.clean_release(name))),
+        "squash": matcher.squash(matcher.clean_release(name)),
+        "w": video.get("Width"),
+        "h": video.get("Height"),
+        "codec": video.get("Codec"),
+        "nsrc": len(item.get("MediaSources") or []) or 1,
     }
 
 
@@ -52,26 +53,33 @@ def build(uid: Optional[str] = None) -> Dict[str, Any]:
     """Dump every video item, grouped by library root."""
     uid = uid or jellyfin.user_id()
     items = jellyfin.list_items(
-        uid, recursive=True, include_types='Movie,Video',
-        fields='Path,MediaSources,ProductionYear')
+        uid,
+        recursive=True,
+        include_types="Movie,Video",
+        fields="Path,MediaSources,ProductionYear",
+    )
     libs: Dict[str, List[Dict[str, Any]]] = {p: [] for p in config.JF_TO_DISK}
     for it in items:
         r = _row(it)
         if r:
-            libs[r['lib']].append(r)
-    return {'_built': int(time.time()), 'libs': libs,
-            'count': sum(len(v) for v in libs.values())}
+            libs[r["lib"]].append(r)
+    return {
+        "_built": int(time.time()),
+        "libs": libs,
+        "count": sum(len(v) for v in libs.values()),
+    }
 
 
-def load(max_age: Optional[int] = None, uid: Optional[str] = None,
-         path=None) -> Dict[str, Any]:
+def load(
+    max_age: Optional[int] = None, uid: Optional[str] = None, path=None
+) -> Dict[str, Any]:
     """Cached dump, rebuilt when absent or older than max_age."""
     p = path or config.LIB_CACHE
     max_age = config.LIB_CACHE_STALE_S if max_age is None else max_age
     if p.exists():
         try:
             data = json.loads(p.read_text())
-            if time.time() - data.get('_built', 0) <= max_age:
+            if time.time() - data.get("_built", 0) <= max_age:
                 return data
         except (json.JSONDecodeError, OSError):
             pass

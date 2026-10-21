@@ -12,9 +12,9 @@ its XL images are real photos rather than Last.fm's shared placeholder.
 A failing provider is REPORTED per provider, never silently treated as
 'no results' — otherwise a 429 reads as 'this person has no biography'.
 """
+
 from __future__ import annotations
 
-import json
 import re
 from typing import Any, Dict, List, Optional
 
@@ -33,18 +33,25 @@ from .wikipedia import WikipediaProvider
 #: power-metal band — so an ambiguity guard cannot catch it and a 2,000-char bio
 #: about the wrong band is the result. It is used for banners/portraits only
 #: (it is the only provider here that supplies banners), unless a caller opts in.
-PROSE_PRIORITY = ['tmdb', 'lastfm', 'genius', 'wikipedia']
-PORTRAIT_PRIORITY = ['tmdb', 'deezer', 'lastfm', 'theaudiodb', 'wikipedia']
+PROSE_PRIORITY = ["tmdb", "lastfm", "genius", "wikipedia"]
+PORTRAIT_PRIORITY = ["tmdb", "deezer", "lastfm", "theaudiodb", "wikipedia"]
 
 
 def default_providers() -> List[Provider]:
-    return [TmdbProvider(), LastfmProvider(), GeniusProvider(),
-            DeezerProvider(), WikipediaProvider(), TheAudioDbProvider(),
-            MusicBrainzProvider()]
+    return [
+        TmdbProvider(),
+        LastfmProvider(),
+        GeniusProvider(),
+        DeezerProvider(),
+        WikipediaProvider(),
+        TheAudioDbProvider(),
+        MusicBrainzProvider(),
+    ]
 
 
-def search(name: str, kind: str = 'person',
-           providers: Optional[List[Provider]] = None) -> Dict[str, Any]:
+def search(
+    name: str, kind: str = "person", providers: Optional[List[Provider]] = None
+) -> Dict[str, Any]:
     """Candidates from every provider, with per-provider status."""
     providers = providers if providers is not None else default_providers()
     candidates: List[Candidate] = []
@@ -58,18 +65,22 @@ def search(name: str, kind: str = 'person',
             candidates.extend(p.search(name, kind))
         except cache.ProviderError as exc:
             errors[p.name] = str(exc)[:160]
-        except Exception as exc:                     # noqa: BLE001
-            errors[p.name] = f'{type(exc).__name__}: {str(exc)[:120]}'
+        except Exception as exc:  # noqa: BLE001
+            errors[p.name] = f"{type(exc).__name__}: {str(exc)[:120]}"
     candidates.sort(key=lambda c: -c.score)
-    return {'query': name, 'kind': kind,
-            'candidates': [c.to_dict() for c in candidates],
-            '_candidates': candidates,
-            'errors': errors, 'skipped': skipped}
+    return {
+        "query": name,
+        "kind": kind,
+        "candidates": [c.to_dict() for c in candidates],
+        "_candidates": candidates,
+        "errors": errors,
+        "skipped": skipped,
+    }
 
 
 def _birth_year(rec) -> Optional[int]:
     try:
-        y = rec.fields.get('birth_year')
+        y = rec.fields.get("birth_year")
         return int(str(y)[:4]) if y and str(y)[:4].isdigit() else None
     except (TypeError, ValueError):
         return None
@@ -94,26 +105,28 @@ def _split_plausible(records):
 #: disambiguation pages, and stub one-liners. These were being proposed as
 #: "replacements" during the pre-1900 repair pass.
 _BIO_JUNK = re.compile(
-    r'(there are at least|may refer to|can refer to|multiple artists|'
-    r'is a disambiguation|this is a disambiguation)', re.I)
+    r"(there are at least|may refer to|can refer to|multiple artists|"
+    r"is a disambiguation|this is a disambiguation)",
+    re.I,
+)
 #: Any pre-1900 year in the opening of the prose. Birth dates live in the first
 #: sentence, and Wikipedia exposes no birth_year field at all — so this is the
 #: only signal that caught 'Reverend Arthur Meagher Cave (1883-1948)' and
 #: 'Joel Hinman (January 27, 1802 - ...)' arriving as "modern" replacements.
 #: Deliberately strict: a genuine modern bio rarely opens with a 19th-century
 #: year, and a false reject only costs a gap, never a wrong biography.
-_BIO_OLD_BIRTH = re.compile(r'\b1[6-8]\d{2}\b')
+_BIO_OLD_BIRTH = re.compile(r"\b1[6-8]\d{2}\b")
 
 
 def bio_implausible(text: str) -> Optional[str]:
     """Why this text must not be used as a biography, or None if it is fine."""
-    t = (text or '').strip()
+    t = (text or "").strip()
     if len(t) < 40:
-        return 'too-short'
+        return "too-short"
     if _BIO_JUNK.search(t[:300]):
-        return 'junk-multiartist-or-disambiguation'
+        return "junk-multiartist-or-disambiguation"
     if _BIO_OLD_BIRTH.search(t[:400]):
-        return 'pre-1900-birth-in-text'
+        return "pre-1900-birth-in-text"
     return None
 
 
@@ -137,7 +150,8 @@ def _name_ok(query: str, found: str, aliases=None) -> bool:
         # Genius routinely answer 'The Edge (Guitarist)' for 'The Edge', and
         # treating that as a different person is a false reject.
         import re as _re
-        base = _re.sub(r'\([^)]*\)', ' ', v or '')
+
+        base = _re.sub(r"\([^)]*\)", " ", v or "")
         return matcher.squash(matcher.clean_release(base))
 
     q, f = sq(query), sq(found)
@@ -154,8 +168,9 @@ def _name_ok(query: str, found: str, aliases=None) -> bool:
     return short in long_ and len(short) / max(1, len(long_)) >= 0.6
 
 
-def resolve(name: str, kind: str = 'person',
-            providers: Optional[List[Provider]] = None) -> Dict[str, Any]:
+def resolve(
+    name: str, kind: str = "person", providers: Optional[List[Provider]] = None
+) -> Dict[str, Any]:
     """Search, fetch details, and merge with per-field provenance."""
     providers = providers if providers is not None else default_providers()
     found = search(name, kind, providers)
@@ -165,20 +180,20 @@ def resolve(name: str, kind: str = 'person',
     # Identity first: MusicBrainz supplies documented aliases and an MBID for
     # the gate below. Identity-only — it never supplies prose.
     identity: Dict[str, Any] = {}
-    mb = next((p for p in providers if p.name == 'musicbrainz'), None)
-    mb_ident = getattr(mb, 'identity', None)
+    mb = next((p for p in providers if p.name == "musicbrainz"), None)
+    mb_ident = getattr(mb, "identity", None)
     if callable(mb_ident):
         try:
             raw = mb_ident(name) or {}
             identity = raw if isinstance(raw, dict) else {}
-        except Exception:                       # noqa: BLE001
+        except Exception:  # noqa: BLE001
             identity = {}
-    aliases = identity.get('aliases') or []
+    aliases = identity.get("aliases") or []
     # ONE candidate per provider: fetching every fuzzy hit makes unrelated
     # artists (The Kills, The Chicks for 'The Chills') part of the merge and
     # floods the conflict list. Best hit only, highest score first.
     best_per_provider: Dict[str, Candidate] = {}
-    for cand in found['_candidates']:
+    for cand in found["_candidates"]:
         if cand.provider not in best_per_provider:
             best_per_provider[cand.provider] = cand
     for provider_name, cand in best_per_provider.items():
@@ -188,18 +203,23 @@ def resolve(name: str, kind: str = 'person',
         try:
             rec = provider.fetch(cand)
         except cache.ProviderError as exc:
-            found['errors'][provider.name] = str(exc)[:160]
+            found["errors"][provider.name] = str(exc)[:160]
             continue
-        except Exception as exc:                     # noqa: BLE001
-            found['errors'][provider.name] = f'{type(exc).__name__}: {str(exc)[:120]}'
+        except Exception as exc:  # noqa: BLE001
+            found["errors"][provider.name] = f"{type(exc).__name__}: {str(exc)[:120]}"
             continue
         if rec:
-            found_name = str(rec.fields.get('name') or '')
+            found_name = str(rec.fields.get("name") or "")
             if not _name_ok(name, found_name, aliases):
                 # Fuzzy search answers are not identities. Drop the record
                 # rather than let a wrong bio or photo into the merge.
-                rejected.append({'provider': provider_name, 'name': found_name,
-                                 'reason': 'name-mismatch'})
+                rejected.append(
+                    {
+                        "provider": provider_name,
+                        "name": found_name,
+                        "reason": "name-mismatch",
+                    }
+                )
                 continue
             records.append(rec)
 
@@ -207,46 +227,50 @@ def resolve(name: str, kind: str = 'person',
     # from the same record are kept — an image can still be right when the prose
     # is not, and portraits are byte-verified separately.
     for r in records:
-        bio = r.fields.get('biography')
+        bio = r.fields.get("biography")
         if not bio:
             continue
         why = bio_implausible(bio)
         if why:
-            r.fields.pop('biography', None)
-            r.provenance.pop('biography', None)
-            rejected.append({'provider': r.provider,
-                             'name': r.fields.get('name'),
-                             'reason': why})
+            r.fields.pop("biography", None)
+            r.provenance.pop("biography", None)
+            rejected.append(
+                {"provider": r.provider, "name": r.fields.get("name"), "reason": why}
+            )
 
     plausible, suspect = _split_plausible(records)
     for r in suspect:
-        if plausible:                       # younger candidate exists -> drop
-            rejected.append({'provider': r.provider,
-                             'name': r.fields.get('name'),
-                             'reason': 'birth-year-pre-1900',
-                             'birth_year': _birth_year(r)})
-    use = plausible or suspect              # pre-1900 only as a last resort
+        if plausible:  # younger candidate exists -> drop
+            rejected.append(
+                {
+                    "provider": r.provider,
+                    "name": r.fields.get("name"),
+                    "reason": "birth-year-pre-1900",
+                    "birth_year": _birth_year(r),
+                }
+            )
+    use = plausible or suspect  # pre-1900 only as a last resort
     merged = merge(use, PROSE_PRIORITY, PORTRAIT_PRIORITY)
     # A name 'conflict' between the query and a documented alias is not a
     # conflict: 'William Hammond Talbot' IS Billy Talbot.
-    conflicts = dict(merged['conflicts'])
-    if 'name' in conflicts and aliases:
-        values = [v.get('value') for v in conflicts['name']]
+    conflicts = dict(merged["conflicts"])
+    if "name" in conflicts and aliases:
+        values = [v.get("value") for v in conflicts["name"]]
         if all(_name_ok(name, str(v), aliases) for v in values if v):
-            conflicts.pop('name')
+            conflicts.pop("name")
     out = {
-        'query': name,
-        'kind': kind,
-        'fields': merged['fields'],
-        'provenance': merged['provenance'],
-        'conflicts': conflicts,
-        'rejected': rejected,
-        'identity': identity,
-        'birth_year': merged['fields'].get('birth_year'),
-        'birth_suspect': bool(suspect and not plausible),
-        'sources': [r.to_dict() for r in records],
-        'errors': found['errors'],
-        'skipped': found['skipped'],
-        'bio_len': len(str(merged['fields'].get('biography') or '')),
+        "query": name,
+        "kind": kind,
+        "fields": merged["fields"],
+        "provenance": merged["provenance"],
+        "conflicts": conflicts,
+        "rejected": rejected,
+        "identity": identity,
+        "birth_year": merged["fields"].get("birth_year"),
+        "birth_suspect": bool(suspect and not plausible),
+        "sources": [r.to_dict() for r in records],
+        "errors": found["errors"],
+        "skipped": found["skipped"],
+        "bio_len": len(str(merged["fields"].get("biography") or "")),
     }
     return out
