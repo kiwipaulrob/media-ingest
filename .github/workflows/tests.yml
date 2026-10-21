@@ -47,9 +47,22 @@ jobs:
       - name: import every module (catches a syntax/import break no test touches)
         run: |
           set -e
-          for f in $(find media_lib cli plugins -name '*.py' -not -path '*/__pycache__/*'); do
+          # media_lib + cli import as packages.
+          for f in $(find media_lib cli -name '*.py' -not -path '*/__pycache__/*'); do
             mod=$(echo "$f" | sed 's|/|.|g; s|\.py$||')
             python -c "import importlib; importlib.import_module('$mod')" \
               || { echo "IMPORT FAILED: $f"; exit 1; }
+          done
+          # The plugin is loaded by file location, not as a package: its test
+          # modules import a host-synthesised name (media_ingest_plugin) that
+          # only exists inside the running gateway, so import by path here and
+          # leave the tests to the plugin suite step above.
+          for f in plugins/media-ingest/__init__.py plugins/media-ingest/tools.py; do
+            python -c "
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('probe', '$f')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+" || { echo "IMPORT FAILED: $f"; exit 1; }
           done
           echo "all modules import"
