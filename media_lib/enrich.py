@@ -9,6 +9,7 @@ Rules enforced here, each from a real incident:
 * **Journal per item** — a killed run must not forget what it wrote.
 * **Id-gated** — `apply` takes explicit person ids from a plan; no "all".
 """
+
 from __future__ import annotations
 
 import json
@@ -16,22 +17,26 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from . import config, jellyfin, safety
+from . import config, jellyfin
 from .providers import chain
 
-JOURNAL = config.STATE_DIR / 'meta-apply.jsonl'
-PLAN = config.STATE_DIR / 'meta-plan.json'
-MIN_BIO = 80          # shorter than this is reported, not written
+JOURNAL = config.STATE_DIR / "meta-apply.jsonl"
+PLAN = config.STATE_DIR / "meta-plan.json"
+MIN_BIO = 80  # shorter than this is reported, not written
 
 
 def _credited_people(uid: str, parent_id: str) -> Dict[str, int]:
     """name -> number of titles in this library crediting them."""
     counts: Dict[str, int] = {}
-    for item in jellyfin.list_items(uid, recursive=True,
-                                   include_types='Movie,Video',
-                                   parent_id=parent_id, fields='People'):
-        for p in item.get('People') or []:
-            n = p.get('Name')
+    for item in jellyfin.list_items(
+        uid,
+        recursive=True,
+        include_types="Movie,Video",
+        parent_id=parent_id,
+        fields="People",
+    ):
+        for p in item.get("People") or []:
+            n = p.get("Name")
             if n:
                 counts[n] = counts.get(n, 0) + 1
     return counts
@@ -39,17 +44,24 @@ def _credited_people(uid: str, parent_id: str) -> Dict[str, int]:
 
 def _person_rows(uid: str) -> Dict[str, Dict[str, Any]]:
     rows: Dict[str, Dict[str, Any]] = {}
-    for r in jellyfin.list_items(uid, recursive=True, include_types='Person',
-                                 fields='Overview,ImageTags,ProviderIds'):
-        n = r.get('Name')
+    for r in jellyfin.list_items(
+        uid,
+        recursive=True,
+        include_types="Person",
+        fields="Overview,ImageTags,ProviderIds",
+    ):
+        n = r.get("Name")
         if n and n not in rows:
             rows[n] = r
     return rows
 
 
-def build_plan(parent_id: str, limit: Optional[int] = None,
-               min_bio: int = MIN_BIO,
-               out_path: Optional[Path] = None) -> Dict[str, Any]:
+def build_plan(
+    parent_id: str,
+    limit: Optional[int] = None,
+    min_bio: int = MIN_BIO,
+    out_path: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Read-only. Which credited people have no bio, and what can the chain fill?
 
     `out_path` exists because tests (and concurrent runs) must never be able to
@@ -60,11 +72,12 @@ def build_plan(parent_id: str, limit: Optional[int] = None,
     uid = jellyfin.user_id()
     counts = _credited_people(uid, parent_id)
     rows = _person_rows(uid)
+
     # Parenthesised deliberately: `(x.get('Overview') or '') or '' == ''` parses
     # as `x or ('' == '')` and is True for EVERY row, which silently turns a
     # ~420-name gap list into all 2,720 credited names.
     def _no_bio(row: Optional[Dict[str, Any]]) -> bool:
-        return not str((row or {}).get('Overview') or '').strip()
+        return not str((row or {}).get("Overview") or "").strip()
 
     gaps = [(n, c) for n, c in counts.items() if _no_bio(rows.get(n))]
     gaps.sort(key=lambda x: -x[1])
@@ -72,59 +85,77 @@ def build_plan(parent_id: str, limit: Optional[int] = None,
         gaps = gaps[:limit]
 
     plan: List[Dict[str, Any]] = []
-    rejected: List[Dict[str, Any]] = []
     for i, (name, films) in enumerate(gaps, 1):
         row = rows.get(name) or {}
-        entry: Dict[str, Any] = {'name': name, 'films': films,
-                                 'id': row.get('Id'),
-                                 'has_image': bool((row.get('ImageTags') or {}).get('Primary'))}
-        if not row.get('Id'):
-            entry.update(status='no-row')
+        entry: Dict[str, Any] = {
+            "name": name,
+            "films": films,
+            "id": row.get("Id"),
+            "has_image": bool((row.get("ImageTags") or {}).get("Primary")),
+        }
+        if not row.get("Id"):
+            entry.update(status="no-row")
             plan.append(entry)
             continue
         try:
-            res = chain.resolve(name, 'artist')
-            if res['bio_len'] == 0:
-                res = chain.resolve(name, 'person')
-        except Exception as exc:                     # noqa: BLE001
-            entry.update(status='error', error=str(exc)[:120])
+            res = chain.resolve(name, "artist")
+            if res["bio_len"] == 0:
+                res = chain.resolve(name, "person")
+        except Exception as exc:  # noqa: BLE001
+            entry.update(status="error", error=str(exc)[:120])
             plan.append(entry)
             continue
-        status = ('ready' if res['bio_len'] >= min_bio else
-                  ('thin' if res['bio_len'] else 'gap'))
-        if res.get('birth_suspect') and status in ('ready', 'thin'):
+        status = (
+            "ready"
+            if res["bio_len"] >= min_bio
+            else ("thin" if res["bio_len"] else "gap")
+        )
+        if res.get("birth_suspect") and status in ("ready", "thin"):
             # Only a pre-1900 subject was found: almost certainly a different
             # person with the same name. Never auto-applied.
-            status = 'review-birth'
+            status = "review-birth"
         entry.update(
             status=status,
-            birth_year=res.get('birth_year'),
-            birth_suspect=bool(res.get('birth_suspect')),
-            bio_len=res['bio_len'],
-            source=res['provenance'].get('biography'),
-            portrait=res['fields'].get('portrait'),
-            portrait_source=res['provenance'].get('portrait'),
-            mbid=res['identity'].get('mbid'),
-            conflicts=list(res['conflicts']),
-            rejected=[r.get('name') for r in res['rejected']],
-            bio=str(res['fields'].get('biography') or ''),
+            birth_year=res.get("birth_year"),
+            birth_suspect=bool(res.get("birth_suspect")),
+            bio_len=res["bio_len"],
+            source=res["provenance"].get("biography"),
+            portrait=res["fields"].get("portrait"),
+            portrait_source=res["provenance"].get("portrait"),
+            mbid=res["identity"].get("mbid"),
+            conflicts=list(res["conflicts"]),
+            rejected=[r.get("name") for r in res["rejected"]],
+            bio=str(res["fields"].get("biography") or ""),
         )
         plan.append(entry)
         if i % 25 == 0:
-            print(f'  planned {i}/{len(gaps)}', flush=True)
+            print(f"  planned {i}/{len(gaps)}", flush=True)
             # checkpoint: a kill must not discard completed work
             plan_path.parent.mkdir(parents=True, exist_ok=True)
-            plan_path.write_text(json.dumps({'partial': True, 'library': parent_id,
-                                        'planned': i, 'people_gaps': len(gaps),
-                                        'rows': plan}, indent=1))
+            plan_path.write_text(
+                json.dumps(
+                    {
+                        "partial": True,
+                        "library": parent_id,
+                        "planned": i,
+                        "people_gaps": len(gaps),
+                        "rows": plan,
+                    },
+                    indent=1,
+                )
+            )
         time.sleep(0.1)
 
-    out = {'library': parent_id, 'people_gaps': len(gaps), 'rows': plan,
-           'ready': sum(1 for r in plan if r['status'] == 'ready'),
-           'thin': sum(1 for r in plan if r['status'] == 'thin'),
-           'review_birth': sum(1 for r in plan if r['status'] == 'review-birth'),
-           'gap': sum(1 for r in plan if r['status'] == 'gap'),
-           'no_row': sum(1 for r in plan if r['status'] == 'no-row')}
+    out = {
+        "library": parent_id,
+        "people_gaps": len(gaps),
+        "rows": plan,
+        "ready": sum(1 for r in plan if r["status"] == "ready"),
+        "thin": sum(1 for r in plan if r["status"] == "thin"),
+        "review_birth": sum(1 for r in plan if r["status"] == "review-birth"),
+        "gap": sum(1 for r in plan if r["status"] == "gap"),
+        "no_row": sum(1 for r in plan if r["status"] == "no-row"),
+    }
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(out, indent=1))
     return out
@@ -132,35 +163,51 @@ def build_plan(parent_id: str, limit: Optional[int] = None,
 
 def _journal(rec: Dict[str, Any]) -> None:
     JOURNAL.parent.mkdir(parents=True, exist_ok=True)
-    with JOURNAL.open('a') as fh:
-        fh.write(json.dumps(rec) + '\n')
+    with JOURNAL.open("a") as fh:
+        fh.write(json.dumps(rec) + "\n")
 
 
-def apply_person(person_id: str, bio: str, source: str,
-                 lock: bool = True) -> Dict[str, Any]:
+def apply_person(
+    person_id: str, bio: str, source: str, lock: bool = True
+) -> Dict[str, Any]:
     """Write one bio. Returns {status, chars} — never raises for a skip."""
     uid = jellyfin.user_id()
-    row = jellyfin.item(uid, person_id, fields='Overview,LockedFields')
-    if (row.get('Overview') or '').strip():
-        return {'status': 'SKIP-ARRIVED', 'chars': len(row['Overview'])}
-    before = (row.get('Name'), dict(row.get('ProviderIds') or {}))
-    row['Overview'] = bio
+    row = jellyfin.item(uid, person_id, fields="Overview,LockedFields")
+    if (row.get("Overview") or "").strip():
+        return {"status": "SKIP-ARRIVED", "chars": len(row["Overview"])}
+    before = (row.get("Name"), dict(row.get("ProviderIds") or {}))
+    row["Overview"] = bio
     if lock:
-        row['LockedFields'] = sorted(set((row.get('LockedFields') or [])
-                                         + ['Name', 'Overview']))
-    row.pop('Genres', None)
+        row["LockedFields"] = sorted(
+            set((row.get("LockedFields") or []) + ["Name", "Overview"])
+        )
+    row.pop("Genres", None)
     try:
         jellyfin.post_item(person_id, row)
     except Exception:
-        jellyfin.post_item(person_id, {'Name': row.get('Name'), 'Overview': bio,
-                                       'LockedFields': row.get('LockedFields', [])})
+        jellyfin.post_item(
+            person_id,
+            {
+                "Name": row.get("Name"),
+                "Overview": bio,
+                "LockedFields": row.get("LockedFields", []),
+            },
+        )
     time.sleep(0.6)
-    back = jellyfin.item(uid, person_id, fields='Overview,LockedFields')
-    got = len(back.get('Overview') or '')
-    clean = (back.get('Name') == before[0]
-             and dict(back.get('ProviderIds') or {}) == before[1])
-    status = 'DONE' if got >= MIN_BIO else ('PARTIAL' if got >= 15 else 'WRITE-FAIL')
-    rec = {'id': person_id, 'name': back.get('Name'), 'status': status,
-           'chars': got, 'source': source, 'clean': clean}
+    back = jellyfin.item(uid, person_id, fields="Overview,LockedFields")
+    got = len(back.get("Overview") or "")
+    clean = (
+        back.get("Name") == before[0]
+        and dict(back.get("ProviderIds") or {}) == before[1]
+    )
+    status = "DONE" if got >= MIN_BIO else ("PARTIAL" if got >= 15 else "WRITE-FAIL")
+    rec = {
+        "id": person_id,
+        "name": back.get("Name"),
+        "status": status,
+        "chars": got,
+        "source": source,
+        "clean": clean,
+    }
     _journal(rec)
     return rec

@@ -15,6 +15,7 @@ Execution runs inside CT105 on prox2 (the only namespace that can see both the
 library and the downloads) and uses the jellyfin image for ffprobe/ffmpeg,
 because neither the host nor the CT has those binaries installed.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,7 +25,7 @@ from typing import Dict, Optional, Tuple
 
 from . import config, matcher, probe
 
-PHASE_A = r'''
+PHASE_A = r"""
 set -u
 SRC={src}; DST={dst}; OLD={old}; IMG={img}; VOL={vol}
 FFP="docker run --rm -v $VOL:$VOL --entrypoint {ffprobe_entry} $IMG"
@@ -58,9 +59,9 @@ else
 fi
 echo "SAME=$SAME"
 echo "STAGE=OK"; exit 0
-'''
+"""
 
-PHASE_B = r'''
+PHASE_B = r"""
 set -u
 DST={dst}; OLD={old}
 if [ "{same}" = "1" ]; then
@@ -71,14 +72,14 @@ else
   echo "COMMIT=old-removed"
 fi
 echo "COMMIT=OK"; exit 0
-'''
+"""
 
-PHASE_ROLLBACK = r'''
+PHASE_ROLLBACK = r"""
 set -u
 DST={dst}
 [ "{same}" = "1" ] && rm -f "$DST.new" || rm -f "$DST"
 echo "ROLLBACK=done"
-'''
+"""
 
 
 class SwapError(RuntimeError):
@@ -87,19 +88,21 @@ class SwapError(RuntimeError):
 
 def parse_kv(text: str) -> Dict[str, str]:
     out: Dict[str, str] = {}
-    for line in (text or '').splitlines():
-        if '=' in line:
-            k, _, v = line.partition('=')
+    for line in (text or "").splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
             out[k.strip()] = v.strip()
     return out
 
 
 def part_num(s: str) -> Optional[int]:
     """Ordinal of an episode/part in a name ('S01E05'->5, 'part 1'->1)."""
-    m = re.search(r'(?i)\bs\d{1,2}\s*e(\d{1,3})\b', s or '')
+    m = re.search(r"(?i)\bs\d{1,2}\s*e(\d{1,3})\b", s or "")
     if m:
         return int(m.group(1))
-    m = re.search(r'(?i)\b(?:part|pt|episode|ep|cd|disc|disk)\s*\.?\s*(\d{1,3})\b', s or '')
+    m = re.search(
+        r"(?i)\b(?:part|pt|episode|ep|cd|disc|disk)\s*\.?\s*(\d{1,3})\b", s or ""
+    )
     if m:
         return int(m.group(1))
     return None
@@ -107,10 +110,14 @@ def part_num(s: str) -> Optional[int]:
 
 def _phase_a(src: str, dst: str, old: str) -> Tuple[int, str]:
     inner = PHASE_A.format(
-        src=shlex.quote(src), dst=shlex.quote(dst), old=shlex.quote(old),
+        src=shlex.quote(src),
+        dst=shlex.quote(dst),
+        old=shlex.quote(old),
         img=shlex.quote(config.media_image()),
         vol=shlex.quote(config.MEDIA_VOLUME),
-        ffprobe_entry=config.FFPROBE_ENTRY, ffmpeg_entry=config.FFMPEG_ENTRY)
+        ffprobe_entry=config.FFPROBE_ENTRY,
+        ffmpeg_entry=config.FFMPEG_ENTRY,
+    )
     return _run(inner)
 
 
@@ -119,53 +126,61 @@ def _run(inner: str) -> Tuple[int, str]:
         return 0, probe.on_media(inner, timeout=7200)
     except RuntimeError as exc:
         return 1, str(exc)
-    except Exception as exc:                    # noqa: BLE001
-        return 1, f'{type(exc).__name__}: {exc}'
+    except Exception as exc:  # noqa: BLE001
+        return 1, f"{type(exc).__name__}: {exc}"
 
 
-def replace(src: str, dst: str, old: str, *, old_name: str = '') -> Tuple[str, str]:
+def replace(src: str, dst: str, old: str, *, old_name: str = "") -> Tuple[str, str]:
     """Swap `src` in at `dst`, retiring `old`. Returns (status, detail).
 
     Raises SwapError on any gate failure; the old file is then intact.
     """
-    same = (dst == old)
+    same = dst == old
     rc, out = _phase_a(src, dst, old)
     kv = parse_kv(out)
-    if kv.get('STAGE') != 'OK':
-        raise SwapError(f'stage-failed: {kv.get("STAGE") or f"rc={rc} {out.strip()[:160]}"}')
+    if kv.get("STAGE") != "OK":
+        raise SwapError(
+            f'stage-failed: {kv.get("STAGE") or f"rc={rc} {out.strip()[:160]}"}'
+        )
 
     # gate 1: the copied file's own episode number must agree with the target
-    title = kv.get('TITLE') or ''
-    t_part, i_part = part_num(title), part_num(old_name) or part_num(os.path.basename(old))
+    title = kv.get("TITLE") or ""
+    t_part, i_part = part_num(title), part_num(old_name) or part_num(
+        os.path.basename(old)
+    )
     if t_part is not None and i_part is not None and t_part != i_part:
-        _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same='1' if same else '0'))
-        raise SwapError(f'episode-mismatch: file={t_part} target={i_part}')
+        _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same="1" if same else "0"))
+        raise SwapError(f"episode-mismatch: file={t_part} target={i_part}")
 
     # gate 2: an embedded tag must not contradict the target
     if title:
         t_tokens = matcher.distinctive(matcher.tokens(matcher.clean_release(title)))
         i_tokens = matcher.distinctive(matcher.tokens(matcher.clean_release(old_name)))
         if t_tokens and i_tokens and not (t_tokens & i_tokens):
-            _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same='1' if same else '0'))
-            raise SwapError(f'content-mismatch: tag={title[:60]!r}')
+            _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same="1" if same else "0"))
+            raise SwapError(f"content-mismatch: tag={title[:60]!r}")
 
     # gate 3: runtime must agree (only meaningful when the target is a file)
     if not same:
         try:
-            nd = float(kv.get('NDUR') or 0)
-            od = float(kv.get('ODUR') or 0)
+            nd = float(kv.get("NDUR") or 0)
+            od = float(kv.get("ODUR") or 0)
         except ValueError:
             nd = od = 0.0
         if nd > 60 and od > 60:
             diff = abs(nd - od) / max(nd, od)
             if diff > config.DURATION_TOLERANCE:
-                _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same='0'))
+                _run(PHASE_ROLLBACK.format(dst=shlex.quote(dst), same="0"))
                 raise SwapError(
-                    f'duration-mismatch: {nd/60:.1f} vs {od/60:.1f} min ({diff*100:.0f}%)')
+                    f"duration-mismatch: {nd/60:.1f} vs {od/60:.1f} min ({diff*100:.0f}%)"
+                )
 
-    rc2, out2 = _run(PHASE_B.format(dst=shlex.quote(dst), old=shlex.quote(old),
-                                    same='1' if same else '0'))
+    rc2, out2 = _run(
+        PHASE_B.format(
+            dst=shlex.quote(dst), old=shlex.quote(old), same="1" if same else "0"
+        )
+    )
     kv2 = parse_kv(out2)
-    if kv2.get('COMMIT') != 'OK':
+    if kv2.get("COMMIT") != "OK":
         raise SwapError(f'commit-failed: {kv2.get("COMMIT") or f"rc={rc2}"}')
-    return 'replaced', f"{kv2.get('COMMIT')}, probe {kv.get('PROBE')}"
+    return "replaced", f"{kv2.get('COMMIT')}, probe {kv.get('PROBE')}"

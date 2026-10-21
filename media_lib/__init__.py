@@ -9,5 +9,5 @@ Modules:
     tmdb     - TMDB search + identity gate
 """
 
-__all__ = ['config', 'matcher', 'safety', 'jellyfin', 'probe', 'tmdb']
-__version__ = '0.1.0'
+__all__ = ["config", "matcher", "safety", "jellyfin", "probe", "tmdb"]
+__version__ = "0.1.0"
