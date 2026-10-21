@@ -20,7 +20,7 @@ import sys
 import time
 from pathlib import Path
 
-from media_lib import config, jellyfin, place
+from media_lib import config, jellyfin, place, qb
 
 
 def _await_row(path: str, budget: int) -> str:
@@ -72,10 +72,15 @@ def main(argv=None) -> int:
         if args.dry_run:
             print(f'WOULD  {p["src"][-58:]}  ->  {Path(dest).name}', flush=True)
             continue
-        res = place.place_new(p['src'], dest,
+        src = p['src']
+        if p.get('hash'):
+            # content_path is a FOLDER for most multi-file torrents; resolve it
+            # to the largest video inside before the placement stage sees it.
+            src = qb.resolve_media_path(src, p['hash']) or src
+        res = place.place_new(src, dest,
                               min_height=int(p.get('min_height') or 0),
                               expect_duration=p.get('expect_duration'))
-        res['src'] = p['src']
+        res['src'] = src
         res['at'] = int(time.time())
         with journal.open('a') as fh:
             fh.write(json.dumps(res) + '\n')

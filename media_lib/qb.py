@@ -132,3 +132,29 @@ def add(url: str, category: str = '', op=None) -> int:
     with op.open(req, timeout=90) as r:
         return r.status
 
+
+
+_VIDEO_EXT = ('.mkv', '.mp4', '.avi', '.m4v', '.ts', '.mov')
+
+
+def resolve_media_path(content_path: str, hash_: str, op=None) -> str:
+    """A queueable file path for a torrent.
+
+    qBittorrent's ``content_path`` is a FOLDER for most multi-file torrents, and
+    handing that to the placement stage fails ``STAGE=SRC-MISSING`` — the file
+    list's ``name`` is relative to ``save_path``, so the naive join produces a
+    doubled path (``/<folder>/<folder>/<file>``). Pick the largest video inside.
+    """
+    if not content_path:
+        return ''
+    low = content_path.lower()
+    if low.endswith(_VIDEO_EXT):
+        return content_path
+    files = [f for f in globals()['files'](hash_, op=op)
+             if (f.get('name') or '').lower().endswith(_VIDEO_EXT)]
+    if not files:
+        return content_path
+    biggest = max(files, key=lambda f: f.get('size') or 0)
+    t = [x for x in globals()['torrents'](op=op) if x.get('hash') == hash_]
+    save_path = (t[0].get('save_path') if t else '').rstrip('/')
+    return f"{save_path}/{biggest['name']}" if save_path else content_path

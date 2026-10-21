@@ -172,3 +172,18 @@ def test_queue_rejects_ids_that_are_not_in_the_plan(tmp_path, monkeypatch):
     monkeypatch.setattr(cli_source, 'PLAN_PATH', pf)
     with pytest.raises(SystemExit):
         cli_source.main(['queue', '--ids', '7'])
+
+
+def test_folder_content_path_resolves_to_the_largest_video(monkeypatch):
+    from media_lib import qb as qbmod
+    monkeypatch.setattr(qbmod, 'files', lambda h, op=None: [
+        {'name': 'Rel/Show.1080p.mp4', 'size': 900},
+        {'name': 'Rel/Show.srt', 'size': 1},
+        {'name': 'Rel/extra.mkv', 'size': 10},
+    ])
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [{'hash': 'h1', 'save_path': '/downloads-zmedia'}])
+    # The file name is relative to save_path: joining content_path doubles the folder.
+    assert qbmod.resolve_media_path('/downloads-zmedia/Rel', 'h1') == \
+        '/downloads-zmedia/Rel/Show.1080p.mp4'
+    # A single-file torrent is returned untouched.
+    assert qbmod.resolve_media_path('/downloads-zmedia/x.mkv', 'h1') == '/downloads-zmedia/x.mkv'
