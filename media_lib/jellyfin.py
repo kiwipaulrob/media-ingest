@@ -217,3 +217,19 @@ def list_items(uid: str, *, recursive: bool = True,
         if start >= (page.get('TotalRecordCount') or 0):
             break
     return out
+
+
+def refresh_library(lib_id: str) -> int:
+    """Library-scoped Refresh — the ONLY sanctioned rescan form.
+
+    Bare `?Recursive=true` plus both ReplaceAll flags false, with NO mode
+    params: this build 400s when MetadataRefreshMode/ImageRefreshMode are
+    passed to the library-level route, and a full library rescan would purge
+    the ghost rows that are deliberately kept.
+    """
+    params = {'Recursive': 'true',
+              'ReplaceAllMetadata': 'false',
+              'ReplaceAllImages': 'false'}
+    _request(f'/Items/{lib_id}/Refresh?{urllib.parse.urlencode(params)}',
+             method='POST')
+    return 204
