@@ -12,7 +12,8 @@ three real defects in one session:
      fetched broad and matched here.
   2. **Dotted filenames.** Usenet posts read ``Black.Sabbath.Paranoid...``;
      hand-rolled ``"black sabbath" in title.lower()`` missed three of four
-     grabs. Matching now goes through ``matcher``'s normalisers.
+     grabs. Matching now goes through this module's ``norm()``, which treats
+     dots, hyphens and spaces as the same separator.
   3. **Blind seed trust.** Advertised seeders of 63 and 95 delivered zero bytes
      and zero peers. Advertised counts are a floor for *offering* a pick, never
      evidence it is alive; ``rank`` never lets them outrank a completeness flag.

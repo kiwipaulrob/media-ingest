@@ -72,7 +72,11 @@ These look like improvements and are not. Each has an incident behind it.
 
 | # | Date | Source | Item | Verdict | Rationale | Commit |
 |---|---|---|---|---|---|---|
-| — | — | — | *(awaiting first review)* | — | — | — |
+| 1 | 2026-10-21 | Jules (PR #2) | `black` reformat across 33 files | **Adopt** | Proven behaviour-neutral: AST identical in 41/51 files; the 10 semantic changes are unused-import removals, annotation-only edits, or the guarded `re.search` in `place.py`. 147 tests green on the branch and after merge. | `48f9642` |
+| 2 | 2026-10-21 | Jules (PR #2) | mypy annotations (`Optional[str]` on `strip_html`, `norm_name`; `dict[str, Any]` on `minimal`) | **Adopt** | Annotation-only; no runtime effect. Correct: those functions do accept `None`. | `48f9642` |
+| 3 | 2026-10-21 | Jules (PR #2) | Removed `jellyfin`/`config` from `cli/meta.py`, `safety` from `enrich.py`, `json` from `chain.py`, `Path` from `repair.py`, `matcher` from `source.py` | **Adopt** | Each verified unreferenced by AST name analysis *and* by importing all 34 modules. One stale docstring resulted (fixed in `4f0d1c0`). | `48f9642` |
+| 4 | 2026-10-21 | Jules (PR #2) | Removed `rejected: List[Dict[str, Any]] = []` in `enrich.py` | **Adopt** | Dead declaration — `rejected` appears later only as a keyword argument name, not a variable. | `48f9642` |
+| 5 | 2026-10-21 | Jules (PR #2) | Extracted `re.search(r'COPIED=(\w+)', stage)` into `copied_match` in `place.py` | **Adopt** | Independently identical to the Optional-handling fix made earlier; strictly safer. | `48f9642` |
 
 ## How to hand a review over
 
