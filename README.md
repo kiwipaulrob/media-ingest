@@ -1,0 +1,221 @@
+# media-ingest
+
+Tested, modular media ingest for a Jellyfin homelab — with a Hermes plugin, a
+CLI stage pipeline, and a metadata provider chain.
+
+This repository exists because ad-hoc ingest scripts written per task kept
+failing in the same ways. Every rule in the code below is the scar of a specific
+incident, and each one has a test that fails if it regresses.
+
+**1,400+ lines of library code · 146 tests · no external dependencies beyond
+the Python standard library**
+
+---
+
+## What problem it solves
+
+Ingesting media means answering four questions safely:
+
+1. **What finished downloading?** (`scan`)
+2. **Does the library already have it, and is this better?** (`plan`)
+3. **Replace the old file, or add a new one?** (`apply` vs `ingest_new`)
+4. **Did the write actually land, and is it playable?** (`verify`)
+
+The hard part is not any one step — it is that each step is destructive if it
+guesses. A half-copied file, a mis-matched title, or a wrong synopsis written
+over a good one is silent damage that surfaces days later.
+
+So the design rule is: **stages are separate processes with artefacts between
+them, read-only stages do all the thinking, and mutating stages only execute
+explicit ids.**
+
+---
+
+## Architecture
+
+```
+                    ┌─────────────── read-only ───────────────┐
+  Prowlarr ──────▶  source plan  ──▶ state/source-plan.json ──▶ (human picks ids)
+  qBittorrent ───▶  scan         ──▶ state/scan.json
+  library dump ──▶  plan         ──▶ state/plan.json ──▶ (human picks ids)
+                    └────────────────────┬───────────────────┘
+                                         │
+                    ┌────────────────────▼───────────────────┐
+                    │            mutating stages             │
+  source queue  ──▶ qBittorrent / SABnzbd (explicit ids only)│
+  apply         ──▶ swap: replace a file that HAS a row     │
+  ingest_new    ──▶ place: add a file that has NO row yet   │
+  verify        ──▶ 4-field gate report (read-only)         │
+                    └────────────────────────────────────────┘
+```
+
+Nothing mutating ever scans a directory and decides. A mutating stage receives
+either explicit plan ids or an explicit spec file, and refuses anything else.
+
+### Why `apply` and `ingest_new` are separate
+
+`apply` swaps one file for another and **retires the old file** — it can only
+ever replace a row that already has a path. A genuinely new episode has nothing
+to retire, so the first version of this code had no way to add one: three
+episodes sat on disk, fully downloaded, with no stage that could place them.
+`media_lib/place.py` is that missing stage, and it deliberately shares nothing
+with `swap.py` except the gate philosophy.
+
+---
+
+## Module map
+
+| Module | Purpose | Key idea |
+|---|---|---|
+| `config.py` | Paths, env, cost constants | One place for every mapping; two path namespaces (Jellyfin container paths vs media-host disk paths) |
+| `jellyfin.py` | REST client | Retrying GET (an empty body means *busy*, not *no results*); full-DTO POST with a minimal-body fallback for 400s; `notify_media`; `refresh_library` |
+| `qb.py` | qBittorrent client | Separator-tolerant name lookup; folder `content_path` resolution; ledger-aware candidate listing |
+| `sab.py` | SABnzbd client | Queue/history reads; retryability classifier for failed slots |
+| `probe.py` | ffprobe/ffmpeg over the media host | Runs a throwaway container with the same binaries the server uses; magic-byte and zero-payload detection |
+| `matcher.py` | Release↔library matching | Stopword-filtered token scoring; squash-ratio; both signals must agree |
+| `library.py` | Library dump | REST-derived, timestamped cache, container-path→disk-path mapping |
+| `safety.py` | Ledger + lock | Single source of "already processed"; atomic writes |
+| `swap.py` | Two-phase replacement | Copy → gates → only then retire the old file |
+| `place.py` | Two-phase placement | Copy → 5 gates → notify; a failed gate removes the copy |
+| `source.py` | Sourcing | Broad pool, normalised matching, ranking, queueing |
+| `tmdb.py` | TMDB lookups | Episode resolution **by name**, never by number |
+| `enrich.py` | Bio planning/applying | Never-clobber; per-item journal |
+| `repair.py` | Guarded bio repair | Signature-guarded replace or clear |
+| `providers/` | Metadata chain | Interface + provenance merge; identity gate; birth-year plausibility; junk-bio rejection |
+
+---
+
+## The invariants (and the incidents behind them)
+
+These are the rules a reviewer should check any change against. Each is covered
+by a test.
+
+| Invariant | Incident |
+|---|---|
+| **Never run a full library rescan.** `refresh_library` sends only `Recursive=true`, both ReplaceAll flags false. | A full rescan purges ghost rows that are deliberately kept |
+| **A refresh does not discover new files.** Placement must call `notify_media` (`POST /Library/Media/Updated`). | Two episodes were invisible for 10 minutes; the refresh returned zero rows |
+| **One notify can be dropped — re-notify.** Notify, poll ~60 s, notify again, up to twice. | Rows appeared after the 1st, 2nd *and* 3rd notify on different runs |
+| **A completed copy is not proof of playability.** Gates: size, probe, min-height, duration-vs-source, decode at 3 spans. | A torrent at 100% delivered a file of zeros |
+| **A failing gate removes the staged copy.** | A half-good file must never stay in the library |
+| **Duration is compared to the source's own stream**, not a caller hint. | The gate silently never ran when the caller omitted it |
+| **Two remote calls per placement.** | The first version used six (~8.5 s of SSH + container startup per file) |
+| **Never trust advertised seeders.** They are a floor for offering a pick, never a ranking authority. | "63 seeds" and "95 seeds" both delivered zero bytes and zero peers |
+| **Normalise before comparing names.** Dots, hyphens and spaces are the same title. | `'Stevie Wonder' in name` missed `Classic-Albums-Stevie-Wonder-…` three times |
+| **Resolve a folder `content_path` to its largest video.** | Joining `content_path` + the file's relative name produced a doubled path → `SRC-MISSING` |
+| **Record the ledger at placement time.** | Two ledgers existed, so `scan` kept re-offering already-ingested releases |
+| **Resolve TMDB episodes by name, never by number.** | Season 4 episode 1 returned the Def Leppard *Hysteria* episode for a Sex Pistols slot; season 9 episode 2 returned Tom Petty for John Lennon — both wrote a wrong synopsis and a wrong still |
+| **A pre-1900 birth year is a name-collision signal.** | A living crew member received a 19th-century naval officer's biography |
+| **Some providers may never supply prose.** `BIOGRAPHY_BLOCKED` (TheAudioDB). | It returned a 2,000-character bio about a French power-metal band for the Sarah Records band *Heavenly* |
+| **TheAudioDB's demotion is structural**, not a priority hint. | The "unknown providers rank last but still count" fallback quietly let it back in |
+| **Repair never clobbers**: refuse unless the current text still contains the flagged year. | Two approved aliases (*Francis Hanly*, *James Hale*) had written wrong-person bios |
+
+---
+
+## Do not duplicate the clients
+
+There were four standalone hunt scripts that each reimplemented Prowlarr search,
+title matching and the qBittorrent client. That duplication caused three of the
+defects above — and a fourth (`hash_of()` calling `group(1)` on a group-less
+regex) crashed a hunt outright.
+
+They have been replaced by `media_lib/source.py` and deleted.
+
+**If you are an agent reading this: use `source.py`, `qb.py`, `sab.py`,
+`jellyfin.py`. Do not write a new script that calls these APIs directly.**
+
+---
+
+## Quick start
+
+```bash
+# Environment (never commit these)
+export JELLYFIN_URL=http://jellyfin:8096
+export JELLYFIN_API_KEY=...        # 32-char hex
+export JELLYFIN_USER_ID=...        # admin user id, for user-scoped reads
+export TMDB_API_KEY=...
+export QB_URL=http://qbittorrent:8090
+export PROWLARR_URL=http://prowlarr:9696
+export PROWLARR_API_KEY=...
+export SABNZBD_URL=http://sabnzbd:8095
+export SABNZBD_API_KEY=...
+export MEDIA_IMAGE=jellyfin/jellyfin:12.2   # image used for ffprobe/ffmpeg
+
+# Sourcing (read-only, then queue explicit ids)
+python3 -m cli.source plan  --targets targets.json
+python3 -m cli.source queue --ids 1,4
+
+# Ingest
+python3 -m cli.scan
+python3 -m cli.plan
+python3 -m cli.apply --ids 1                # replace
+python3 -m cli.ingest_new --spec spec.json  # place new
+python3 -m cli.verify --json
+
+# Tests
+python3 -m pytest tests/ -q
+```
+
+### Placement spec
+
+```json
+[
+  {
+    "src":  "/downloads-zmedia/Some.Release.mkv",
+    "dest": "/mnt/zmedia/videos/Series/Season 02/Series (1997) S02E03 Thing.mkv",
+    "min_height": 700
+  }
+]
+```
+
+`dest` is explicit on purpose: the scanner keys rows off the **path**, so a
+normalised-title guess creates a second row instead of filling the intended one.
+
+---
+
+## Hermes plugin
+
+`vendor/plugins/media-ingest/` exposes the stages as agent tools:
+
+| Tool | Mutating? | Contract |
+|---|---|---|
+| `media_scan` | no | lists completed candidates with real resolution/codec |
+| `media_plan` | no | REPLACE ids + a "needs your check" summary |
+| `media_apply` | **yes** | explicit ids only; no "all" switch by design |
+| `media_verify` | no | 4-field gate per item |
+| `media_source_plan` | no | numbered shortlist across torrent + usenet |
+| `media_source_queue` | **yes** | explicit ids; refuses incomplete `1ofN` sets |
+
+Install: copy to `~/.hermes/plugins/`, `hermes plugins enable media-ingest`,
+restart the gateway. New tools appear in the *next* session — a running session's
+tool catalog is built at start-up.
+
+---
+
+## Where an agent should look first
+
+1. **`docs/INGEST.md`** — the stage contract and every state artefact.
+2. **`media_lib/place.py`** — the newest stage; its docstring carries the cost
+   model and the gate order.
+3. **`tests/`** — read the tests before changing a stage. They encode *why*, not
+   just *what*: `test_place.py` pins the two-remote-call budget;
+   `test_source.py` pins dotted-name matching and the part-set rule;
+   `test_tmdb_episode.py` pins name-over-number resolution.
+
+## Known weak spots (honest list)
+
+- `cli/plan.py` still routes genuinely NEW episodes to the "needs your check"
+  list; a `NEW` decision row with a proposed destination would close the loop
+  and remove the hand-written spec.
+- Placements run sequentially. Copying is I/O-bound (~39 MB/s to CIFS) and the
+  gates are network-bound, so 2–3 workers should roughly double batch
+  throughput.
+- `config.COPY_MBPS = 158` is a local-disk measurement and overstates this CIFS
+  path ~4× — budget at ~40 MB/s.
+- A failed placement re-copies from zero; `.part` files are removed rather than
+  resumed.
+- `cli/meta.py` hardcodes one library's parent id; it should be a flag.
+- Provider cache has no eviction.
+
+## Licence
+
+Private homelab tooling, published for reference. No warranty.

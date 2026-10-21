@@ -1,0 +1,38 @@
+name: media-ingest
+label: Media Ingest
+kind: standalone
+version: 0.1.0
+author: Paul Robertson
+homepage: https://github.com/kiwipaulrob/media-ingest
+description: >
+  Stage-pipeline media ingest for the homelab Jellyfin server. Exposes the
+  scan / plan / apply / verify verbs backed by the tested media_lib package.
+  Scan and plan are read-only; apply executes only explicitly listed plan ids
+  (there is no "all" switch by design) and journals every completed item.
+requires_hermes: ">=0.21.6"
+provides_tools:
+  - media_scan
+  - media_plan
+  - media_apply
+  - media_verify
+  - media_source_plan
+  - media_source_queue
+provides_hooks: []
+requires_env:
+  - name: JELLYFIN_API_KEY
+    description: "Jellyfin API key (32-char hex)"
+    prompt: "Jellyfin API key"
+    password: true
+optional_env:
+  - name: JELLYFIN_URL
+    description: "Jellyfin base URL (default http://192.168.214.20:8096)"
+    prompt: "Jellyfin URL"
+    password: false
+  - name: JELLYFIN_USER_ID
+    description: "Admin user id for user-scoped item reads"
+    prompt: "Jellyfin admin user id"
+    password: false
+  - name: MEDIA_IMAGE
+    description: "Image tag used for ffprobe/ffmpeg (default jellyfin/jellyfin:12.2)"
+    prompt: "Probe image tag"
+    password: false
