@@ -13,6 +13,7 @@ jellyfin image, so probing/decode runs as a throwaway container with
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # ---------------------------------------------------------------- locations
@@ -97,10 +98,27 @@ VIDEO_EXTS = frozenset({
 
 def media_image() -> str:
     """Image tag for probe containers (env override, then the pinned default)."""
-    import os
     return os.environ.get('MEDIA_IMAGE') or DEFAULT_MEDIA_IMAGE
 
 
 def ensure_state_dir() -> Path:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     return STATE_DIR
+
+# ---------------------------------------------------------------- sourcing
+#: Prowlarr fans one query out to every enabled indexer (torrent + usenet).
+PROWLARR_URL = os.environ.get('PROWLARR_URL', '')
+PROWLARR_KEY = os.environ.get('PROWLARR_API_KEY', '')
+#: SABnzbd is the Usenet downloader. `mode=addurl` takes a Prowlarr downloadUrl.
+SAB_URL = os.environ.get('SABNZBD_URL', '')
+SAB_KEY = os.environ.get('SABNZBD_API_KEY', '')
+
+#: A posting with fewer advertised seeds than this is not offered as a pick.
+#: Advertised seeders are routinely stale (63 and 95 "seeds" both delivered
+#: zero bytes), so this is a floor, not evidence of health.
+SOURCE_MIN_SEEDS = 2
+#: Broad queries used to build the candidate pool. Narrow per-title queries
+#: return nothing on these indexers (ten returned zero) while the pool below
+#: returns hundreds, so matching happens in code instead.
+SOURCE_POOL_QUERIES = ('classic albums', 'Classic.Albums', 'Classic Albums BBC',
+                       'Classic Albums 1080p')

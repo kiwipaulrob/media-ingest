@@ -114,3 +114,21 @@ def completed_candidates(ledger_hashes: set, op=None) -> Tuple[List[Dict[str, An
             if (t.get('progress') or 0) >= 0.999
             and str(t.get('hash', '')).lower()[:12] not in ledger_hashes]
     return rows, op
+
+
+def add(url: str, category: str = '', op=None) -> int:
+    """Queue a magnet or a Prowlarr downloadUrl. Returns the HTTP status.
+
+    409 means the release is already queued — that is success for our purposes,
+    not a failure, so it is returned rather than raised.
+    """
+    op = op or _opener()
+    data = {'urls': url}
+    if category:
+        data['category'] = category
+    body = urllib.parse.urlencode(data).encode()
+    req = urllib.request.Request(f'{_base()}/api/v2/torrents/add', data=body,
+                                 headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    with op.open(req, timeout=90) as r:
+        return r.status
+
