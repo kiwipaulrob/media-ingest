@@ -20,7 +20,7 @@ import sys
 import time
 from pathlib import Path
 
-from media_lib import config, jellyfin, place, qb
+from media_lib import config, jellyfin, place, qb, safety
 
 
 def _await_row(path: str, budget: int) -> str:
@@ -73,10 +73,18 @@ def main(argv=None) -> int:
             print(f'WOULD  {p["src"][-58:]}  ->  {Path(dest).name}', flush=True)
             continue
         src = p['src']
+        torrent = None
         if p.get('hash'):
-            # content_path is a FOLDER for most multi-file torrents; resolve it
-            # to the largest video inside before the placement stage sees it.
             src = qb.resolve_media_path(src, p['hash']) or src
+        else:
+            # Look the torrent up by path: without a hash the ledger entry below
+            # has no key, and `media_scan` re-offers an already-ingested release.
+            try:
+                torrent = qb.torrent_for_path(src)
+            except Exception:                       # noqa: BLE001
+                torrent = None
+            if torrent:
+                src = qb.resolve_media_path(src, torrent['hash']) or src
         res = place.place_new(src, dest,
                               min_height=int(p.get('min_height') or 0),
                               expect_duration=p.get('expect_duration'))
@@ -85,6 +93,15 @@ def main(argv=None) -> int:
         with journal.open('a') as fh:
             fh.write(json.dumps(res) + '\n')
         results.append(res)
+        if res['ok']:
+            # Journal AND ledger immediately: a killed run must not forget a
+            # placement, and `scan` keys its exclusions off this ledger.
+            rec_hash = p.get('hash') or (torrent or {}).get('hash')
+            if rec_hash:
+                try:
+                    safety.record(hash=rec_hash, action='place', dest=dest, src=src)
+                except Exception as exc:            # noqa: BLE001
+                    print(f'  LEDGER-WARN {type(exc).__name__}', flush=True)
         flag = 'PLACED' if res['ok'] else 'FAILED'
         extra = res.get('res') or res.get('detail') or res.get('stage')
         print(f'{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}', flush=True)
@@ -99,6 +116,15 @@ def main(argv=None) -> int:
             print(f'notified scanner of {len(placed)} new file(s)', flush=True)
         except Exception as exc:                        # noqa: BLE001
             print(f'NOTIFY-FAIL {type(exc).__name__}: {exc}', flush=True)
+        if args.wait_rows:
+            # The first notify is sometimes dropped while the scan queue is
+            # busy; a second one after the poll finds the row (proven twice).
+            for r in placed:
+                if not _await_row(r['dest'], args.wait_rows // 2 or 60):
+                    try:
+                        jellyfin.notify_media([r['dest']])
+                    except Exception:               # noqa: BLE001
+                        pass
         if args.wait_rows:
             for r in placed:
                 r['item_id'] = _await_row(r['dest'], args.wait_rows)

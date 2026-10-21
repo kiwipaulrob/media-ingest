@@ -187,3 +187,70 @@ def test_folder_content_path_resolves_to_the_largest_video(monkeypatch):
         '/downloads-zmedia/Rel/Show.1080p.mp4'
     # A single-file torrent is returned untouched.
     assert qbmod.resolve_media_path('/downloads-zmedia/x.mkv', 'h1') == '/downloads-zmedia/x.mkv'
+
+
+# ------------------------------------------------- queue lookups (defect: 3x)
+def test_find_torrent_is_tolerant_of_hyphens_and_dots(monkeypatch):
+    from media_lib import qb as qbmod
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [
+        {'hash': 'h1', 'name': 'Classic-Albums-Stevie-Wonder-Songs-In-The-Key-Of-Life-x264'},
+        {'hash': 'h2', 'name': 'Classic.Albums.Lou.Reed.Transformer.1080p'},
+    ])
+    # `'Stevie Wonder' in name` failed; the normalised lookup must not.
+    assert qbmod.find_torrent('Stevie Wonder')['hash'] == 'h1'
+    assert qbmod.find_torrent('lou reed')['hash'] == 'h2'
+    assert qbmod.find_torrent('nonexistent') is None
+
+
+def test_torrent_for_path_matches_a_file_inside_a_folder(monkeypatch):
+    from media_lib import qb as qbmod
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [
+        {'hash': 'h1', 'save_path': '/downloads-zmedia',
+         'content_path': '/downloads-zmedia/Some Release [YTS.MX]'}])
+    monkeypatch.setattr(qbmod, 'files', lambda h, op=None: [
+        {'name': 'Some Release [YTS.MX]/Movie.1080p.mp4', 'size': 900}])
+    got = qbmod.torrent_for_path('/downloads-zmedia/Some Release [YTS.MX]/Movie.1080p.mp4')
+    assert got and got['hash'] == 'h1'
+
+
+def test_retryable_failures_only_accept_a_small_shortfall(monkeypatch):
+    from media_lib import sab as sabmod
+    slots = [
+        {'nzo_id': 'a', 'status': 'Failed', 'name': 'one short', 'size': '1 GB',
+         'fail_message': 'Repair failed, not enough repair blocks (1 short)'},
+        {'nzo_id': 'b', 'status': 'Failed', 'name': 'many short', 'size': '1 GB',
+         'fail_message': 'Repair failed, not enough repair blocks (99 short)'},
+        {'nzo_id': 'c', 'status': 'Failed', 'name': 'cant complete', 'size': '1 GB',
+         'fail_message': 'Aborted, cannot be completed - https://sabnzbd.org/not-complete'},
+        {'nzo_id': 'd', 'status': 'Completed', 'name': 'fine', 'size': '1 GB', 'storage': '/x'},
+    ]
+    monkeypatch.setattr(sabmod, 'history', lambda limit=20: slots)
+    out = sabmod.retryable_failures()
+    assert [f['nzo_id'] for f in out] == ['a']
+
+
+def test_ingest_new_records_the_ledger_on_success(tmp_path, monkeypatch):
+    """Without this, media_scan re-offers an already-ingested release."""
+    from cli import ingest_new as cli_ingest
+    from media_lib import jellyfin as jf, place as placemod, qb as qbmod, safety as safetymod
+
+    spec = tmp_path / 'spec.json'
+    spec.write_text(json.dumps([{'src': '/downloads-zmedia/X.mkv',
+                                 'dest': '/mnt/zmedia/videos/lib/X.mkv'}]))
+    recorded = {}
+    monkeypatch.setattr(cli_ingest, 'config', type('C', (), {
+        'ensure_state_dir': staticmethod(lambda: None),
+        'STATE_DIR': tmp_path})())
+    monkeypatch.setattr(qbmod, 'torrent_for_path', lambda p: {'hash': 'a' * 40})
+    monkeypatch.setattr(qbmod, 'resolve_media_path', lambda s, h: s)
+    monkeypatch.setattr(placemod, 'place_new',
+                        lambda *a, **k: {'ok': True, 'stage': 'PLACED', 'res': '1920x1080 h264'})
+    monkeypatch.setattr(safetymod, 'record', lambda **kw: recorded.update(kw))
+    monkeypatch.setattr(jf, 'notify_media', lambda paths: 204)
+    monkeypatch.setattr(jf, 'refresh_library', lambda lib: 204)
+
+    rc = cli_ingest.main(['--spec', str(spec)])
+    assert rc == 0
+    assert recorded.get('action') == 'place'
+    assert recorded.get('hash') == 'a' * 40
+    assert recorded.get('dest') == '/mnt/zmedia/videos/lib/X.mkv'

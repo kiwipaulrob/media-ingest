@@ -12,6 +12,7 @@ Endpoint shapes verified against SABnzbd 5.1.3:
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional
@@ -66,3 +67,31 @@ def find_completed(name_contains: str, limit: int = 30) -> Optional[Dict[str, An
         if needle in (slot.get('name') or '').lower():
             return slot
     return None
+
+
+_SHORT_RE = re.compile(r'(\d+)\s+short')
+#: "Repair failed, N short" is worth exactly ONE retry when N is small; a large
+#: N means the backbone simply lacks the articles and no retry will fix it.
+RETRY_MAX_SHORT = 10
+
+
+def retryable_failures(limit: int = 20) -> List[Dict[str, Any]]:
+    """Failed slots that are worth one retry (small parity shortfall + a file)."""
+    out = []
+    for slot in history(limit):
+        if slot.get('status') != 'Failed':
+            continue
+        m = _SHORT_RE.search(slot.get('fail_message') or '')
+        if not m:
+            continue
+        if int(m.group(1)) > RETRY_MAX_SHORT:
+            continue
+        out.append({'nzo_id': slot.get('nzo_id'), 'name': slot.get('name'),
+                    'short': int(m.group(1)), 'size': slot.get('size'),
+                    'storage': slot.get('storage')})
+    return out
+
+
+def retry(nzo_id: str) -> bool:
+    """Re-queue one history slot. Each retry spends block data."""
+    return bool(_call('retry', value=nzo_id).get('status'))

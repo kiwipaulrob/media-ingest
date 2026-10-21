@@ -8,6 +8,7 @@ The delete path carries three hard-won rules:
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
@@ -158,3 +159,49 @@ def resolve_media_path(content_path: str, hash_: str, op=None) -> str:
     t = [x for x in globals()['torrents'](op=op) if x.get('hash') == hash_]
     save_path = (t[0].get('save_path') if t else '').rstrip('/')
     return f"{save_path}/{biggest['name']}" if save_path else content_path
+
+
+_NORM_RX = re.compile(r'[^a-z0-9]+')
+
+
+def norm_name(text: str) -> str:
+    """Normalise a name for comparison (dots, hyphens and spaces are equivalent)."""
+    return _NORM_RX.sub(' ', (text or '').lower()).strip()
+
+
+def find_torrent(fragment: str, op=None) -> Optional[Dict[str, Any]]:
+    """Look a torrent up by name, tolerant of separators.
+
+    Bit us three times in one session: ``'Stevie Wonder' in name`` misses
+    ``Classic-Albums-Stevie-Wonder-...``. Anything searching the queue by name
+    must go through here rather than a raw substring test.
+    """
+    needle = norm_name(fragment)
+    if not needle:
+        return None
+    for t in torrents(op=op):
+        if needle in norm_name(t.get('name')):
+            return t
+    return None
+
+
+def torrent_for_path(path: str, op=None) -> Optional[Dict[str, Any]]:
+    """The torrent whose content contains this file path.
+
+    Used to attach a ledger hash to a placement, so `scan` stops re-offering a
+    release that has already been ingested (the two-ledger split).
+    """
+    target = norm_name(path)
+    if not target:
+        return None
+    all_t = torrents(op=op)
+    for t in all_t:                                   # cheap: content_path first
+        cp = norm_name(t.get('content_path') or '')
+        if cp and (cp == target or target.startswith(cp)):
+            return t
+    for t in all_t:                                   # then per-file
+        save = (t.get('save_path') or '').rstrip('/')
+        for f in files(t.get('hash') or '', op=op):
+            if norm_name(f"{save}/{f.get('name')}") == target:
+                return t
+    return None
