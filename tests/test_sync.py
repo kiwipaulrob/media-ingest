@@ -126,6 +126,28 @@ def test_broken_skill_link_is_reported(monkeypatch, tmp_path):
     assert len(problems) == 1 and "broken" in problems[0]
 
 
+def test_a_broken_workflow_yaml_is_caught_before_push(monkeypatch, tmp_path):
+    """GitHub runs a malformed workflow with ZERO jobs, so CI stops silently."""
+    wf = tmp_path / ".github" / "workflows"; wf.mkdir(parents=True)
+    (wf / "good.yml").write_text("on: push\njobs:\n  a:\n    steps: []\n")
+    monkeypatch.setattr(sync, "REPO", tmp_path)
+    assert sync.workflow_problems() == []
+
+    (wf / "bad.yml").write_text("on: push\njobs:\n  a:\n    run: |\nbroken at col 0\n")
+    problems = sync.workflow_problems()
+    assert problems and "bad.yml" in problems[0]
+
+
+def test_push_refuses_when_a_workflow_is_broken(monkeypatch, capsys, tmp_path):
+    _patch_git(monkeypatch, {"fetch --quiet": (0, ""),
+                             "rev-list --left-right": (0, "0	1")})
+    monkeypatch.setattr(sync, "tests", lambda: (True, "160 passed"))
+    monkeypatch.setattr(sync, "workflow_problems", lambda: ["tests.yml: bad indent"])
+    rc = sync.cmd_push(type("A", (), {"message": "x"})())
+    assert rc == 1
+    assert "zero jobs" in capsys.readouterr().out
+
+
 def test_conflict_detection(monkeypatch):
     monkeypatch.setattr(sync, "git", lambda *a, **k: (0, "abc123"))
     assert sync.conflict_in_progress() is True

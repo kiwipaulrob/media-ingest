@@ -56,6 +56,29 @@ def tests() -> Tuple[bool, str]:
     return rc == 0, out.strip().splitlines()[-1] if out.strip() else "no output"
 
 
+def workflow_problems() -> List[str]:
+    """Workflow YAML that will not parse.
+
+    A malformed workflow does not fail loudly: GitHub creates a run with ZERO
+    jobs, so the check silently never happens. That is how a stray unindented
+    line in a `run: |` block reached master and looked like a test failure.
+    """
+    problems: List[str] = []
+    wf_dir = REPO / ".github" / "workflows"
+    if not wf_dir.is_dir():
+        return problems
+    try:
+        import yaml
+    except ImportError:
+        return problems
+    for wf in sorted(wf_dir.glob("*.y*ml")):
+        try:
+            yaml.safe_load(wf.read_text())
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"{wf.name}: {exc}")
+    return problems
+
+
 def repo_slug() -> str:
     """owner/repo parsed from the origin remote — never hardcode it."""
     rc, out = git("remote", "get-url", "origin")
@@ -173,6 +196,14 @@ def cmd_push(args) -> int:
         print("refusing to push: test suite is red")
         return 1
 
+    wf_problems = workflow_problems()
+    if wf_problems:
+        print("refusing to push: workflow YAML will not parse "
+              "(GitHub runs it with zero jobs, so CI silently stops):")
+        for problem in wf_problems:
+            print("   ", problem)
+        return 1
+
     git("add", "-A")
     _, staged = git("diff", "--cached", "--name-only")
     if staged:
@@ -283,6 +314,11 @@ def cmd_merge_pr(args) -> int:
     if not ok:
         git("reset", "--hard", "ORIG_HEAD")
         print("merge reverted: the PR fails the test suite, local left on master as it was")
+        return 1
+    wf_problems = workflow_problems()
+    if wf_problems:
+        git("reset", "--hard", "ORIG_HEAD")
+        print("merge reverted: the PR breaks a workflow YAML: " + "; ".join(wf_problems))
         return 1
 
     rc, out = git("push", "origin", "master")
