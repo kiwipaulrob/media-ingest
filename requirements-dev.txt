@@ -1,0 +1,6 @@
+# Test + validation dependencies. The runtime needs neither: media_lib and the
+# CLI are stdlib-only, and the plugin shells out to them.
+pytest>=8.0
+# Used by cli/sync.py to validate .github/workflows/*.yml before a push. Its
+# absence made the guard silently pass on CI while failing locally.
+pyyaml>=6.0

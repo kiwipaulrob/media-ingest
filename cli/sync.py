@@ -70,7 +70,9 @@ def workflow_problems() -> List[str]:
     try:
         import yaml
     except ImportError:
-        return problems
+        # Never silently "all clear": an unvalidatable workflow is the exact
+        # state that produced a zero-job run. Say so and let the caller decide.
+        return ["(cannot validate: pyyaml not installed — pip install -r requirements-dev.txt)"]
     for wf in sorted(wf_dir.glob("*.y*ml")):
         try:
             yaml.safe_load(wf.read_text())
