@@ -133,6 +133,30 @@ production.
 Keep the local gate too — CI never sees the real `.env`, the homelab network, or
 the live Jellyfin server.
 
+What the first CI runs actually caught (all real, none reproducible locally):
+
+1. **A non-hermetic test.** It stat'ed the live `state/` dir and raised
+   `PermissionError` on the runner before asserting anything. `config` now honours
+   `MEDIA_OPS_HOME`, the test owns a `tmp_path` cache dir, and CI sets
+   `MEDIA_OPS_HOME` under the workspace. **A test that reads a machine path is
+   not a test.**
+2. **A missing dependency in a test** (`import yaml`) — hence
+   `requirements-dev.txt`; the runtime needs neither pytest nor pyyaml.
+3. **A workflow YAML that would not parse.** GitHub creates a run with **ZERO
+   jobs**, so CI stops checking everything while looking like a test failure.
+   `sync push` now validates every workflow file first and refuses.
+4. **A guard that passed silently when it could not validate** (pyyaml absent →
+   `return []`). It now reports "cannot validate" instead of an all-clear.
+
+Rule from all four: **when a check cannot run, it must say so.** A green tick
+from a check that never executed is worse than no check.
+
+Before pushing anything touching `.github/workflows/`, parse it locally:
+
+```bash
+python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/tests.yml')); print('valid')"
+```
+
 ## Conflicts
 
 `sync` aborts a conflicted merge and leaves local untouched. Resolve by hand:
