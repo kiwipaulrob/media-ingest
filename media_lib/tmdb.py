@@ -100,3 +100,35 @@ def gate(name: str) -> Dict[str, Any]:
         return {'status': 'ambiguous', 'query': title, 'year': year,
                 'candidate': hit, 'reason': 'year-mismatch'}
     return {'status': 'candidate', 'query': title, 'year': year, 'candidate': hit}
+
+
+def find_episode_by_name(series_id: int, wanted: str, max_season: int = 20):
+    """The TMDB episode whose NAME matches `wanted`, or None.
+
+    Never look an episode up by number: TMDB's per-season numbering does not
+    match a hand-built library's, so episode 1 of season 4 returned the
+    Def Leppard *Hysteria* episode for a Sex Pistols slot, and season 9's
+    episode 2 returned Tom Petty for John Lennon. Both wrote the wrong synopsis
+    and the wrong still onto the row.
+
+    Match on distinctive words, ignoring series boilerplate.
+    """
+    stop = {'classic', 'albums', 'album', 'the', 'and', 'of', 'a', 'in', 'on',
+            'making', 'never', 'mind', 'here', 'is'}
+    want = {w for w in re.findall(r'[a-z]{3,}', (wanted or '').lower()) if w not in stop}
+    if not want:
+        return None
+    best = None
+    for season in range(0, max_season + 1):
+        try:
+            data = _get(f'/tv/{series_id}/season/{season}', {})
+        except Exception:          # noqa: BLE001 - a missing season 404s
+            continue
+        for ep in (data.get('episodes') or []):
+            have = {w for w in re.findall(r'[a-z]{3,}', (ep.get('name') or '').lower())
+                    if w not in stop}
+            overlap = len(want & have)
+            if overlap >= max(1, min(2, len(want))) and overlap >= 1:
+                if best is None or overlap > best[0]:
+                    best = (overlap, season, ep)
+    return best[2] if best else None
