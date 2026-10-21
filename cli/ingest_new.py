@@ -23,12 +23,31 @@ from pathlib import Path
 from media_lib import config, jellyfin, place
 
 
+def _await_row(path: str, budget: int) -> str:
+    """Poll for the item whose Path is exactly this file. Returns its id or ''."""
+    uid = jellyfin.user_id()
+    stem = path.rsplit('/', 1)[-1][:36]
+    deadline = time.time() + budget
+    while time.time() < deadline:
+        data = jellyfin.get_json(f'/Users/{uid}/Items',
+                                 params={'Recursive': 'true', 'SearchTerm': stem,
+                                         'IncludeItemTypes': 'Episode,Movie,Video',
+                                         'Fields': 'Path', 'Limit': 10})
+        for it in data.get('Items') or []:
+            if (it.get('Path') or '') == path:
+                return it.get('Id') or ''
+        time.sleep(10)
+    return ''
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description='Place completed downloads as new items')
     ap.add_argument('--spec', required=True)
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--refresh-lib', default=None,
                     help='library id to refresh after placing')
+    ap.add_argument('--wait-rows', type=int, default=0, metavar='SECS',
+                    help='poll this long for each placed file to appear as a row')
     args = ap.parse_args(argv)
 
     config.ensure_state_dir()
@@ -66,6 +85,23 @@ def main(argv=None) -> int:
         print(f'{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}', flush=True)
 
     placed = [r for r in results if r.get('ok')]
+    if placed:
+        # A library Refresh re-resolves KNOWN rows; it does NOT discover new
+        # files. Without this call a placement stays invisible until the next
+        # full discovery — proven the hard way on two episodes.
+        try:
+            jellyfin.notify_media([r['dest'] for r in placed])
+            print(f'notified scanner of {len(placed)} new file(s)', flush=True)
+        except Exception as exc:                        # noqa: BLE001
+            print(f'NOTIFY-FAIL {type(exc).__name__}: {exc}', flush=True)
+        if args.wait_rows:
+            for r in placed:
+                r['item_id'] = _await_row(r['dest'], args.wait_rows)
+                print(f"  row {'found' if r['item_id'] else 'MISSING'} {Path(r['dest']).name[:52]}",
+                      flush=True)
+            with journal.open('a') as fh:
+                for r in placed:
+                    fh.write(json.dumps({**r, 'discovered': int(time.time())}) + '\n')
     if placed and args.refresh_lib:
         jellyfin.refresh_library(args.refresh_lib)
         print(f'refreshed library {args.refresh_lib}', flush=True)

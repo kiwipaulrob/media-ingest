@@ -233,3 +233,16 @@ def refresh_library(lib_id: str) -> int:
     _request(f'/Items/{lib_id}/Refresh?{urllib.parse.urlencode(params)}',
              method='POST')
     return 204
+
+
+def notify_media(paths: Iterable[str], update_type: str = 'Created') -> int:
+    """Tell the scanner that files appeared.
+
+    A library-scoped Refresh re-resolves metadata for KNOWN rows and does NOT
+    discover new files, so a placement that only refreshes sits invisible until
+    the next full discovery. This is the surgical route that actually adds them.
+    A file already queued for refresh makes this a no-op, not an error.
+    """
+    body = {'Updates': [{'Path': p, 'UpdateType': update_type} for p in paths]}
+    _request('/Library/Media/Updated', method='POST', body=body)
+    return 204

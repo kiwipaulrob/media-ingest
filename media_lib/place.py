@@ -1,26 +1,50 @@
 """Stage 5 — place a completed download as a NEW library item.
 
-The pipeline's `apply` stage only ever REPLACES a file that already has a row.
-A genuinely new episode has no old file to retire, so it needs its own stage
-rather than a special case inside the swap.
+Why this stage exists: `apply` retires an old file, so it can only ever REPLACE
+a row that already has one. A genuinely new episode has nothing to retire.
 
-Same gate philosophy as `swap`: a completed copy is never proof of playability.
-Every gate runs BEFORE the file is considered placed, and a failed gate removes
-the staged copy so the library never carries a half-good file.
+Measured cost model (prox2 / CT105, a 1.3 GB episode):
+  * one `docker run ... ffprobe` round-trip    1.42 s
+  * one `probe.head_bytes` round-trip          1.08 s
+  * copy of 1.3 GB onto the CIFS-backed share  ~33 s  (≈39 MB/s effective —
+    well under the 158 MB/s in config.COPY_MBPS, which is a local-disk figure
+    and overstates this path ~4x; budget placements at ~40 MB/s)
 
-Nothing here guesses a destination. The caller supplies the exact path, derived
-from the live library listing (the scanner keys rows off the path, so a
-normalised-title guess creates a second row instead of filling the intended one).
+The first version made SIX remote calls per file (probe src, stage, probe dst,
+three decode spans). Each pays SSH plus container startup, so the gates cost
+more than they protect. This version folds them into TWO: one shell call stages
+and probes BOTH ends, one decodes every span. That is ~5.7 s saved per item —
+about 13% of a 42 s placement — with no gate lost, and it adds two gates the
+first version lacked.
+
+Gates (each removes the staged copy on failure):
+  SIZE      src bytes == dst bytes      <- a truncated copy still probes clean
+  PROBE     dst streams readable
+  HEIGHT    dst >= min_height
+  DURATION  dst within tolerance of SRC <- measured against the source, so it
+                                            always runs instead of depending on a
+                                            caller passing –expect
+  DECODE    start/middle/end all decode clean
+
+Nothing here guesses a destination: the scanner keys rows off the PATH, so a
+normalised-title guess creates a second row instead of filling the intended one.
+Placement does not make Jellyfin notice the file — call `jellyfin.notify_media`
+afterwards (a library Refresh re-resolves KNOWN rows and will not discover new
+ones; that omission is why two placements sat invisible until forced).
 """
 from __future__ import annotations
 
+import json
 import re
 import shlex
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from . import config, probe
 
 DECODE_SPANS = (0.05, 0.50, 0.95)
+M_SRC = '@@SRC@@'
+M_DST = '@@DST@@'
+M_END = '@@END@@'
 
 
 def to_disk(path: str) -> str:
@@ -32,89 +56,143 @@ def to_disk(path: str) -> str:
     return path
 
 
-def _frame_stats(disk_path: str) -> Dict[str, Any]:
-    import json
-    out = probe.on_media(probe.ffprobe_cmd(disk_path))
-    data = json.loads(out or '{}')
-    streams = data.get('streams') or [{}]
-    fmt = data.get('format') or {}
-    s = streams[0] if streams else {}
+def _num(pattern: str, out: str) -> int:
+    """First capture group as int, 0 when absent."""
+    m = re.search(pattern, out)
+    return int(m.group(1)) if m else 0
+
+
+def _block(out: str, marker: str) -> Optional[Dict[str, Any]]:
+    """Pull one JSON block out of a multi-section shell report."""
+    start = out.find(marker)
+    if start < 0:
+        return None
+    start += len(marker)
+    end = out.find(M_END, start)
+    if end < 0:
+        return None
+    try:
+        return json.loads(out[start:end].strip() or '{}')
+    except json.JSONDecodeError:
+        return None
+
+
+def _stats(blob: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not blob:
+        return {}
+    s = (blob.get('streams') or [{}])[0] if blob.get('streams') else {}
+    fmt = blob.get('format') or {}
+    try:
+        dur = float(fmt.get('duration') or 0)
+    except (TypeError, ValueError):
+        dur = 0.0
     return {'w': s.get('width'), 'h': s.get('height'), 'codec': s.get('codec_name'),
-            'duration': float(fmt.get('duration') or 0),
-            'title': (fmt.get('tags') or {}).get('title') or ''}
+            'duration': dur, 'title': (fmt.get('tags') or {}).get('title') or ''}
 
 
-def _decodes(disk_path: str, duration: float) -> List[str]:
-    """Decode short spans at start/middle/end. Returns the failures."""
-    bad = []
+def _stage_script(src_d: str, dst_d: str) -> str:
+    """Stage the copy and probe BOTH ends in a single remote call."""
+    ffp = probe.probe_wrap(config.FFPROBE_ENTRY)
+    probe_expr = ('-v error -select_streams v:0 '
+                  '-show_entries stream=width,height,codec_name:format=duration:format_tags=title '
+                  '-of json')
+    return f'''
+set -u
+SRC={shlex.quote(src_d)}; DST={shlex.quote(dst_d)}
+[ -s "$SRC" ] || {{ echo STAGE=SRC-MISSING; exit 3; }}
+mkdir -p "$(dirname "$DST")" || {{ echo STAGE=MKDIR-FAIL; exit 3; }}
+SIZE_SRC=$(stat -c%s "$SRC")
+if [ -f "$DST" ] && [ "$(stat -c%s "$DST")" = "$SIZE_SRC" ]; then
+  COPIED=already
+else
+  rm -f "$DST.part"
+  if ! cp --reflink=auto --sparse=always "$SRC" "$DST.part"; then
+    rm -f "$DST.part"; echo STAGE=COPY-FAIL; exit 3
+  fi
+  mv -f "$DST.part" "$DST" || {{ rm -f "$DST.part"; echo STAGE=MOVE-FAIL; exit 3; }}
+  COPIED=fresh
+fi
+sync "$DST" 2>/dev/null || true
+echo COPIED=$COPIED
+echo SIZE_SRC=$SIZE_SRC
+echo SIZE_DST=$(stat -c%s "$DST")
+echo {M_SRC}
+{ffp} {probe_expr} "$SRC" 2>/dev/null || true
+echo {M_END}
+echo {M_DST}
+{ffp} {probe_expr} "$DST" 2>/dev/null || true
+echo {M_END}
+'''
+
+
+def _decode_script(dst_d: str, duration: float) -> str:
+    """Every decode span in ONE remote call."""
+    fff = probe.probe_wrap(config.FFMPEG_ENTRY)
+    lines = ['set -u', f'DST={shlex.quote(dst_d)}']
     for frac in DECODE_SPANS:
         ss = max(0.0, duration * frac)
-        cmd = (f'{probe.probe_wrap(config.FFMPEG_ENTRY)} -v error -ss {ss:.1f} '
-               f'-t 5 -i {shlex.quote(disk_path)} -f null - -xerror')
-        try:
-            probe.on_media(cmd, timeout=180)
-        except Exception as exc:                       # noqa: BLE001
-            bad.append(f'{frac:.0%}:{type(exc).__name__}')
-    return bad
+        lines.append(
+            f'if {fff} -v error -ss {ss:.1f} -t 5 -i "$DST" -f null - -xerror >/dev/null 2>&1; '
+            f'then echo DECODE={frac:.2f}=OK; else echo DECODE={frac:.2f}=FAIL; fi')
+    return '\n'.join(lines)
 
 
 def place_new(src: str, dest: str, *, expect_duration: Optional[float] = None,
               min_height: int = 0, max_duration_delta: float = 3.0) -> Dict[str, Any]:
     """Copy `src` to `dest` and pass every gate before calling it placed."""
-    src_d = to_disk(src)
-    dst_d = to_disk(dest)
+    src_d, dst_d = to_disk(src), to_disk(dest)
     if not dst_d.lower().endswith(('.mkv', '.mp4', '.avi')):
         return {'ok': False, 'stage': 'BAD-DEST', 'dest': dest}
 
-    src_stats = _frame_stats(src_d)
-    if not src_stats['h']:
-        return {'ok': False, 'stage': 'SRC-PROBE-FAIL', 'dest': dest}
-
-    stage = f'''
-set -u
-SRC={shlex.quote(src_d)}; DST={shlex.quote(dst_d)}
-[ -s "$SRC" ] || {{ echo STAGE=SRC-MISSING; exit 3; }}
-mkdir -p "$(dirname "$DST")" || {{ echo STAGE=MKDIR-FAIL; exit 3; }}
-SIZE=$(stat -c%s "$SRC")
-if [ -f "$DST" ] && [ "$(stat -c%s "$DST")" = "$SIZE" ]; then
-  echo COPIED=already
-else
-  cp --reflink=auto --sparse=always "$SRC" "$DST.part" || {{ echo STAGE=COPY-FAIL; exit 3; }}
-  mv -f "$DST.part" "$DST" || {{ echo STAGE=MOVE-FAIL; exit 3; }}
-  echo COPIED=fresh
-fi
-sync "$DST" 2>/dev/null || true
-echo SIZE=$(stat -c%s "$DST")
-'''
     try:
-        out = probe.on_media(stage, timeout=3600)
+        stage = probe.on_media(_stage_script(src_d, dst_d), timeout=3600)
     except Exception as exc:                            # noqa: BLE001
         return {'ok': False, 'stage': 'STAGE-EXEC-FAIL',
                 'detail': f'{type(exc).__name__}: {str(exc)[:160]}', 'dest': dest}
-    if 'STAGE=' in out:
-        return {'ok': False, 'stage': out.split('STAGE=')[1].split()[0], 'dest': dest}
+    if 'STAGE=' in stage:
+        return {'ok': False, 'stage': stage.split('STAGE=')[1].split()[0], 'dest': dest}
 
-    dst_stats = _frame_stats(dst_d)
-    if not dst_stats['h']:
-        probe.on_media(f'rm -f {shlex.quote(dst_d)}', timeout=60)
+    def _rm() -> None:
+        """A failed gate must never leave a half-good file in the library."""
+        try:
+            probe.on_media(f'rm -f {shlex.quote(dst_d)} {shlex.quote(dst_d)}.part', timeout=60)
+        except Exception:                               # noqa: BLE001
+            pass
+
+    size_src = _num(r'SIZE_SRC=(\d+)', stage)
+    size_dst = _num(r'SIZE_DST=(\d+)', stage)
+    if size_src and size_dst != size_src:
+        _rm()
+        return {'ok': False, 'stage': 'SIZE-MISMATCH',
+                'detail': f'{size_dst} != {size_src}', 'dest': dest}
+
+    src_s, dst_s = _stats(_block(stage, M_SRC)), _stats(_block(stage, M_DST))
+    if not dst_s.get('h'):
+        _rm()
         return {'ok': False, 'stage': 'DST-PROBE-FAIL', 'dest': dest}
-    if dst_stats['h'] < min_height:
-        probe.on_media(f'rm -f {shlex.quote(dst_d)}', timeout=60)
-        return {'ok': False, 'stage': f"BELOW-MIN-HEIGHT({dst_stats['h']}<{min_height})",
-                'dest': dest}
-    if expect_duration and abs(dst_stats['duration'] - expect_duration) > max_duration_delta:
-        probe.on_media(f'rm -f {shlex.quote(dst_d)}', timeout=60)
-        return {'ok': False, 'stage': 'DURATION-MISMATCH',
-                'detail': f"{dst_stats['duration']:.1f}s vs {expect_duration:.1f}s",
+    if dst_s['h'] < min_height:
+        _rm()
+        return {'ok': False, 'stage': f"BELOW-MIN-HEIGHT({dst_s['h']}<{min_height})",
                 'dest': dest}
 
-    bad = _decodes(dst_d, dst_stats['duration'])
-    if bad:
-        probe.on_media(f'rm -f {shlex.quote(dst_d)}', timeout=60)
-        return {'ok': False, 'stage': 'DECODE-FAIL', 'detail': ','.join(bad), 'dest': dest}
+    ref = expect_duration or src_s.get('duration') or 0
+    if ref and abs(dst_s['duration'] - ref) > max_duration_delta:
+        _rm()
+        return {'ok': False, 'stage': 'DURATION-MISMATCH',
+                'detail': f"{dst_s['duration']:.1f}s vs {ref:.1f}s", 'dest': dest}
+
+    try:
+        dec = probe.on_media(_decode_script(dst_d, dst_s['duration']), timeout=600)
+    except Exception as exc:                            # noqa: BLE001
+        dec = f'DECODE=err=FAIL {type(exc).__name__}'
+    if 'FAIL' in dec:
+        _rm()
+        return {'ok': False, 'stage': 'DECODE-FAIL',
+                'detail': dec.strip().replace('\n', ' ')[:120], 'dest': dest}
 
     return {'ok': True, 'stage': 'PLACED', 'dest': dest,
-            'res': f"{dst_stats['w']}x{dst_stats['h']} {dst_stats['codec']}",
-            'duration': round(dst_stats['duration'], 1),
-            'copied': (re.search(r'COPIED=(\w+)', out) or [None, 'unknown'])[1]
-            if 'COPIED=' in out else 'unknown'}
+            'res': f"{dst_s['w']}x{dst_s['h']} {dst_s['codec']}",
+            'duration': round(dst_s['duration'], 1),
+            'size_gb': round(size_dst / 1e9, 2),
+            'copied': (re.search(r'COPIED=(\w+)', stage).group(1)
+                       if re.search(r'COPIED=(\w+)', stage) else 'unknown')}
