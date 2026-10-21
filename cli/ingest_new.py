@@ -21,35 +21,15 @@ import sys
 import time
 from pathlib import Path
 
-from media_lib import config, jellyfin, place, qb, safety
-
-
-def _await_row(path: str, budget: int) -> str:
-    """Poll for the item whose Path is exactly this file. Returns its id or ''."""
-    uid = jellyfin.user_id()
-    stem = path.rsplit("/", 1)[-1][:36]
-    deadline = time.time() + budget
-    while time.time() < deadline:
-        data = jellyfin.get_json(
-            f"/Users/{uid}/Items",
-            params={
-                "Recursive": "true",
-                "SearchTerm": stem,
-                "IncludeItemTypes": "Episode,Movie,Video",
-                "Fields": "Path",
-                "Limit": 10,
-            },
-        )
-        for it in data.get("Items") or []:
-            if (it.get("Path") or "") == path:
-                return it.get("Id") or ""
-        time.sleep(10)
-    return ""
+from media_lib import awaiting, config, jellyfin, place, qb, safety
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Place completed downloads as new items")
-    ap.add_argument("--spec", required=True)
+    ap.add_argument("--spec", required=False,
+                    help="placement spec (required unless --backfill is used)")
+    ap.add_argument("--backfill", action="store_true",
+                    help="record past placements from the journal into the ledger, then exit")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument(
         "--refresh-lib", default=None, help="library id to refresh after placing"
@@ -59,13 +39,18 @@ def main(argv=None) -> int:
         type=int,
         default=0,
         metavar="SECS",
-        help="poll this long for each placed file to appear as a row",
+        help="TOTAL seconds to wait for rows (one deadline shared by all items)",
     )
     args = ap.parse_args(argv)
 
     config.ensure_state_dir()
-    placements = json.loads(Path(args.spec).read_text())
     journal = config.STATE_DIR / "ingest-new.jsonl"
+    if args.backfill:
+        backfill_ledger(journal)
+        return 0
+    if not args.spec:
+        ap.error("--spec is required unless --backfill is used")
+    placements = json.loads(Path(args.spec).read_text())
     done = set()
     if journal.exists():
         for line in journal.read_text().splitlines():
@@ -133,26 +118,21 @@ def main(argv=None) -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY-FAIL {type(exc).__name__}: {exc}", flush=True)
         if args.wait_rows:
-            # Notifies are dropped while the scan queue is busy. Measured: rows
-            # appeared after the 1st, 2nd and 3rd notify on different runs, so
-            # poll and re-notify up to twice rather than trusting one 204.
-            for r in placed:
-                for _ in range(2):
-                    if _await_row(r["dest"], args.wait_rows // 2 or 60):
-                        break
-                    try:
-                        jellyfin.notify_media([r["dest"]])
-                    except Exception:  # noqa: BLE001
-                        pass
-        if args.wait_rows:
-            for r in placed:
-                r["item_id"] = _await_row(r["dest"], args.wait_rows)
-                print(
-                    f"  row {'found' if r['item_id'] else 'MISSING'} {Path(r['dest']).name[:52]}",
-                    flush=True,
-                )
+            # ONE global deadline shared by every item. The previous version
+            # polled per item (and, after a bad patch, twice over), which held
+            # the run open past the caller's timeout and reported healthy
+            # placements as failures. Row discovery has taken ~9 minutes under
+            # a drained backlog, so a miss is "not yet", never "failed".
+            found = awaiting.await_rows(placed, budget=args.wait_rows)
             with journal.open("a") as fh:
                 for r in placed:
+                    info = found.get(r["dest"], {})
+                    r["item_id"] = info.get("item_id", "")
+                    print(
+                        f"  row {'found' if r['item_id'] else 'NOT YET'} "
+                        f"{Path(r['dest']).name[:52]}",
+                        flush=True,
+                    )
                     fh.write(json.dumps({**r, "discovered": int(time.time())}) + "\n")
     if placed and args.refresh_lib:
         jellyfin.refresh_library(args.refresh_lib)
@@ -165,7 +145,53 @@ def main(argv=None) -> int:
                 f"  FAILED {Path(r['dest']).name}: {r.get('stage')} {r.get('detail', '')}",
                 flush=True,
             )
+    # The exit code reflects PLACEMENTS. Row discovery is informational: a row
+    # that has not appeared yet must never make a successful placement look
+    # failed to a caller or a monitor.
     return 0 if len(placed) == len(results) else 1
+
+
+def backfill_ledger(journal: Path) -> int:
+    """Record past placements in the ledger so `media_scan` stops re-offering them.
+
+    The ledger is what `scan` subtracts candidates against. Placements made
+    before the ledger was wired in are absent from it, so those releases came
+    back as "new" on every scan (15 candidates for 2 genuinely new items).
+    Idempotent: entries already present (by hash prefix) are left alone.
+    """
+    if not journal.exists():
+        print("no journal to backfill", flush=True)
+        return 0
+    ledger = safety.load_ledger()
+    added = skipped = unresolved = 0
+    for line in journal.read_text().splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not rec.get("ok") or not rec.get("dest"):
+            continue
+        if rec.get("hash"):
+            h = rec["hash"]
+        else:
+            try:
+                t = qb.torrent_for_path(rec.get("src") or "")
+            except Exception:  # noqa: BLE001
+                t = None
+            h = (t or {}).get("hash") or ""
+        if not h:
+            unresolved += 1
+            continue
+        if safety.ledger_contains(ledger, h):
+            skipped += 1
+            continue
+        safety.record(hash=h, action="place", dest=rec["dest"], src=rec.get("src", ""))
+        ledger = safety.load_ledger()
+        added += 1
+    print(f"ledger backfill: added {added}, already present {skipped}, "
+          f"no hash resolvable {unresolved}", flush=True)
+    return added
+
 
 
 if __name__ == "__main__":
