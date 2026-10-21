@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
@@ -130,8 +131,14 @@ def add(url: str, category: str = '', op=None) -> int:
     body = urllib.parse.urlencode(data).encode()
     req = urllib.request.Request(f'{_base()}/api/v2/torrents/add', data=body,
                                  headers={'Content-Type': 'application/x-www-form-urlencoded'})
-    with op.open(req, timeout=90) as r:
-        return r.status
+    try:
+        with op.open(req, timeout=90) as r:
+            return r.status
+    except urllib.error.HTTPError as exc:
+        # urllib raises for 4xx, so 409 ("already queued") looked like a failure
+        # even though it is the expected duplicate outcome. Report the code and
+        # let the caller decide.
+        return exc.code
 
 
 

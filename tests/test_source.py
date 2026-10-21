@@ -254,3 +254,15 @@ def test_ingest_new_records_the_ledger_on_success(tmp_path, monkeypatch):
     assert recorded.get('action') == 'place'
     assert recorded.get('hash') == 'a' * 40
     assert recorded.get('dest') == '/mnt/zmedia/videos/lib/X.mkv'
+
+
+def test_qb_add_treats_409_as_already_queued(monkeypatch):
+    """urllib raises HTTPError on 409; that must surface as a code, not an error."""
+    import urllib.error
+    from media_lib import qb as qbmod
+
+    class Op:
+        def open(self, req, timeout=None):
+            raise urllib.error.HTTPError(req.full_url, 409, 'Conflict', {}, None)
+
+    assert qbmod.add('magnet:?xt=urn:btih:' + 'f' * 40, op=Op()) == 409
