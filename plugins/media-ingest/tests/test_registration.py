@@ -26,13 +26,17 @@ def test_register_exposes_exactly_the_declared_tools():
     stayed green-in-spirit while two source verbs were added. Reading the manifest
     catches a tool registered but undeclared, and one declared but never wired.
     """
-    import yaml
+    import re
     from pathlib import Path
 
     ctx = FakeCtx()
     pkg.register(ctx)
-    manifest = yaml.safe_load((Path(__file__).parents[1] / "plugin.yaml").read_text())
-    declared = set(manifest["provides_tools"])
+    manifest_text = (Path(__file__).parents[1] / "plugin.yaml").read_text()
+    # Parsed by hand: pyyaml is not a dependency of the plugin or the suite, and
+    # importing it here failed CI with ModuleNotFoundError.
+    block = manifest_text.split("provides_tools:", 1)[1].split("\nprovides_hooks", 1)[0]
+    declared = set(re.findall(r"^\s*-\s*([a-z_]+)\s*$", block, re.MULTILINE))
+    assert declared, "could not parse provides_tools from plugin.yaml"
     assert set(ctx.tools) == declared, (
         f"registered-only: {set(ctx.tools) - declared}, "
         f"declared-only: {declared - set(ctx.tools)}"

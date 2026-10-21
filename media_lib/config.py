@@ -18,7 +18,12 @@ import os
 from pathlib import Path
 
 # ---------------------------------------------------------------- locations
-PROFILE_DIR = Path("/root/.hermes/profiles/media-maintainer")
+# MEDIA_OPS_HOME exists so the suite can run anywhere. Without it, a test that
+# merely asks "did this write anything?" stats a root-owned path and dies with
+# PermissionError on a CI runner — which is what happened, and what hid the
+# real contract (resolve() must not write) behind an unrelated error.
+PROFILE_DIR = Path(os.environ.get("MEDIA_OPS_HOME")
+                   or "/root/.hermes/profiles/media-maintainer")
 STATE_DIR = PROFILE_DIR / "state"
 LEDGER = STATE_DIR / "jellyfin-ingest-ledger.json"
 LOG = STATE_DIR / "intake-runs.log"

@@ -14,6 +14,12 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    env:
+      # Never point at a live homelab path: a test that only asks "did this write
+      # anything?" otherwise stats a root-owned directory and dies with
+      # PermissionError before reaching its assertion (that is exactly how the
+      # first CI run failed).
+      MEDIA_OPS_HOME: ${{ github.workspace }}/.ci-home
     strategy:
       fail-fast: false
       matrix:

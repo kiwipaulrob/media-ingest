@@ -147,12 +147,16 @@ def test_resolve_returns_provenance_and_bio_len():
     assert out['bio_len'] > 50
 
 
-def test_resolve_never_writes_anything():
-    # read-only contract: no state files created by resolve
-    before = set(cache.CACHE_DIR.glob('*')) if cache.CACHE_DIR.exists() else set()
+def test_resolve_never_writes_anything(monkeypatch, tmp_path):
+    """The read-only contract, asserted against a cache dir this test owns.
+
+    Pointing it at the live state dir made the test machine-dependent: on the
+    homelab it passed, on CI it raised PermissionError on a root-owned path
+    before reaching the assertion.
+    """
+    monkeypatch.setattr(cache, 'CACHE_DIR', tmp_path / 'meta-cache')
     chain.resolve('Anyone', providers=[_Quiet()])
-    after = set(cache.CACHE_DIR.glob('*')) if cache.CACHE_DIR.exists() else set()
-    assert after == before
+    assert list(tmp_path.rglob('*')) == []
 
 
 def test_metric_fields_are_not_reported_as_conflicts():
