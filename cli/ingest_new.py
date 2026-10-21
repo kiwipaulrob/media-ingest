@@ -117,10 +117,13 @@ def main(argv=None) -> int:
         except Exception as exc:                        # noqa: BLE001
             print(f'NOTIFY-FAIL {type(exc).__name__}: {exc}', flush=True)
         if args.wait_rows:
-            # The first notify is sometimes dropped while the scan queue is
-            # busy; a second one after the poll finds the row (proven twice).
+            # Notifies are dropped while the scan queue is busy. Measured: rows
+            # appeared after the 1st, 2nd and 3rd notify on different runs, so
+            # poll and re-notify up to twice rather than trusting one 204.
             for r in placed:
-                if not _await_row(r['dest'], args.wait_rows // 2 or 60):
+                for _ in range(2):
+                    if _await_row(r['dest'], args.wait_rows // 2 or 60):
+                        break
                     try:
                         jellyfin.notify_media([r['dest']])
                     except Exception:               # noqa: BLE001
