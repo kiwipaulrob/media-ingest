@@ -112,7 +112,10 @@ def test_gap_filter_is_not_fooled_by_precedence(monkeypatch, tmp_path):
     monkeypatch.setattr(enrich, 'chain', type('C', (), {
         'resolve': staticmethod(lambda n, k: {'bio_len': 0, 'provenance': {},
                                               'fields': {}, 'identity': {},
-                                              'conflicts': [], 'rejected': []})})())
+                                              'conflicts': [], 'rejected': []}),
+        # The plan screens candidates through this now; a fake must answer it or the
+        # stub stops modelling the real chain.
+        'collision_reason': staticmethod(lambda text, **kw: None)})())
     out = enrich.build_plan('lib', out_path=tmp_path / 'plan.json')
     names = [r['name'] for r in out['rows']]
     assert names == ['No Bio'], names

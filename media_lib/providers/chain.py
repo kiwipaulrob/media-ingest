@@ -101,14 +101,29 @@ def _split_plausible(records):
     return plausible, suspect
 
 
-#: Bio text that is not a biography at all: Last.fm's multi-artist blurbs,
-#: disambiguation pages, and stub one-liners. These were being proposed as
-#: "replacements" during the pre-1900 repair pass.
-_BIO_JUNK = re.compile(
-    r"(there are at least|may refer to|can refer to|multiple artists|"
-    r"is a disambiguation|this is a disambiguation)",
+#: Text that is not a biography at all. Two families, both proven live:
+#:
+#: *SENSE LISTS* — Last.fm's placeholder for a shared name. The wording varies, and
+#: a narrow list misses the commonest forms: "There is more than one artist with
+#: the name Chris White: 1) an English jazz/rock saxophonist…" scored 530 chars and
+#: was offered as `ready`, because the old pattern only knew "there are at least".
+#: A numbered list after the opening is the same failure wearing a different hat.
+#:
+#: *DISAMBIGUATION PAGES* — Wikipedia's title gate cannot reject these (their title
+#: IS the exact name), so they must be rejected on content. "Bernard MacMahon or
+#: McMahon may refer to: …bishop… priest… horticulturist" is a page about a NAMESPACE.
+_BIO_SENSE_LIST = re.compile(
+    r"(there are at least|there is more than one|more than one artist|"
+    r"there are \w+ artists|multiple artists|several artists|"
+    r"is a disambiguation|this is a disambiguation|"
+    r"may refer to|can refer to|might refer to|"
+    r"for other uses|this article is about|"
+    r"people with the name|people named)",
     re.I,
 )
+#: A numbered sense list ("… 1) an English saxophonist … 2) the former bassist …").
+#: Two or more enumerations inside the opening is the shape, not one stray "1)".
+_BIO_ENUMERATED = re.compile(r"(?:^|[\s:;,.])(\d)[)\].]\s+\S")
 #: Any pre-1900 year in the opening of the prose. Birth dates live in the first
 #: sentence, and Wikipedia exposes no birth_year field at all — so this is the
 #: only signal that caught 'Reverend Arthur Meagher Cave (1883-1948)' and
@@ -117,16 +132,92 @@ _BIO_JUNK = re.compile(
 #: year, and a false reject only costs a gap, never a wrong biography.
 _BIO_OLD_BIRTH = re.compile(r"\b1[6-8]\d{2}\b")
 
+#: Providers that index RECORDING ARTISTS only. Prose from these is wrong for a
+#: crew credit (director/producer/writer) often enough to be unusable: they return
+#: a same-name musician who passes a casual glance. This is the skill's
+#: "never run crew gaps through musician-only sources", enforced in code.
+MUSIC_ONLY_SOURCES = frozenset({"lastfm", "genius", "theaudiodb", "deezer"})
 
-def bio_implausible(text: str) -> Optional[str]:
-    """Why this text must not be used as a biography, or None if it is fine."""
+CREW_TYPES = frozenset({"director", "producer", "writer", "creator", "composer"})
+
+#: Occupations that cannot be a film CREW credit. Proven live: TMDB answered a
+#: Director credit with "George Scott was a Canadian professional wrestler, booker
+#: and promoter" and scored it `ready`.
+#:
+#: Matched only in a DEFINING construction ("<name> was a … wrestler"), not by bare
+#: keyword: a documentary director's opening line often says "her film followed a
+#: retired boxer", and a keyword scan flagged exactly that. The copula plus at most
+#: four intervening words is what separates "he was a wrestler" from "she filmed a
+#: wrestler". Musician is deliberately absent — musicians direct music docs — and so
+#: is actor, which is what most documentary subjects are.
+_INCOMPATIBLE_WITH_CREW = re.compile(
+    r"\b(?:is|was)\s+(?:(?:an?|the)\s+)?(?:[\w-]+\s+){0,4}"
+    r"(wrestler|footballer|soccer player|cricketer|boxer|jockey|swimmer|sprinter|"
+    r"athlete|darts player|snooker player|golfer|politician|member of parliament|"
+    r"senator|congressman|congresswoman|bishop|archbishop|priest|clergyman|"
+    r"naval officer|admiral|general|soldier)\b",
+    re.I,
+)
+
+
+def profession_conflict(text: str, credit_type: str) -> Optional[str]:
+    """A crew credit carrying a life from an unrelated profession.
+
+    Only the opening is read, and only a defining sentence counts: a director's bio
+    can mention a boxer they filmed without being one.
+    """
+    if (credit_type or "").strip().lower() not in CREW_TYPES:
+        return None
+    hit = _INCOMPATIBLE_WITH_CREW.search((text or "")[:260])
+    return f"profession-conflict-for-crew:{hit.group(1).lower()}" if hit else None
+
+
+def bio_kind(text: str) -> str:
+    """Classify a candidate biography: biography | sense-list | too-short."""
     t = (text or "").strip()
     if len(t) < 40:
         return "too-short"
-    if _BIO_JUNK.search(t[:300]):
+    opening = t[:400]
+    if _BIO_SENSE_LIST.search(opening):
+        return "sense-list"
+    # Two or more enumerations in the opening = a list of senses, not a life.
+    if len(set(_BIO_ENUMERATED.findall(opening))) >= 2:
+        return "sense-list"
+    return "biography"
+
+
+def bio_implausible(text: str) -> Optional[str]:
+    """Why this text must not be used as a biography, or None if it is fine."""
+    kind = bio_kind(text)
+    if kind == "too-short":
+        return "too-short"
+    if kind == "sense-list":
         return "junk-multiartist-or-disambiguation"
-    if _BIO_OLD_BIRTH.search(t[:400]):
+    if _BIO_OLD_BIRTH.search((text or "")[:400]):
         return "pre-1900-birth-in-text"
+    return None
+
+
+def collision_reason(text: str, *, credit_type: str = "", source: Optional[str] = None) -> Optional[str]:
+    """Extra reason a candidate must not be auto-applied, beyond `bio_implausible`.
+
+    Covers the case where the text is a fine biography *of somebody else*, which no
+    regex can see. The reliable signal is provenance: a musician-only provider
+    answering a crew credit has returned a different human, almost by construction.
+
+    NOTE the honest limit: a coherent wrong-person biography of a genuinely
+    musical person is NOT detectable here. Last.fm's "Peter Grant … British singer
+    … debut album New Vintage" is a well-formed life about the wrong Peter Grant
+    (Led Zeppelin's manager died in 1995). Those still need the identity gate and
+    a human read; do not pretend this function catches them.
+    """
+    if bio_implausible(text):
+        return bio_implausible(text)
+    if source in MUSIC_ONLY_SOURCES and (credit_type or "").strip().lower() in CREW_TYPES:
+        return f"crew-credit-from-music-source:{source}"
+    conflict = profession_conflict(text, credit_type)
+    if conflict:
+        return conflict
     return None
 
 

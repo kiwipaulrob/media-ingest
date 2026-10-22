@@ -23,6 +23,8 @@ def _plan(args) -> int:
     print(f"people with no bio: {out['people_gaps']}")
     print(f"  ready (>=80 chars): {out['ready']}")
     print(f"  thin  (15-79):      {out['thin']}")
+    print(f"  suspect (NOT safe): {out['suspect']}")
+    print(f"  review-birth:       {out.get('review_birth', 0)}")
     print(f"  gap   (nothing):    {out['gap']}")
     print(f"  no person row:      {out['no_row']}")
     top = [r for r in out["rows"] if r["status"] in ("ready", "thin")][:25]
@@ -31,6 +33,17 @@ def _plan(args) -> int:
             f"   {r['status']:<6} {r.get('bio_len', 0):>4}c via {str(r.get('source')):<10} "
             f"{r['name'][:38]}"
         )
+    # Suspects are shown, never hidden: they look like ready bios and that is the
+    # point — a numbered sense list or a musician answering a crew credit. They
+    # must be read by a human, not handed to a sweep.
+    sus = [r for r in out["rows"] if r["status"] == "suspect"][:15]
+    if sus:
+        print("\n  SUSPECT — do not auto-apply:")
+        for r in sus:
+            print(
+                f"   {r.get('bio_len', 0):>4}c via {str(r.get('source')):<10} "
+                f"{r['name'][:30]:<32} {r.get('collision', '')}"
+            )
     return 0
 
 

@@ -128,6 +128,13 @@ def _request(
         raise JellyfinError(f"{method} {path} -> {exc.code} {detail}") from exc
 
 
+def get_bytes(path: str, timeout: int = 60) -> bytes:
+    """GET raw bytes (images). Used to byte-verify an upload actually landed."""
+    req = urllib.request.Request(base_url() + path, headers=dict(auth_header()))
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read()
+
+
 def get_json(
     path: str,
     *,
@@ -280,6 +287,27 @@ def refresh_item(item_id: str, *, metadata: str = "FullRefresh",
     }
     _request(f"/Items/{item_id}/Refresh?{urllib.parse.urlencode(params)}", method="POST")
     return 204
+
+
+def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg") -> int:
+    """Upload an item's Primary image.
+
+    The controller reads the request body through a Base64 CryptoStream, so RAW
+    BYTES 500 with a ``FormatException`` from ``FromBase64Transform`` — the body
+    must be the base64 TEXT of the image. That failure reads as a broken endpoint
+    when it is only an encoding mistake, so it is encoded here, once.
+    """
+    import base64 as _b64
+
+    body = _b64.b64encode(data)
+    headers = dict(auth_header())
+    headers["Content-Type"] = content_type
+    req = urllib.request.Request(
+        base_url() + f"/Items/{item_id}/Images/Primary",
+        data=body, headers=headers, method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return resp.status
 
 
 def notify_media(paths: Iterable[str], update_type: str = "Created") -> int:

@@ -25,9 +25,17 @@ PLAN = config.STATE_DIR / "meta-plan.json"
 MIN_BIO = 80  # shorter than this is reported, not written
 
 
-def _credited_people(uid: str, parent_id: str) -> Dict[str, int]:
-    """name -> number of titles in this library crediting them."""
+def _credited_people(
+    uid: str, parent_id: str, with_types: bool = False
+):
+    """Credit counts per person, and (optionally) the credit types seen.
+
+    The type matters because a musician-only provider answering a crew credit has
+    returned a different human — see `chain.collision_reason`. Counts alone cannot
+    tell a director from a session player.
+    """
     counts: Dict[str, int] = {}
+    types: Dict[str, Dict[str, int]] = {}
     for item in jellyfin.list_items(
         uid,
         recursive=True,
@@ -39,7 +47,22 @@ def _credited_people(uid: str, parent_id: str) -> Dict[str, int]:
             n = p.get("Name")
             if n:
                 counts[n] = counts.get(n, 0) + 1
+                t = (p.get("Type") or "").strip()
+                if t:
+                    seen = types.setdefault(n, {})
+                    seen[t] = seen.get(t, 0) + 1
+    if with_types:
+        return counts, types
     return counts
+
+
+def person_rows(uid: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    """Public person-row index (name -> row). Load once, look up many.
+
+    Exposed so callers do not re-scan twelve thousand rows per name — a per-name
+    scan inside a loop is the difference between seconds and minutes.
+    """
+    return _person_rows(uid or jellyfin.user_id())
 
 
 def _person_rows(uid: str) -> Dict[str, Dict[str, Any]]:
@@ -70,7 +93,7 @@ def build_plan(
     """
     plan_path = Path(out_path) if out_path else PLAN
     uid = jellyfin.user_id()
-    counts = _credited_people(uid, parent_id)
+    counts, credit_types = _credited_people(uid, parent_id, with_types=True)
     rows = _person_rows(uid)
 
     # Parenthesised deliberately: `(x.get('Overview') or '') or '' == ''` parses
@@ -114,8 +137,23 @@ def build_plan(
             # Only a pre-1900 subject was found: almost certainly a different
             # person with the same name. Never auto-applied.
             status = "review-birth"
+        # A candidate can pass the length bar and still not be a biography of this
+        # person: Last.fm answers a shared name with a numbered sense list, and a
+        # musician-only provider answering a crew credit returns a different human.
+        # Both were being scored `ready` and handed to a future sweep.
+        seen_types = credit_types.get(name) or {}
+        primary_type = max(seen_types, key=seen_types.get) if seen_types else ""
+        suspect = chain.collision_reason(
+            str(res["fields"].get("biography") or ""),
+            credit_type=primary_type,
+            source=res["provenance"].get("biography"),
+        )
+        if suspect and status in ("ready", "thin"):
+            status = "suspect"
         entry.update(
             status=status,
+            collision=suspect or "",
+            credit_type=primary_type,
             birth_year=res.get("birth_year"),
             birth_suspect=bool(res.get("birth_suspect")),
             bio_len=res["bio_len"],
@@ -152,6 +190,7 @@ def build_plan(
         "rows": plan,
         "ready": sum(1 for r in plan if r["status"] == "ready"),
         "thin": sum(1 for r in plan if r["status"] == "thin"),
+        "suspect": sum(1 for r in plan if r["status"] == "suspect"),
         "review_birth": sum(1 for r in plan if r["status"] == "review-birth"),
         "gap": sum(1 for r in plan if r["status"] == "gap"),
         "no_row": sum(1 for r in plan if r["status"] == "no-row"),
