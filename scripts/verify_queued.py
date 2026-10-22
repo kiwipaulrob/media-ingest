@@ -22,6 +22,11 @@ sys.path.insert(0, ".")
 QB = "http://192.168.214.11:8090"
 
 
+# Title lookup and force-start live in media_lib.qb so this verifier and
+# source.queue() agree on what "in the queue" means.
+from media_lib import qb  # noqa: E402
+
+
 def norm(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 

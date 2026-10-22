@@ -288,3 +288,99 @@ def test_queue_still_rejects_a_real_failure(monkeypatch):
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
                         "title": "x"})
     assert out["ok"] is False
+
+
+# --------------------------------------------------- pack vs single episode
+def test_is_pack_distinguishes_a_season_from_an_episode():
+    """A season fragment matches both; ranking by seeds then prefers the episode.
+
+    Measured: fragment "jools holland s57" matched "S57E06" (4 seeds) and
+    "S57 complete" (1 seed) — max-seeds picked the single episode over the pack.
+    """
+    from media_lib import source
+    assert source.is_pack("Later with Jools Holland S57 complete (1280x720p HD)") is True
+    assert source.is_pack("Later with Jools Holland S57E06 (1280x720p HD)") is False
+    assert source.is_pack("Later.with.Jools.Holland.S58E06.480p.x264-mSD") is False
+    assert source.is_pack("Later with Jools Holland S56") is True
+
+
+def test_candidates_by_words_want_pack_drops_episodes():
+    """A season fragment matches both an episode and the pack.
+
+    candidates_for cannot serve this: `matches()` requires the literal words
+    "classic" and "album", so it is Classic-Albums-only.
+    """
+    from media_lib import source
+    pool = {
+        "Later with Jools Holland S57 complete 720p": {
+            "title": "Later with Jools Holland S57 complete 720p", "size": 10_000_000_000,
+            # rank() enforces config.SOURCE_MIN_SEEDS; a 1-seed fixture is dropped
+            "seeders": 3, "protocol": "torrent"},
+        "Later with Jools Holland S57E06 720p": {
+            "title": "Later with Jools Holland S57E06 720p", "size": 1_700_000_000,
+            "seeders": 4, "protocol": "torrent"},
+    }
+    both = source.candidates_by_words(pool, ["jools holland", "s57"])
+    packs = source.candidates_by_words(pool, ["jools holland", "s57"], want_pack=True)
+    assert len(both) == 2
+    assert len(packs) == 1 and "complete" in packs[0]["title"]
+    assert packs[0]["pack"] is True
+
+
+def test_candidates_by_words_serves_a_non_album_series():
+    """The whole point: Jools / Abbey Road postings never say 'classic albums'."""
+    from media_lib import source
+    pool = {"VA - Live from Abbey Road (E01-12) 2018": {
+        "title": "VA - Live from Abbey Road (E01-12) 2018",
+        "size": 43_000_000_000, "seeders": 9, "protocol": "torrent"}}
+    assert source.candidates_for(pool, "Live from Abbey Road", "2018") == []
+    got = source.candidates_by_words(pool, ["abbey road", "2018"])
+    assert len(got) == 1 and got[0]["seeds"] == 9
+
+
+def test_candidates_by_words_require_all_is_tighter():
+    from media_lib import source
+    pool = {
+        "Live from Abbey Road 2018 complete": {
+            "title": "Live from Abbey Road 2018 complete", "size": 1, "seeders": 5,
+            "protocol": "torrent"},
+        "Live from Abbey Road 2007": {
+            "title": "Live from Abbey Road 2007", "size": 1, "seeders": 5,
+            "protocol": "torrent"},
+    }
+    assert len(source.candidates_by_words(pool, ["abbey road", "2018"])) == 2
+    assert len(source.candidates_by_words(pool, ["abbey road", "2018"],
+                                          require_all=True)) == 1
+
+
+# ------------------------------------------------ queue() starts the download
+def test_queue_forces_start_and_reports_what_the_queue_holds(monkeypatch):
+    """An unforced add sits in queuedDL on this install and never downloads."""
+    from media_lib import source
+
+    forced = {}
+
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: {
+        "hash": "a" * 40, "state": "forcedDL", "name": title})
+    monkeypatch.setattr(source.qb, "force_start",
+                        lambda hashes, op=None: forced.update(hashes=hashes) or 200)
+
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
+                        "title": "Later with Jools Holland S57 complete"})
+
+    assert out["ok"] is True
+    assert out["verified"] is True
+    assert out["state"] == "forcedDL"
+    assert out["hash"] == "a" * 40
+    assert forced["hashes"] == ["a" * 40]
+
+
+def test_queue_reports_unverified_when_the_torrent_is_not_in_the_queue(monkeypatch):
+    """Accepted by the API but absent from the queue is not a queued download."""
+    from media_lib import source
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: None)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "b" * 40,
+                        "protocol": "torrent", "title": "ghost"})
+    assert out["ok"] is True and out["verified"] is False

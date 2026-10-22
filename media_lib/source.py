@@ -128,6 +128,20 @@ def norm(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 
 
+#: `S57E06` / `s57e06` — a single episode, as opposed to a season PACK.
+EPISODE_MARKER = re.compile(r"\bs\d+\s*e\d+\b", re.I)
+
+
+def is_pack(title: str) -> bool:
+    """True when a posting looks like a season/complete set rather than one episode.
+
+    Needed because a season fragment matches both: `jools holland s57` matched
+    "S57E06", and ranking by seeds then preferred the 4-seed single episode over the
+    1-seed COMPLETE season — the opposite of what was wanted.
+    """
+    return not EPISODE_MARKER.search(title or "")
+
+
 def part_info(title: str) -> Optional[Tuple[int, int]]:
     """(part, total) when the release is a multi-part posting, else None.
 
@@ -177,6 +191,21 @@ def matches(title: str, artist: str, album: str) -> bool:
     if not all(w in nt for w in a[:2]):
         return False
     return any(w in nt for w in alb)
+
+
+def matches_any(title: str, words: Sequence[str]) -> bool:
+    """Generic identity match: does the posting carry these distinctive words?
+
+    `matches()` below is the Classic Albums specialisation — it requires the literal
+    words "classic" and "album" in the title, so it can never serve a series such as
+    Later... with Jools Holland or Live from Abbey Road. Every caller outside that
+    one series was hand-rolling its own comparison; this is the shared one.
+    """
+    nt = norm(title)
+    wanted = [w for w in (norm(x) for x in words) if w and w not in _STOP and len(w) > 2]
+    if not wanted:
+        return False
+    return any(w in nt for w in wanted)
 
 
 def is_video_posting(res: Dict[str, Any]) -> bool:
@@ -293,11 +322,19 @@ def candidates_for(
     album: str,
     protocol: Optional[str] = None,
     min_seeds: Optional[int] = None,
+    want_pack: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Ranked candidates from a pool for one wanted title."""
+    """Ranked candidates from a pool for one wanted title.
+
+    `want_pack=True` drops single-episode postings, for when the target is a whole
+    season: the episode and the pack share a title fragment, and seeds alone pick
+    the wrong one.
+    """
     found = []
     for title, res in pool.items():
         if not matches(title, artist, album) or not is_video_posting(res):
+            continue
+        if want_pack and not is_pack(title):
             continue
         if protocol and (res.get("protocol") or "") != protocol:
             continue
@@ -317,9 +354,62 @@ def candidates_for(
     return rank(found, protocol=protocol, min_seeds=min_seeds)
 
 
+def candidates_by_words(
+    pool: Dict[str, Dict[str, Any]],
+    words: Sequence[str],
+    protocol: Optional[str] = None,
+    min_seeds: Optional[int] = None,
+    want_pack: bool = False,
+    require_all: bool = False,
+) -> List[Dict[str, Any]]:
+    """Ranked candidates for a SERIES or any non-album target.
+
+    Same contract as `candidates_for`, but matching on `matches_any` so it is not
+    tied to the Classic Albums wording. `require_all` demands every word rather than
+    any one, for callers that need a tighter match.
+    """
+    nt_of = norm
+    found = []
+    for title, res in pool.items():
+        if not is_video_posting(res):
+            continue
+        if want_pack and not is_pack(title):
+            continue
+        if protocol and (res.get("protocol") or "") != protocol:
+            continue
+        nt = nt_of(title)
+        wanted = [w for w in (nt_of(x) for x in words)
+                  if w and w not in _STOP and len(w) > 2]
+        if not wanted:
+            continue
+        hit = all(w in nt for w in wanted) if require_all else any(w in nt for w in wanted)
+        if not hit:
+            continue
+        found.append({
+            "title": title,
+            "seeds": res.get("seeders") or 0,
+            "gb": round((res.get("size") or 0) / 1e9, 2),
+            "grabs": res.get("grabs"),
+            "age": res.get("age"),
+            "protocol": res.get("protocol"),
+            "indexer": res.get("indexer"),
+            "hash": hash_of(res),
+            "url": queue_url(res),
+            "pack": is_pack(title),
+        })
+    return rank(found, protocol=protocol, min_seeds=min_seeds)
+
+
 # -------------------------------------------------------------------- queueing
-def queue(pick: Dict[str, Any], category: str = "") -> Dict[str, Any]:
-    """Send one ranked pick to the right downloader."""
+def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[str, Any]:
+    """Send one ranked pick to the right downloader, then make it actually start.
+
+    `force=True` is the default because this install's pipeline runs ~93 downloads
+    against a cap of 25: a torrent added without force sits in `queuedDL` and never
+    downloads, which reads as success and delivers nothing. The torrent is resolved
+    BY TITLE afterwards (a Prowlarr result often carries no infohash), so the reply
+    says what the queue really holds.
+    """
     url = pick.get("url")
     if not url:
         return {"ok": False, "reason": "no-url", "title": pick.get("title")}
@@ -335,13 +425,23 @@ def queue(pick: Dict[str, Any], category: str = "") -> Dict[str, Any]:
                 "title": pick.get("title"),
             }
         status = qb.add(url, category=category)
+        # 202 Accepted is qBittorrent's normal success reply for torrents/add;
+        # omitting it reported every successful add as a failure.
+        ok = status in (200, 201, 202, 204, 409)
+        title = pick.get("title") or ""
+        entry = qb.by_title(title) if ok else None
+        if ok and force and entry:
+            qb.force_start([entry.get("hash") or ""])
+            entry = qb.by_title(title) or entry
         return {
-            # 202 Accepted is qBittorrent's normal success reply for torrents/add;
-            # omitting it reported every successful add as a failure.
-            "ok": status in (200, 201, 202, 204, 409),
+            "ok": ok,
             "kind": "torrent",
             "http": status,
-            "title": pick.get("title"),
+            "title": title,
+            "hash": (entry or {}).get("hash") or pick.get("hash") or "",
+            "state": (entry or {}).get("state") or "",
+            # An add that is not in the queue is not a queued download.
+            "verified": bool(entry),
         }
     except Exception as exc:  # noqa: BLE001
         return {

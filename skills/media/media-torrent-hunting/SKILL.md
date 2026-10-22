@@ -108,14 +108,46 @@ renames, `409`-as-dedupe, ghost-seeder sweep, multi-writer queue) are in
 `references/qbittorrent-web-api.md` — read it before scripting against the
 client for the first time.
 
-- **Verify every add.** After POST `/api/v2/torrents/add`, sleep 30-45s then
-  confirm the infohash appears in `/api/v2/torrents/info` before reporting
-  success. An add returning `pending_count: 1` whose total torrent count is
-  still unchanged after ~3 minutes is a dead aggregator page-link, not a slow
-  magnet — re-search preferring direct-magnet indexers (TPB/Knaben/YTS) and
-  queue the magnet instead of re-adding the same link. Magnets show as bare hashes with no name until metadata resolves,
-  so match by infohash — and allow 10-30 min of DHT/tracker announce before
-  judging seed counts. Skip infohashes already queued (DUP, not failure).
+- **Verify every add — by TITLE, and only after force-starting it.** `POST
+  /api/v2/torrents/add` answers **202 Accepted** on success; a success list of
+  `(200, 204, 409)` reports every good add as a failure (`source.queue` did exactly
+  that — six queued torrents came back `{"ok": false, "http": 202}`). Then:
+  - **Force-start it.** This install's *arr pipeline runs ~93 downloads against
+    `max_active_downloads: 25`, so an unforced add sits in `queuedDL` forever —
+    an add that looks successful and downloads nothing. `POST
+    /api/v2/torrents/setForceStart` with `{"hashes": "...", "value": "true"}`.
+    `source.queue()` now does both by default (`force=True`).
+  - **Match by title, not infohash.** A Prowlarr result often carries no infohash
+    at all (no magnet, no guid hash), so a hash-keyed check reports "not in the
+    queue" for a torrent that is there. `qb.by_title(fragment)` normalises both
+    sides; `source.queue()` returns `verified`/`state`/`hash` from the queue.
+  - Magnets show as bare hashes with no name until metadata resolves, so for a
+    bare magnet fall back to infohash — and allow 10-30 min of DHT/tracker
+    announce before judging seed counts. Skip infohashes already queued (DUP, not
+    failure). An add returning `pending_count: 1` whose total torrent count is
+    still unchanged after ~3 minutes is a dead aggregator page-link, not a slow
+    magnet — re-search preferring direct-magnet indexers (TPB/Knaben/YTS).
+- **A season fragment matches the single episode AND the pack — say which you
+  want.** `jools holland s57` matched both `S57E06` (4 seeds) and `S57 complete`
+  (1 seed); ranking by seeds then picked the *episode*, the opposite of intent.
+  `source.is_pack()` rejects `SxxEyy` titles, and
+  `candidates_by_words(..., want_pack=True)` applies it. Episode markers are also
+  how two stray singles got added alongside the packs they duplicate.
+- **`source.matches()` is Classic-Albums-only.** It requires the literal words
+  *"classic"* and *"album"* in the posting, so it can never serve Jools, Live from
+  Abbey Road or any other series. Use `source.candidates_by_words(pool, words,
+  want_pack=, require_all=)` for everything else — hand-rolling a comparison per
+  script is how two matchers drift apart.
+- **A low-seed pack can be invisible.** `rank()` drops torrents below
+  `config.SOURCE_MIN_SEEDS` (2), so a 1-seed complete season never appears through
+  `candidates_for`/`candidates_by_words` unless you pass `min_seeds=0`. Check a raw
+  `_prowlarr(query)` before concluding a season is unavailable.
+- **Search the SUBJECT, not just the series name.** The Classic Albums episode for
+  *L.A. Woman* is posted as `BBC The Doors The Story of LA Woman` — it contains
+  neither "classic" nor "albums", so a pool search for the series misses it
+  entirely. A title that looks absent from the series pool is often present under
+  its subject wording.
+
 - **Cull dead magnets fast, keep one live entry per wanted release.** Force-start fresh magnets and compare `num_seeds`: a candidate holding 0 seeds while a sibling candidate for the same title shows dozens is a dead swarm — delete it and move on rather than letting it sit queued. Two postings of the same release (same title/group, different indexers) queue as duplicate magnets — keep the seeded one, delete the other. A bare-hash magnet name that never resolves metadata is unjudgeable — replace it with a named posting before concluding anything about the release. qBittorrent
   progress lies: a torrent at 90-100% can hold all-zero head bytes
   (unfetched first pieces on a starved swarm) yet report complete. Before

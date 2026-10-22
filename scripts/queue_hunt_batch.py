@@ -38,7 +38,8 @@ TARGETS = [
     ("Jools S62", "Later with Jools Holland", "jools holland s62", True, "10.3 GB pack"),
 ]
 
-EPISODE_MARKER = re.compile(r"\bs\d+e\d+\b", re.I)
+# The pack test lives in media_lib.source.is_pack so this script, cli/source and
+# any future caller cannot disagree about what a "pack" is.
 
 
 def qb_get(path: str):
@@ -64,8 +65,7 @@ def main() -> int:
         pool = {r.get("title"): r for r in res if r.get("title")}
         hits = [r for t, r in pool.items() if fragment in source.norm(t)]
         if want_pack:
-            packs = [r for r in hits if not EPISODE_MARKER.search(r.get("title") or "")]
-            hits = packs or []
+            hits = [r for r in hits if source.is_pack(r.get("title") or "")]
         if not hits:
             print(f"  MISS  {label}: no posting matched {fragment!r}"
                   f"{' (pack required)' if want_pack else ''}")
@@ -92,30 +92,24 @@ def main() -> int:
         if not out.get("ok"):
             print(f"  FAIL  {label}: {out.get('reason') or out}")
             continue
-        print(f"  ADDED {label:<32} {infohash[:12]}  ({why})")
-        added.append((label, infohash, title))
+        # queue() force-starts and resolves the torrent by title; a result with no
+        # infohash still reports the real queue state this way.
+        print(f"  ADDED {label:<32} {(out.get('hash') or '?')[:12]} "
+              f"state={out.get('state') or '?'} verified={out.get('verified')}  ({why})")
+        added.append((label, out.get("hash") or title, title))
         time.sleep(1.5)
 
-    # Force-start: this pipeline runs 93 downloads against a cap of 25, so an
-    # unforced add sits in queuedDL and never begins.
-    if added:
-        hashes = "|".join(h for _, h, _ in added if h)
-        if hashes:
-            qb_post("torrents/setForceStart", {"hashes": hashes, "value": "true"})
-            print(f"\nforce-started {len(added)} torrent(s)")
-
     time.sleep(6)
-    now = {t["hash"].lower(): t for t in qb_get("torrents/info")}
-    print("\nverification:")
+    print("\nverification (by title — infohash is often absent from a Prowlarr result):")
     ok = 0
-    for label, infohash, _ in added:
-        t = now.get(infohash)
-        if not t:
-            print(f"  MISSING {label} ({infohash[:12]}) — not in the queue!")
+    for label, _, title in added:
+        entry = source.qb.by_title(title)
+        if not entry:
+            print(f"  MISSING {label} — added but not in the queue")
             continue
         ok += 1
-        print(f"  OK  {label:<32} {t['progress']*100:5.1f}%  state={t['state']:<12} "
-              f"{t['size']/1e9:6.2f}GB")
+        print(f"  OK  {label:<32} {entry['progress']*100:5.1f}%  "
+              f"state={entry['state']:<12} {entry['size']/1e9:6.2f}GB")
     print(f"\nqueued and verified: {ok}/{len(added)}")
     return 0 if ok == len(added) else 1
 

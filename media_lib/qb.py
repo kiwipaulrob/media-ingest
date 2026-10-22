@@ -173,6 +173,41 @@ def add(url: str, category: str = "", op=None) -> int:
         return exc.code
 
 
+def force_start(hashes: List[str], op=None) -> int:
+    """Force-start torrents so they actually download.
+
+    Needed on this install: the *arr pipeline runs ~93 downloads against a
+    `max_active_downloads` cap of 25 (they arrive force-started), so a torrent
+    added without force sits in `queuedDL` and never begins — an add that looks
+    successful and downloads nothing.
+    """
+    hashes = [h for h in hashes if h]
+    if not hashes:
+        return 0
+    op = op or _opener()
+    body = urllib.parse.urlencode({"hashes": "|".join(hashes), "value": "true"}).encode()
+    req = urllib.request.Request(
+        f"{_base()}/api/v2/torrents/setForceStart",
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with op.open(req, timeout=60) as r:
+            return r.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+def by_title(fragment: str, op=None) -> Optional[Dict[str, Any]]:
+    """The queued torrent whose NAME matches `fragment` (normalised), else None.
+
+    Verify additions with this, never with an infohash: a Prowlarr result often
+    carries none, so a hash-keyed check reports "not in the queue" for a torrent
+    that was added perfectly well.
+    """
+    return find_torrent(fragment, op=op)
+
+
 _VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov")
 
 
