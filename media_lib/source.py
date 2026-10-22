@@ -336,7 +336,9 @@ def queue(pick: Dict[str, Any], category: str = "") -> Dict[str, Any]:
             }
         status = qb.add(url, category=category)
         return {
-            "ok": status in (200, 204, 409),
+            # 202 Accepted is qBittorrent's normal success reply for torrents/add;
+            # omitting it reported every successful add as a failure.
+            "ok": status in (200, 201, 202, 204, 409),
             "kind": "torrent",
             "http": status,
             "title": pick.get("title"),

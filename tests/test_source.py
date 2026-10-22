@@ -266,3 +266,25 @@ def test_qb_add_treats_409_as_already_queued(monkeypatch):
             raise urllib.error.HTTPError(req.full_url, 409, 'Conflict', {}, None)
 
     assert qbmod.add('magnet:?xt=urn:btih:' + 'f' * 40, op=Op()) == 409
+
+
+def test_queue_treats_202_as_success(monkeypatch):
+    """qBittorrent answers 202 Accepted for torrents/add.
+
+    It was missing from the success list, so every add reported
+    {"ok": False, "http": 202} while the torrent was in fact queued.
+    """
+    from media_lib import source
+
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
+                        "title": "x"})
+    assert out["ok"] is True and out["http"] == 202
+
+
+def test_queue_still_rejects_a_real_failure(monkeypatch):
+    from media_lib import source
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 415)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
+                        "title": "x"})
+    assert out["ok"] is False
