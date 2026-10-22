@@ -212,12 +212,17 @@ def check_row_names(rows: List[Dict], *, journal: Path, fix: bool = False,
     can hand the row a neighbouring episode's Name/Overview/ProviderIds while the
     file stays correct. Silence here is what let that go unnoticed once.
     """
-    uid = jellyfin.user_id()
+    # Resolved lazily: demanding credentials to check an empty list made the
+    # function unusable off this host (CI caught it), and it is the caller's
+    # business whether a Jellyfin user exists yet.
+    uid: Optional[str] = None
     problems: List[Dict] = []
     for r in rows:
         item_id = r.get("item_id")
         if not item_id:
             continue
+        if uid is None:
+            uid = jellyfin.user_id()
         dto = jellyfin.get_json(f"/Users/{uid}/Items/{item_id}",
                                 params={"Fields": "Path,Name"})
         path = dto.get("Path") or r["dest"]
