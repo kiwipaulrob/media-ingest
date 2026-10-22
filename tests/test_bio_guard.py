@@ -130,3 +130,22 @@ def test_musician_on_a_crew_credit_is_not_a_profession_conflict():
     text = ("Colin Blunstone is an English singer and songwriter, best known as the "
             "lead singer of the rock band The Zombies, and he has directed two films.")
     assert chain.profession_conflict(text, "Director") is None
+
+
+def test_general_as_an_adjective_is_not_a_military_general():
+    # Both were flagged before the phrase-end guard: 'general' is a common adjective.
+    assert chain.profession_conflict(
+        "John Smith was a general manager for the band from 1998.", "Director") is None
+    assert chain.profession_conflict(
+        "She was a general practitioner before turning to film.", "Director") is None
+
+
+def test_a_real_military_general_is_still_caught():
+    assert (chain.profession_conflict("He was a general in the Army before film.", "Director")
+            == "profession-conflict-for-crew:general")
+
+
+def test_occupation_followed_by_a_conjunction_still_counts():
+    # 'was a wrestler, booker and promoter' — the George Scott shape.
+    assert chain.profession_conflict(
+        "He was a wrestler, booker and promoter in the 1950s.", "Director")

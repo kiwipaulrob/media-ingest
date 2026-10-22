@@ -44,9 +44,22 @@ def ct(cmd: str, timeout: int = 3600) -> str:
     return (proc.stdout or "") + (proc.stderr or "")
 
 
+def ct_out(cmd: str, timeout: int = 600) -> str:
+    """stdout ONLY. `ct` merges stderr, which corrupts anything parsed as JSON —
+    ffprobe prints warnings like "Referenced QT chapter track not found" on mp4
+    input, and a merged stream turns a perfectly good probe into a parse failure
+    that reads as "codec None"."""
+    proc = subprocess.run(
+        ["ssh", "-o", "ConnectTimeout=12", CT,
+         f"pct exec 105 -- bash -lc {json.dumps(cmd)}"],
+        capture_output=True, text=True, timeout=timeout,
+    )
+    return proc.stdout or ""
+
+
 def probe(path: str) -> dict:
-    out = ct(f'{FFPROBE} -v error -show_entries stream=codec_type,codec_name,field_order '
-             f'-show_entries format=duration -of json "{path}"')
+    out = ct_out(f'{FFPROBE} -v error -show_entries stream=codec_type,codec_name,field_order '
+                 f'-show_entries format=duration -of json "{path}"')
     try:
         return json.loads(out)
     except json.JSONDecodeError:

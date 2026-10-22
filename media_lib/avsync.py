@@ -75,19 +75,24 @@ def check(remote_path: str) -> Dict[str, Any]:
         return {"ok": False, "verdict": "no-audio", "problems": ["no audio stream"],
                 "start_delta_ms": None, "drift_ms": None}
 
-    v_start = _as_float(video[0].get("start_time")) or 0.0
+    v_start = _as_float(video[0].get("start_time"))
     v_dur = _as_float(video[0].get("duration"))
 
     problems: List[str] = []
     warnings: List[str] = []
     worst_start_ms = 0.0
     for a in audio:
-        a_start = _as_float(a.get("start_time")) or 0.0
+        a_start = _as_float(a.get("start_time"))
         a_dur = _as_float(a.get("duration"))
-        delta_ms = round((a_start - v_start) * 1000.0, 1)
+        delta_ms = round(((a_start or 0.0) - (v_start or 0.0)) * 1000.0, 1)
         if abs(delta_ms) > abs(worst_start_ms):
             worst_start_ms = delta_ms
         label = f"audio #{a.get('index')} ({a.get('codec_name')})"
+        if v_start is None or a_start is None:
+            # A missing start_time is UNKNOWN, not zero. Coercing it to 0.0 made an
+            # unprobeable stream read as perfectly aligned.
+            warnings.append(f"{label} start_time not reported — offset unknown")
+            continue
         if abs(delta_ms) >= START_FAIL_MS:
             problems.append(f"{label} starts {delta_ms:+.0f} ms from video")
         elif abs(delta_ms) >= START_WARN_MS:

@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from media_lib import enrich
+from media_lib.providers import chain
 
 MUSIC_DOCOS = "5f95760bae4c07e31d840d70c3a46111"
 ALIAS_FILE = enrich.PLAN.parent / "alias-approved.json"
@@ -56,20 +57,43 @@ def _wiki_batch(titles: List[str]) -> Dict[str, str]:
                 data = json.loads(fh.read())
         except Exception:  # noqa: BLE001 - a failed batch is a gap, not a crash
             continue
-        for page in (data.get("query", {}).get("pages") or {}).values():
-            title = page.get("title") or ""
+        qc = data.get("query", {}) or {}
+        by_title = {p.get("title") or "": p for p in (qc.get("pages") or {}).values()}
+        for title, page in by_title.items():
             text = re.sub(r"\s+", " ", (page.get("extract") or "")).strip()
             if title and text:
                 out[title] = text
+
+        # The API answers with the RESOLVED title, not the one asked for. An alias
+        # target is very often a redirect ('The Dakotas' -> 'Dakotas'), so a bare
+        # `out[requested]` lookup called an existing page a gap — a silent miss on
+        # exactly the names this command exists to serve.
+        norm = {n["from"]: n["to"] for n in (qc.get("normalized") or [])}
+        redir = {r["from"]: r["to"] for r in (qc.get("redirects") or [])}
+
+        def resolve(title: str, depth: int = 0) -> str:
+            if depth > 5:
+                return title
+            for table in (norm, redir):
+                if title in table:
+                    return resolve(table[title], depth + 1)
+            return title
+
+        for requested in chunk:
+            final = resolve(requested)
+            if final in out and requested not in out:
+                out[requested] = out[final]
     return out
 
 
 def cmd_worklist(args) -> int:
     plan = enrich.build_plan(args.library, limit=args.limit, out_path=args.out)
     rows = plan.get("rows") or []
-    print(f"people with no bio: {plan['people_gaps']}")
-    print(f"  ready {plan['ready']} | thin {plan['thin']} | suspect {plan.get('suspect', 0)} "
-          f"| gap {plan['gap']} | no-row {plan['no_row']}")
+    planned = len(rows)
+    print(f"people with no bio: {plan.get('people_gaps', 0)} (planned this run: {planned})")
+    print(f"  ready {plan.get('ready', 0)} | thin {plan.get('thin', 0)} "
+          f"| suspect {plan.get('suspect', 0)} | review-birth {plan.get('review_birth', 0)} "
+          f"| gap {plan.get('gap', 0)} | no-row {plan.get('no_row', 0)}")
     for r in rows:
         if r["status"] == "no-row":
             continue
@@ -120,6 +144,15 @@ def cmd_alias(args) -> int:
             counts["GAP-NO-PROSE"] = counts.get("GAP-NO-PROSE", 0) + 1
             print(f"  GAP-NO-PROSE {name}")
             continue
+        # Screen before writing. The alias path used to hand the extract straight to
+        # apply_person, so an approved target that happens to be a disambiguation page
+        # or a pre-1900 life would be written as a biography — the exact class the
+        # rest of the pipeline now rejects.
+        bad = chain.bio_implausible(text)
+        if bad:
+            counts[f"REJECT-{bad}"] = counts.get(f"REJECT-{bad}", 0) + 1
+            print(f"  REJECT-{bad} {name}")
+            continue
         row = index.get(name)
         if not row:
             counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
@@ -162,10 +195,25 @@ def cmd_portrait(args) -> int:
     if len(raw) < 15_000:
         print(f"REJECT too small ({len(raw)} bytes) — likely a placeholder", file=sys.stderr)
         return 1
-    status = jellyfin.set_primary_image(args.id, raw)
-    served = jellyfin.get_bytes(f"/Items/{args.id}/Images/Primary/0")
+    try:
+        status = jellyfin.set_primary_image(args.id, raw)
+        served = jellyfin.get_bytes(f"/Items/{args.id}/Images/Primary/0")
+    except Exception as exc:  # noqa: BLE001
+        print(f"UPLOAD-FAIL {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
     print(f"uploaded {len(raw)} bytes (http {status}); served {len(served)}")
     return 0 if len(served) == len(raw) else 1
+
+
+def _name_matches(name: str, label: str) -> bool:
+    """Is `label` the same name as `name`? Punctuation/order-insensitive, strict."""
+    def norm(v: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", (v or "").lower()).strip()
+
+    a, b = norm(name), norm(label)
+    if not a or not b:
+        return False
+    return a == b or a in b or b in a
 
 
 def _wikidata_line(name: str) -> str:
@@ -183,7 +231,12 @@ def _wikidata_line(name: str) -> str:
     if not hits:
         return ""
     desc = (hits[0].get("description") or "").strip()
-    if not desc or name.split()[-1].lower() not in (hits[0].get("label") or name).lower():
+    # The old gate compared only the SURNAME against the label, and fell back to the
+    # requested name when the label was missing — so an unlabelled hit was accepted
+    # with no check at all. Wikidata search is fuzzy; an unmatched entity means a
+    # one-liner about the wrong person, which is the failure this whole pass exists
+    # to prevent. No label => cannot verify => skip.
+    if not desc or not _name_matches(name, hits[0].get("label") or ""):
         return ""
     return f"{name} is described by Wikidata as: {desc}."
 

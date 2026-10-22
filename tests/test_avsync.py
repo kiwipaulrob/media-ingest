@@ -83,3 +83,14 @@ def test_negative_offset_is_reported_with_sign(monkeypatch):
     r = avsync.check("/x/y.mkv")
     assert r["ok"] is False
     assert abs(r["start_delta_ms"] + 300.0) < 1
+
+
+def test_missing_start_time_is_unknown_not_aligned(monkeypatch):
+    """Coercing an absent start_time to 0.0 made an unprobeable stream read as ok."""
+    streams = [{"index": 0, "codec_type": "video", "codec_name": "h264",
+                "duration": "100"},
+               {"index": 1, "codec_type": "audio", "codec_name": "aac", "duration": "100"}]
+    monkeypatch.setattr(avsync, "streams", lambda p: streams)
+    r = avsync.check("/x/y.mkv")
+    assert r["verdict"] == "warn", "an unknown offset must not report as ok"
+    assert any("unknown" in w for w in (r.get("warnings") or []))

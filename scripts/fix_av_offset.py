@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -53,11 +54,16 @@ def main(argv=None) -> int:
     before = avsync.check(str(src))
     print(f"before : {avsync.describe(before)}")
 
+    # `-map 1:a` (all audio, not just the first) and `-map 0:s?` matter: the old
+    # `-map 1:a:0` silently dropped every extra audio track AND all subtitles, so a
+    # "sync fix" could quietly cost the viewer the commentary or the subs.
+    # +faststart is MP4-only; passing it on an mkv just warns.
+    faststart = " -movflags +faststart" if src.suffix.lower() == ".mp4" else ""
     cmd = (
-        f"{probe.probe_wrap(config.FFMPEG_ENTRY)} -v error -i {str(src)!r} "
-        f"-itsoffset {seconds} -i {str(src)!r} "
-        f"-map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 320k "
-        f"-movflags +faststart -y {str(staging)!r}"
+        f"{probe.probe_wrap(config.FFMPEG_ENTRY)} -v error -i {shlex.quote(str(src))} "
+        f"-itsoffset {seconds} -i {shlex.quote(str(src))} "
+        f"-map 0:v:0 -map 1:a -map 0:s? -c:v copy -c:a aac -b:a 320k{faststart} "
+        f"-y {shlex.quote(str(staging))}"
     )
     print("remux  : video copied, audio re-encoded with the offset")
     if args.dry_run:
@@ -72,16 +78,16 @@ def main(argv=None) -> int:
     print(f"after  : {avsync.describe(after)}")
     if after.get("verdict") == "fail":
         print("REFUSING: the shifted file does not pass the sync check; original untouched")
-        _run(f"rm -f {str(staging)!r}")
+        _run(f"rm -f {shlex.quote(str(staging))}")
         return 1
 
     if not probe.decode_check(str(staging)):
         print("REFUSING: decode sample failed; original untouched")
-        _run(f"rm -f {str(staging)!r}")
+        _run(f"rm -f {shlex.quote(str(staging))}")
         return 1
 
     # mv in place keeps the Jellyfin row id and its watch state.
-    _run(f"mv -f {str(staging)!r} {str(src)!r}")
+    _run(f"mv -f {shlex.quote(str(staging))} {shlex.quote(str(src))}")
     print(f"swapped: {src.name}")
     return 0
 

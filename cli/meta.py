@@ -20,10 +20,10 @@ MUSIC_DOCOS = "5f95760bae4c07e31d840d70c3a46111"
 
 def _plan(args) -> int:
     out = enrich.build_plan(args.library, limit=args.limit)
-    print(f"people with no bio: {out['people_gaps']}")
+    print(f"people with no bio: {out.get('people_gaps', 0)}")
     print(f"  ready (>=80 chars): {out['ready']}")
     print(f"  thin  (15-79):      {out['thin']}")
-    print(f"  suspect (NOT safe): {out['suspect']}")
+    print(f"  suspect (NOT safe): {out.get('suspect', 0)}")
     print(f"  review-birth:       {out.get('review_birth', 0)}")
     print(f"  gap   (nothing):    {out['gap']}")
     print(f"  no person row:      {out['no_row']}")

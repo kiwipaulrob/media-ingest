@@ -104,6 +104,10 @@ def build_plan(
 
     gaps = [(n, c) for n, c in counts.items() if _no_bio(rows.get(n))]
     gaps.sort(key=lambda x: -x[1])
+    # Counted BEFORE the limit slice. Reporting len(gaps) afterwards printed
+    # "people with no bio: 60" for a 460-name backlog under --limit 60, which
+    # reads as the backlog having shrunk.
+    total_gaps = len(gaps)
     if limit:
         gaps = gaps[:limit]
 
@@ -176,7 +180,7 @@ def build_plan(
                         "partial": True,
                         "library": parent_id,
                         "planned": i,
-                        "people_gaps": len(gaps),
+                        "people_gaps": total_gaps,
                         "rows": plan,
                     },
                     indent=1,
@@ -186,7 +190,7 @@ def build_plan(
 
     out = {
         "library": parent_id,
-        "people_gaps": len(gaps),
+        "people_gaps": total_gaps,
         "rows": plan,
         "ready": sum(1 for r in plan if r["status"] == "ready"),
         "thin": sum(1 for r in plan if r["status"] == "thin"),

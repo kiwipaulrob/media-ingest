@@ -105,3 +105,78 @@ def test_worklist_skips_no_row_names_in_the_listing(tmp_path, monkeypatch, capsy
     bio.cmd_worklist(_args())
     out = capsys.readouterr().out
     assert "Has Row" in out and "No Row" not in out
+
+
+# ---------------------------------------------------------------- regressions
+class _FakeResp:
+    def __init__(self, payload):
+        self._payload = json.dumps(payload).encode()
+
+    def read(self):
+        return self._payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_wiki_batch_keys_a_redirect_under_the_requested_title(monkeypatch):
+    """An alias target is usually a redirect; a bare title lookup called it a gap.
+
+    'The Dakotas' -> 'Dakotas' is a real pair in state/alias-approved.json, so this
+    was a live false 'GAP-NO-PROSE' on exactly the names the command exists for.
+    """
+    payload = {"query": {
+        "redirects": [{"from": "The Dakotas", "to": "Dakotas"}],
+        "pages": {"10": {"title": "Dakotas", "extract": "Dakotas were a British band. " * 4}},
+    }}
+    monkeypatch.setattr(bio.urllib.request, "urlopen", lambda *a, **kw: _FakeResp(payload))
+    out = bio._wiki_batch(["The Dakotas"])
+    assert "Dakotas" in out
+    assert out.get("The Dakotas") == out["Dakotas"], "the requested title must resolve too"
+
+
+def test_wiki_batch_resolves_a_normalized_title(monkeypatch):
+    payload = {"query": {
+        "normalized": [{"from": "bad title", "to": "Bad Title"}],
+        "pages": {"1": {"title": "Bad Title", "extract": "Somebody was a director. " * 4}},
+    }}
+    monkeypatch.setattr(bio.urllib.request, "urlopen", lambda *a, **kw: _FakeResp(payload))
+    assert "bad title" in bio._wiki_batch(["bad title"])
+
+
+def test_alias_refuses_to_write_a_disambiguation_page(tmp_path, monkeypatch, capsys):
+    """The alias path used to write whatever Wikipedia returned, unscreened."""
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(json.dumps([{"name": "Bernard MacMahon",
+                                  "wiki_title": "Bernard MacMahon", "band_page": False}]))
+    monkeypatch.setattr(bio, "_wiki_batch", lambda titles: {
+        "Bernard MacMahon": "Bernard MacMahon or McMahon may refer to: a bishop, "
+                            "a priest, and a horticulturist, among others."})
+    monkeypatch.setattr(bio.enrich, "person_rows", lambda uid=None: {"Bernard MacMahon": {"Id": "p1"}})
+    wrote = []
+    monkeypatch.setattr(bio.enrich, "apply_person", lambda *a: wrote.append(a) or {"status": "DONE"})
+    bio.cmd_alias(_args(file=str(pairs)))
+    assert wrote == [], "a disambiguation page must never be written as a biography"
+    assert "REJECT" in capsys.readouterr().out
+
+
+def test_wikidata_skips_an_unverifiable_entity(monkeypatch, capsys):
+    """No label means cannot verify, and an unverified one-liner is a wrong person."""
+    monkeypatch.setattr(bio, "_wikidata_line", lambda n: "")
+    monkeypatch.setattr(bio.enrich, "person_rows", lambda uid=None: {"X": {"Id": "p1"}})
+    wrote = []
+    monkeypatch.setattr(bio.enrich, "apply_person", lambda *a: wrote.append(a) or {"status": "DONE"})
+    monkeypatch.setattr(bio, "_wikidata_line", lambda n: "")
+    bio.cmd_wikidata(_args(names="X"))
+    assert wrote == []
+
+
+def test_wikidata_name_gate():
+    assert bio._name_matches("Peter Grant", "Peter Grant")
+    assert bio._name_matches("Peter Grant", "Peter Grant (musician)")
+    assert bio._name_matches("peter  grant", "Peter Grant")
+    assert not bio._name_matches("Peter Grant", "Grant Peters")
+    assert not bio._name_matches("Peter Grant", ""), "an unlabelled hit must not pass"

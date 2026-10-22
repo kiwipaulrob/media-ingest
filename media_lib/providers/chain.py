@@ -155,7 +155,11 @@ _INCOMPATIBLE_WITH_CREW = re.compile(
     r"(wrestler|footballer|soccer player|cricketer|boxer|jockey|swimmer|sprinter|"
     r"athlete|darts player|snooker player|golfer|politician|member of parliament|"
     r"senator|congressman|congresswoman|bishop|archbishop|priest|clergyman|"
-    r"naval officer|admiral|general|soldier)\b",
+    r"naval officer|admiral|general|soldier)\b"
+    # The occupation must END its phrase. Without this, the adjective forms match:
+    # "was a general manager" and "was a general practitioner" were both flagged as
+    # military generals. "was a wrestler, booker and promoter" still ends a phrase.
+    r"(?=\s*(?:[.,;)]|$|\b(?:in|of|for|who|and)\b))",
     re.I,
 )
 
@@ -211,8 +215,11 @@ def collision_reason(text: str, *, credit_type: str = "", source: Optional[str] 
     (Led Zeppelin's manager died in 1995). Those still need the identity gate and
     a human read; do not pretend this function catches them.
     """
-    if bio_implausible(text):
-        return bio_implausible(text)
+    # Evaluated once: the reason is the same either way and re-running the regexes
+    # doubles the work on every candidate in the plan.
+    reason = bio_implausible(text)
+    if reason:
+        return reason
     if source in MUSIC_ONLY_SOURCES and (credit_type or "").strip().lower() in CREW_TYPES:
         return f"crew-credit-from-music-source:{source}"
     conflict = profession_conflict(text, credit_type)
