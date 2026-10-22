@@ -1,0 +1,3358 @@
+{
+ "Rock Family Trees": {
+  "absent": [
+   "The Fleetwood Mac Story",
+   "The Birmingham Beat",
+   "Deep Purple People",
+   "New York Punk",
+   "The British R&B Boom",
+   "California Dreamin'",
+   "Sabbath Bloody Sabbath",
+   "The Mersey Sound",
+   "Banshees and Other Creatures",
+   "The Prog Rock Years",
+   "And God Created Manchester"
+  ],
+  "matched": [
+   {
+    "episode": "The Fleetwood Mac Story",
+    "posting": "Rock Family Trees The Fleetwood Mac Story PAL DVD",
+    "score": 1.0,
+    "gb": 1.86,
+    "seeds": 2,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Rock.Family.Trees.S02E02.Sabbath.Bloody.Sabbath.WS.PDTV.XviD-aAF",
+    "score": 1.0,
+    "gb": 0.37,
+    "seeds": 2,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "episode": "Banshees and Other Creatures",
+    "posting": "Rock Family Trees - Banshees and Other Creatures",
+    "score": 1.0,
+    "gb": 0.81,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Black Sabbath  Rock Family Trees  Sabbath Bloody Sabbath avi",
+    "score": 1.0,
+    "gb": 0.47,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "The Prog Rock Years",
+    "posting": "BBC Rock Family Trees The Progressive Rock Years",
+    "score": 0.67,
+    "gb": 0.52,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Rock Family Trees S02E02 Sabbath Bloody Sabbath WS PDTV XviD aAF",
+    "score": 1.0,
+    "gb": 0.37,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "The Fleetwood Mac Story",
+    "posting": "Rock Family Trees The Fleetwood Mac Story PAL DVD - GRNS3",
+    "score": 1.0,
+    "gb": 1.83,
+    "seeds": 7,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "episode": "The Prog Rock Years",
+    "posting": "Bbc Rock Family Trees The Progressive Rock Years",
+    "score": 0.67,
+    "gb": 0.52,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "The Fleetwood Mac Story",
+    "posting": "Rock Family Trees   The Fleetwood Mac Story (1995) [PDTV (XviD)] bobuk",
+    "score": 1.0,
+    "gb": 0.44,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Deep Purple People",
+    "posting": "Rock Family Trees   Deep Purple People (8th July 1995) [VHSRip (XviD)]",
+    "score": 1.0,
+    "gb": 0.47,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "The British R&B Boom",
+    "posting": "Rock Family Trees   S01E03   The British RnB Boom (July 1995) [TVRip(XviD)] *DW Staff Approved*",
+    "score": 1.0,
+    "gb": 0.37,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Black Sabbath   Rock Family Trees  Sabbath Bloody Sabbath avi",
+    "score": 1.0,
+    "gb": 0.47,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Rock Family Trees S02E02 Sabbath Bloody Sabbath WS PDTV XviD aAF   [  ]",
+    "score": 1.0,
+    "gb": 0.37,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Rock Family Trees S02e02 Sabbath Bloody Sabbath Ws Pdtv Xvid aaf Torrent [ceasers Palace Info]",
+    "score": 1.0,
+    "gb": 0.38,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "Sabbath Bloody Sabbath",
+    "posting": "Black Sabbath   Rock Family Trees..Sabbath Bloody Sabbath.avi",
+    "score": 1.0,
+    "gb": 0.47,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "Deep Purple People",
+    "posting": "Rock Family Trees - Deep Purple &amp; Black Sabbath",
+    "score": 0.67,
+    "gb": 4.49,
+    "seeds": null,
+    "grabs": 15,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   }
+  ],
+  "packs": []
+ },
+ "Jazz": {
+  "absent": [
+   "Theatre de la Mutualite",
+   "Baden, Germany",
+   "Japan",
+   "New Rhumba",
+   "C-Jam Blues",
+   "Irresistible, 1949 - 1955"
+  ],
+  "matched": [],
+  "packs": [
+   {
+    "posting": "Thelonious Monk - Ken Burns Jazz (2000) [FLAC]",
+    "gb": 0.44,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Benny Goodman - 2000 - Ken Burns Jazz (CK 61445)",
+    "gb": 0.29,
+    "seeds": 30,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 6(jazz doc)(mpeg)[rogercc]",
+    "gb": 0.72,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 2(mpeg)(jazz doc)[rogercc]",
+    "gb": 0.72,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 3(mpeg)(jazz doc)[rogercc]",
+    "gb": 0.72,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 1(mpeg)(jazz doc)[rogercc]]",
+    "gb": 0.73,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 4(jazz doc)(mpeg)[rogercc]",
+    "gb": 0.72,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 7( mpeg)jazz doc)[rogercc]",
+    "gb": 0.73,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 5(mpeg)(jazz doc)[rogercc]",
+    "gb": 0.72,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Ken Burns - Jazz - Part1 - (Gumbo)",
+    "gb": 0.72,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Ken Burns - Jazz - Part 08 - Risk^D^",
+    "gb": 1.02,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Ken Burns - Jazz Part10 - A Masterpiece By Midnight ^D^",
+    "gb": 0.9,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns  Episode 9(mpeg)(jazz doc)[rogercc]",
+    "gb": 0.73,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Ken Burns - Jazz - Part2 (xvid)",
+    "gb": 0.73,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Ken Burns - Jazz - Part 06 - Swing ^D^",
+    "gb": 0.83,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz - A Film By Ken Burns",
+    "gb": 8.17,
+    "seeds": 36,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "A Hist\u00f3ria do jazz - Document\u00e1rio de Ken Burns",
+    "gb": 8.17,
+    "seeds": 11,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Ken Burns Jazz collection (flac)",
+    "gb": 1.55,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "historia del jazz - ken burns",
+    "gb": 5.94,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Ken Burns Jazz (2000) Billie Holiday",
+    "gb": 0.7,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Ken Burns Jazz (2000) Louis Armstrong",
+    "gb": 0.83,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Thelonious Monk  Ken Burns Jazz (2000) [FLAC]",
+    "gb": 0.44,
+    "seeds": 44,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Benny Goodman  2000  Ken Burns Jazz (CK 61445)",
+    "gb": 0.29,
+    "seeds": 58,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Ken Burns Jazz Louis Armstrong",
+    "gb": 0.83,
+    "seeds": 4,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Ken Burns Jazz Sonny Rollins",
+    "gb": 0.8,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Ken Burns Jazz Billie Holiday",
+    "gb": 0.7,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Jazz Ken Burns S01E01 Gumbo 720p WEB H264 GOANZALOO",
+    "gb": 1.9,
+    "seeds": 4,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "History of Jazz series by Ken Burns (2000)",
+    "gb": 3.25,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[Flac] Ken Burns Jazz Collection: The Definitive Billie Holiday",
+    "gb": 0.23,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 7( mpeg)jazz doc)[rogercc][h33t]",
+    "gb": 0.73,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 5(mpeg)(jazz doc)[rogercc][h33t]",
+    "gb": 0.72,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 4(jazz doc)(mpeg)[rogercc][h33t]",
+    "gb": 0.72,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 3(mpeg)(jazz doc)[rogercc][h33t]",
+    "gb": 0.72,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 2(mpeg)(jazz doc)[rogercc][h33t]",
+    "gb": 0.72,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 1(mpeg)(jazz doc)[rogercc]h33t]",
+    "gb": 0.73,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Thelonious Monk - Ken Burns Jazz (2000)",
+    "gb": 0.44,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Ken Burns   Jazz   Part 08   Risk^d^",
+    "gb": 1.02,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Ken Burns   Jazz Part10   A Masterpiece By Midnight ^d^",
+    "gb": 0.9,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Ken Burns Jazz (2000) Complete x264-hayzee56",
+    "gb": 5.45,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Herbie_Hancock-Ken_Burns_Jazz-CD-FLAC-2000-DeVOiD",
+    "gb": 0.53,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 3(mpeg)(jazz doc)[rogercc][h33t] mp4",
+    "gb": 0.72,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken_Burns Episode 4(jazz doc)(mpeg)[rogercc][h33t] mp4",
+    "gb": 0.72,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 1(mpeg)(jazz doc)[rogercc]h33t] mp4",
+    "gb": 0.73,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 6(jazz doc)(mpeg)[rogercc][h33t] mp4",
+    "gb": 0.72,
+    "seeds": 4,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 5(mpeg)(jazz doc)[rogercc][h33t] mp4",
+    "gb": 0.72,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns  Episode 9(mpeg)(jazz doc)[rogercc][h33t] mp4",
+    "gb": 0.73,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Fim by Ken_Burns Episode 2(mpeg)(jazz doc)[rogercc][h33t] mp4",
+    "gb": 0.72,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Jazz a Film by Ken Burns Episode 7( mpg)jazz doc)[rogercc][h33t] mp4",
+    "gb": 0.73,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Ken Burns Jazz (2000) Complete x264 hayzee56",
+    "gb": 5.45,
+    "seeds": 9,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Various Artists   Ken Burns Jazz The Story of American Music (22 CD)   2000",
+    "gb": 7.18,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "VA - Ken Burns Jazz The Story of American Music (2000)",
+    "gb": 0.09,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   }
+  ]
+ },
+ "The Blues": {
+  "absent": [
+   "Interview With Wim Wenders",
+   "An interview with Charles Burnett",
+   "An interview with Richard Pearce and Robert Kenner",
+   "An interview with Wim Wenders",
+   "An interview with Marc Levin",
+   "An interview with Mike Figgis",
+   "An interview with Martin Scorsese"
+  ],
+  "matched": [
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.2003.DVDRip.x264-HANDJOB",
+    "score": 0.67,
+    "gb": 10.3,
+    "seeds": 14,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues 2003 DVDRip x264-HANDJOB",
+    "score": 0.67,
+    "gb": 10.3,
+    "seeds": 2,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Son House - Martin Scorsese Presents The Blues - Son House (2003",
+    "score": 0.67,
+    "gb": 0.25,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "(Blues VA) Martin Scorsese Presents  The Blues -  The Soul Of A",
+    "score": 0.67,
+    "gb": 0.19,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - A Musical Journey (5 CD set",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - The Soul Of A Man [CD2][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Present The Blues - The Road To Memphis [CD3][IN",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - Piano Blues [CD7][IN",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents: The Blues (2003) [7xDVD9]",
+    "score": 0.67,
+    "gb": 49.08,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "V. A. - Martin Scorsese Presents The Blues - A Musical Journey (",
+    "score": 0.67,
+    "gb": 0.89,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Present The Blues - Feel Like Going Home [CD1][I",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - Warming By The Devil\\'s F",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - Godfathers And Sons [CD5][I",
+    "score": 0.67,
+    "gb": 0.14,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - Red, White & Blues [CD6][IN",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb' Mo' - Martin Scorsese Presents The Blues (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.48,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Jimi Hendrix-Martin Scorsese Presents the Blues(2003)[EAC-APE][T",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 2,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "The Blues, by Martin Scorsese",
+    "score": 0.67,
+    "gb": 6.21,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues REPACK in MKV",
+    "score": 0.67,
+    "gb": 8.58,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues- B.B. King",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues- The Allman Brothers",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "pmc blues library vol 8 Martin Scorsese Presents the Blues- A Mu",
+    "score": 0.67,
+    "gb": 0.36,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues: Episode 2",
+    "score": 0.67,
+    "gb": 1.61,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues***B.B. KING***",
+    "score": 0.67,
+    "gb": 0.12,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues (2003) B.B. King",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "VA  Martin Scorsese Presents The Blues (A Musical Journey) (5CD) 2003 FLAC (Jamal The Moroccan)",
+    "score": 0.67,
+    "gb": 2.48,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "VA  Martin Scorsese Presents The Blues (A Musical Journey) 5cd 2",
+    "score": 0.67,
+    "gb": 0.9,
+    "seeds": 58,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues B B King",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 4,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues",
+    "score": 0.67,
+    "gb": 12.52,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  Stevie Ray Vaughan 2003 FLAC (Jamal The Moroccan)",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues Stevie Ray Vaughan",
+    "score": 0.67,
+    "gb": 0.07,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb  Mo   2003  Martin Scorsese Presents The Blues  Keb  Mo",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Stevie Ray Vaughan   Double Trouble  2003  Martin Scorsese Presents the Blues",
+    "score": 0.67,
+    "gb": 0.52,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists  Martin Scorsese Presents the Blues  A Musical Journey CD5 (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists  Martin Scorsese Presents the Blues  A Musical Journey CD1 (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.29,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Peter Guralnick  Martin Scorsese Presents the Blues  A Musical Journey (ePUB MOBI)",
+    "score": 0.67,
+    "gb": 0.03,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues 2003 DVDRip x264 HANDJOB",
+    "score": 0.67,
+    "gb": 10.3,
+    "seeds": 20,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Son House  Martin Scorsese Presents The Blues  Son House (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.25,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues A Musical Journey(epub)[rogercc][h33t] epub",
+    "score": 0.67,
+    "gb": 0.02,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "The Blues by Martin Scorsese",
+    "score": 0.67,
+    "gb": 6.21,
+    "seeds": 18,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Present The Blues  Feel Like Going Home [CD1][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  The Soul Of A Man [CD2][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  The Road To Memphis [CD3][IN]",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  Warming By The Devil s Fire [CD4][IN]",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 25,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  Godfathers And Sons [CD5][IN]",
+    "score": 0.67,
+    "gb": 0.14,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  Red  White   Blues [CD6][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  Piano Blues [CD7][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Feel Like Going Home(flac) 19glide58 [H33T]",
+    "score": 0.67,
+    "gb": 0.37,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues Warming By The Devils Fire(flac) 19glide58 [H33T]",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues  A Musical Journey (5 CD set)  Files24 com",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "(Blues VA) Martin Scorsese Presents The Blues  The Soul Of A",
+    "score": 0.67,
+    "gb": 0.19,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "V. A. - Martin Scorsese Presents The Blues - A Musical Journey ( ...",
+    "score": 0.67,
+    "gb": 0.89,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Present The Blues - The Road To Memphis [CD3][IN ...",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - The Soul Of A Man [CD2][IN] ...",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - A Musical Journey (5 CD set ...",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "(Blues VA) Martin Scorsese Presents  The Blues -  The Soul Of A Man",
+    "score": 0.67,
+    "gb": 0.19,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   Piano Blues [CD7][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 4,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   Red, White & Blues [CD6][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Pmc Blues Library Vol 8 Martin Scorsese Presents The Blues  A Mu",
+    "score": 0.67,
+    "gb": 0.36,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb Mo Martin Scorsese Presents the Blues(blues)(flac)[rogercc][h33t]",
+    "score": 0.67,
+    "gb": 0.39,
+    "seeds": 22,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "VA - Martin Scorsese Presents The Blues (A Musical Journey) (5CD) 2003 FLAC (Jamal The Moroccan)",
+    "score": 0.67,
+    "gb": 2.48,
+    "seeds": 9,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   The Road To Memphis [CD3][IN]",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   The Soul Of A Man [CD2][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   Warming By The Devil's Fire [CD4][IN]",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 25,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues  The Allman Brothers 3462681 TPB 2",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues Warming By The Devils Fire(flac){19glide58}[H33T]",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues - Stevie Ray Vaughan 2003 FLAC (Jamal The Moroccan)",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Jimi Hendrix Martin Scorsese Presents the Blues(2003)[EAC APE][TWR64][CR Bt]",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 65,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   A Musical Journey (5 Cd Set",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Eric Clapton Martin Scorsese Presents the Blues 2003 SSR[",
+    "score": 0.67,
+    "gb": 0.09,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Present The Blues   Feel Like Going Home [CD1][IN]",
+    "score": 0.67,
+    "gb": 0.15,
+    "seeds": 19,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   Godfathers And Sons [CD5][IN]",
+    "score": 0.67,
+    "gb": 0.14,
+    "seeds": 53,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "[EAC FLAC cue    ]Martin Scorsese Presents The Blues   Lightning in a Bottle (V A  Live 2003)[colomb",
+    "score": 0.67,
+    "gb": 0.77,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Muddy Waters Martin Scorsese Presents The Blues(flac){19glide58}[H33T]",
+    "score": 0.67,
+    "gb": 0.21,
+    "seeds": 37,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues: Taj Mahal (2003) [flac] *",
+    "score": 0.67,
+    "gb": 0.38,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues a Musical Journey(2003)[flac]",
+    "score": 0.67,
+    "gb": 1.07,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Stevie Ray Vaughan Martin Scorsese Presents The Blues",
+    "score": 0.67,
+    "gb": 0.07,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presente The Blues 7boxdvd Cd (dvd Et Cd 2 3 4 5 6)",
+    "score": 0.67,
+    "gb": 2.15,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Feel Like Going Home(flac){19glide58}[H33T]",
+    "score": 0.67,
+    "gb": 0.37,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   A Musical Journey (5 CD set)   Files24 com",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt1 XVID",
+    "score": 0.67,
+    "gb": 0.74,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt 2 XVID",
+    "score": 0.67,
+    "gb": 0.74,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt3 DIVX5",
+    "score": 0.67,
+    "gb": 0.74,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt4 XVID",
+    "score": 0.67,
+    "gb": 0.73,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt5 DIVX5",
+    "score": 0.67,
+    "gb": 0.73,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues Pt6 DIVX5",
+    "score": 0.67,
+    "gb": 0.73,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues - Jimi Hendrix",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues- B B  King",
+    "score": 0.67,
+    "gb": 0.12,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues - A Musical Journey (2003)",
+    "score": 0.67,
+    "gb": 12.4,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Son House - Martin Scorsese Presents The Blues - Son House (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.25,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues - 2003 - Robert Johnson",
+    "score": 0.67,
+    "gb": 0.17,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues - 2003 - A Musical Journey",
+    "score": 0.67,
+    "gb": 1.84,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Peter Guralnick - Martin Scorsese Presents the Blues_ A Musical Journey (ePUB+MOBI)",
+    "score": 0.67,
+    "gb": 0.03,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD5 (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD2 (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.27,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD4 (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.4,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Stevie Ray Vaughan & Double Trouble - 2003 - Martin Scorsese Presents the Blues [EAC FLAC]",
+    "score": 0.67,
+    "gb": 0.52,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb' Mo' - 2003 - Martin Scorsese Presents The Blues - Keb' Mo' [EAC FLAC]",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb' Mo' - 2003 - Martin Scorsese Presents The Blues - Keb' Mo' [mp3@320]",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey (2003) [MP3 320]",
+    "score": 0.67,
+    "gb": 0.9,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents the Blues",
+    "score": 0.67,
+    "gb": 2.82,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "VA--Martin-Scorsese-Presents-The-Blues-(A-Musical-Journey)-(5CD)-2003-FLAC-(Jama..",
+    "score": 0.67,
+    "gb": 2.48,
+    "seeds": 30,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin-Scorsese-Presents-The-Blues--Stevie-Ray-Vaughan-2003-FLAC-(Jamal-The-Moro..",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey (2003) [..",
+    "score": 0.67,
+    "gb": 0.9,
+    "seeds": 2,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb' Mo'   2003   Martin Scorsese Presents The Blues   Keb' Mo' [mp3@320]",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb' Mo'   2003   Martin Scorsese Presents The Blues   Keb' Mo' [EAC FLAC]",
+    "score": 0.67,
+    "gb": 0.51,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD4 (200..",
+    "score": 0.67,
+    "gb": 0.4,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD2 (200..",
+    "score": 0.67,
+    "gb": 0.27,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various-Artists--Martin-Scorsese-Presents-the-Blues -A-Musical-Journey-CD1-(2003..",
+    "score": 0.67,
+    "gb": 0.29,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Various Artists - Martin Scorsese Presents the Blues, A Musical Journey CD5 (200..",
+    "score": 0.67,
+    "gb": 0.49,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Peter Guralnick - Martin Scorsese Presents the Blues_ A Musical Journey (ePUB+MO..",
+    "score": 0.67,
+    "gb": 0.03,
+    "seeds": 6,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues   A Musical Journey (2003)",
+    "score": 0.67,
+    "gb": 1.84,
+    "seeds": 69,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   Robert Johnson (2003)",
+    "score": 0.67,
+    "gb": 0.17,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Son House   Martin Scorsese Presents The Blues   Son House (2003) [FLAC]",
+    "score": 0.67,
+    "gb": 0.25,
+    "seeds": 19,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues   A Musical Journey (2003) m4",
+    "score": 0.67,
+    "gb": 12.4,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues A Musical Journey(epub)[rogercc][h33t].epub",
+    "score": 0.67,
+    "gb": 0.02,
+    "seeds": 8,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents the Blues: Taj Mahal  (2003) [FLAC]  *Planxty*",
+    "score": 0.67,
+    "gb": 0.38,
+    "seeds": 31,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese presents The Blues-Warming By The Devils Fire(flac){19glide58}[H..",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": 1,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin Scorsese Presents The Blues   A Musical Journey (5 CD set)   Files24.com",
+    "score": 0.67,
+    "gb": 0.58,
+    "seeds": 0,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "(Blues VA) Martin Scorsese Presents  The Blues    The Soul Of A",
+    "score": 0.67,
+    "gb": 0.19,
+    "seeds": 17,
+    "grabs": null,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Muddy.Waters-Martin.Scorsese.Presents.The.Blues-CD-FLAC-2003-FATHEAD",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": null,
+    "grabs": 192,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb.Mo-Martin.Scorsese.Presents.The.Blues-5125772-CD-FLAC-2003-6DM",
+    "score": 0.67,
+    "gb": 0.43,
+    "seeds": null,
+    "grabs": 31,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Keb Mo-Martin Scorsese Presents The Blues-5125772-CD-FLAC-2003-6DM",
+    "score": 0.67,
+    "gb": 0.43,
+    "seeds": null,
+    "grabs": 60,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Robert Johnson-Martin Scorsese Presents The Blues Robert Johnson-WEB-2003-TERSE INT",
+    "score": 0.67,
+    "gb": 0.11,
+    "seeds": null,
+    "grabs": 20,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Muddy Waters-Martin Scorsese Presents The Blues-CD-FLAC-2003-FATHEAD",
+    "score": 0.67,
+    "gb": 0.24,
+    "seeds": null,
+    "grabs": 180,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Jimi.Hendrix-Martin.Scorsese.Presents.The.Blues-2003-aPC",
+    "score": 0.67,
+    "gb": 0.12,
+    "seeds": null,
+    "grabs": 152,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part7.Piano.Blues.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.86,
+    "seeds": null,
+    "grabs": 174,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part6.Red.White.And.Blues.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.85,
+    "seeds": null,
+    "grabs": 133,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part5.Godfathers.And.Sons.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.85,
+    "seeds": null,
+    "grabs": 221,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part4.Warming.By.The.Devils.Fire.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.85,
+    "seeds": null,
+    "grabs": 123,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part3.The.Road.To.Memphis.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.85,
+    "seeds": null,
+    "grabs": 119,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part2.The.Soul.Of.A.Man.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.85,
+    "seeds": null,
+    "grabs": 135,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "episode": "An interview with Martin Scorsese",
+    "posting": "Martin.Scorsese.Presents.The.Blues.Part1.Feel.Like.Going.Home.2003.iNTERNAL.DVDRip.XviD-SPRiNTER",
+    "score": 0.67,
+    "gb": 0.86,
+    "seeds": null,
+    "grabs": 148,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   }
+  ],
+  "packs": []
+ },
+ "Latin Music USA": {
+  "absent": [
+   "East Side Story",
+   "Borderlands",
+   "The Latin Explosion"
+  ],
+  "matched": [],
+  "packs": [
+   {
+    "posting": "Euro Latino USA Ballroom Dance music 10CD (musicfromrizzo)",
+    "gb": 0.74,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Latin Music USA The Chicano Wave Divas And Superstars WS DSR XviD WaLMaRT[immortalseed]",
+    "gb": 0.75,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Pbs latin music usa 1of4 bridges x264 ac3  mkv",
+    "gb": 0.78,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   }
+  ]
+ },
+ "This Is Pop": {
+  "absent": [
+   "Hail Britpop!"
+  ],
+  "matched": [],
+  "packs": [
+   {
+    "posting": "Sia - This Is Acting (10th Anniversary Edition) (2026 Pop) [Flac 24-44]",
+    "gb": 1.17,
+    "seeds": 31,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "This.Is.Pop.S01.COMPLETE.720p.WEBRip.x264-GalaxyTV",
+    "gb": 3.31,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Icona Pop - This is... Icona Pop (Deluxe) (2013) [FLAC]",
+    "gb": 0.37,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Chelsea Cutler &ndash; IS THIS THE END Pop (2026) 320_kbps Beats\u2b50",
+    "gb": 0.09,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Gracie Abrams - This Is What It Feels Like (2021 Pop) [FLAC 24-44]",
+    "gb": 0.43,
+    "seeds": 24,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Gracie Abrams - This Is What It Feels Like (2021 Pop) [FLAC 16-44]",
+    "gb": 0.23,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Anna Calvi - Is This All There Is (2026 Pop Rock Alternative and Indie) [Flac 24-96]",
+    "gb": 0.21,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Icona Pop - This Is... Icona Pop {2013-Album}",
+    "gb": 0.08,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "0   0 (2013) Icona Pop - This Is... Icona Pop (Deluxe Edition)",
+    "gb": 0.37,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "[chamber pop, indie-folk] (2019) Lambchop - This (is what I want",
+    "gb": 0.24,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "[indie-folk, indie-pop] (2020) This Is The Kit - Off Off On [FLA",
+    "gb": 0.28,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "This Is Pop S01E02 480p x264-mSD",
+    "gb": 0.36,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Shitney Beers - This Is Pop (2022) [24Bit-44.1kHz] FLAC [PMEDIA] \u2b50\ufe0f",
+    "gb": 0.32,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "[indie-folk, indie-pop] (2023) This Is the Kit - Careful of Your Keepers [FLAC]",
+    "gb": 0.2,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "[art pop, indie-pop] (2024) Mal Not Bad - This Is Your New Life [FLAC] [DarkAngi",
+    "gb": 0.18,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Michael Jackson - This Is It... (Live) [2009] -Pop",
+    "gb": 0.37,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Icona Pop - This Is... Icona Pop Deluxe Version 2013 MP3@320kbps",
+    "gb": 0.12,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "Icona Pop-This Is...Icona Pop [This Is...] (MP3 @ 320 kbps)",
+    "gb": 0.12,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Amy MacDonald - This Is The Life (2007) -Pop",
+    "gb": 0.06,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "VA-This.Is.So. Good.Classic.Music.Videos(POP,SOUL,ROCK)VOL.5(Rag",
+    "gb": 5.49,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "VA-This.Is.So. Good.Classic.Music.Videos( POP, SOUL, ROCK )VOL.1",
+    "gb": 5.58,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "The Pirate Bay"
+   },
+   {
+    "posting": "XTC - This is Pop [Documentary] (2018) 1080p HDTV x264",
+    "gb": 2.16,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Gracie Abrams  This Is What It Feels Like (2021 Pop) [FLAC 24 44]",
+    "gb": 0.43,
+    "seeds": 48,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Gracie Abrams  This Is What It Feels Like (2021 Pop) [FLAC 16 44]",
+    "gb": 0.23,
+    "seeds": 17,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Chelsea Cutler \u2013 IS THIS THE END Pop (2026) 320 kbps Beats\u2b50",
+    "gb": 0.09,
+    "seeds": 19,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Anna Calvi  Is This All There Is (2026 Pop Rock Alternative and Indie) [Flac 24 96]",
+    "gb": 0.21,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Sia  This Is Acting (10th Anniversary Edition) (2026 Pop) [Flac",
+    "gb": 1.17,
+    "seeds": 174,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[Indie Pop] Inge Lamboo  This Is How The Future Sounds 2025 FLAC (Jamal The Moroccan)",
+    "gb": 0.25,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "[art pop  indie pop] (2024) Mal Not Bad  This Is Your New Life [FLAC] [DarkAngi",
+    "gb": 0.18,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "[indie folk  indie pop] (2023) This Is the Kit  Careful of Your Keepers [FLAC]",
+    "gb": 0.2,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Jennifer Lopez  This Is Me  Now (Deluxe) (2024 Pop) [Flac 24 44]",
+    "gb": 0.66,
+    "seeds": 53,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[POP]  Jennifer Lopez  This Is Me  Now (Deluxe)  [Hi Res] 2024 WEB FLAC 24BIT  44 1khz EICHBAUM",
+    "gb": 0.66,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "[POP]  Jennifer Lopez  This Is Me  Now (Deluxe)  2024  WEB FLAC 16BITS 44 1KHZ EICHBAUM",
+    "gb": 0.39,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Amy Macdonald  This is The Life (Expanded) [2CD] (2007 Pop) [Flac 16 44]",
+    "gb": 0.57,
+    "seeds": 57,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Amy Macdonald  This Is The Life (eDeluxe) (2007 Pop) [Flac 16 44]",
+    "gb": 0.36,
+    "seeds": 40,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Gwen Stefani  This Is What The Truth Feels Like (Deluxe) (2016 Pop) [Flac 24 44]",
+    "gb": 0.75,
+    "seeds": 59,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Various Artists  This Is Pop  100 Hits (2023) FLAC [PMEDIA] \u2b50\ufe0f",
+    "gb": 2.45,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Shitney Beers  This Is Pop (2022) [24Bit 44 1kHz] FLAC [PMEDIA] \u2b50\ufe0f",
+    "gb": 0.32,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Jennifer Lopez  This Is Me  Then (20th Anniversary Edition) (2022 Pop) [Flac 16 44]",
+    "gb": 0.48,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "Backstreet Boys  This Is Us (2009 Pop) [Flac 16 44]",
+    "gb": 0.31,
+    "seeds": 57,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Various Artists  This Is Pop  100 Hits (2022) Mp3 320kbps [PMEDIA] \u2b50\ufe0f",
+    "gb": 0.86,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "LimeTorrents"
+   },
+   {
+    "posting": "This Is Pop S01 1080p NF WEBRip DDP5 1 x264 BIGDOC[rartv]",
+    "gb": 16.83,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01 1080p NF WEBRip DDP5 1 x264 BIGDOC[eztv re]",
+    "gb": 16.83,
+    "seeds": 32,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E02 720p HEVC x265 MeGusta[eztv re]",
+    "gb": 0.48,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01 COMPLETE 720p WEBRip x264",
+    "gb": 3.31,
+    "seeds": 140,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01 WEBRip x264 ION10[eztv re]",
+    "gb": 3.55,
+    "seeds": 77,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E01 720p HEVC x265 MeGusta[eztv re]",
+    "gb": 0.54,
+    "seeds": 17,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E01 480p x264 mSD[eztv re]",
+    "gb": 0.39,
+    "seeds": 19,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E02 XviD AFG[eztv re]",
+    "gb": 0.53,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E06 XviD AFG[eztv re]",
+    "gb": 0.83,
+    "seeds": 13,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E01 XviD AFG[eztv re]",
+    "gb": 0.57,
+    "seeds": 11,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e05 1080p web h264 bigdoc[eztv re]",
+    "gb": 1.74,
+    "seeds": 15,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e02 1080p web h264 bigdoc[eztv re]",
+    "gb": 2.1,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E02 480p x264 mSD[eztv re]",
+    "gb": 0.36,
+    "seeds": 16,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e07 1080p web h264 bigdoc[eztv re]",
+    "gb": 2.16,
+    "seeds": 14,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e01 720p web h264 bigdoc[eztv re]",
+    "gb": 1.19,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e03 1080p web h264 bigdoc[eztv re]",
+    "gb": 2.53,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e02 720p web h264 bigdoc[eztv re]",
+    "gb": 1.19,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e08 1080p web h264 bigdoc[eztv re]",
+    "gb": 2.5,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e01 1080p web h264 bigdoc[eztv re]",
+    "gb": 1.95,
+    "seeds": 19,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e06 720p web h264 bigdoc[eztv re]",
+    "gb": 1.37,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "This Is Pop S01E06 480p x264 mSD[eztv re]",
+    "gb": 0.47,
+    "seeds": 10,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Gwen Stefani - This Is What The Truth Feels Like (Deluxe) (2016 P...",
+    "gb": 0.75,
+    "seeds": 31,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Various Artists - This Is Pop - 100 Hits (2023) FLAC [PMEDIA] \u2b50\ufe0f...",
+    "gb": 2.47,
+    "seeds": 19,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Shitney Beers - This Is Pop (2022) [24Bit-44.1kHz] FLAC [PMEDIA] ...",
+    "gb": 0.32,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Jennifer Lopez - This Is Me...Then (20th Anniversary Edition) (20...",
+    "gb": 0.48,
+    "seeds": 24,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Backstreet Boys - This Is Us (2009 Pop) [Flac 16-44]",
+    "gb": 0.31,
+    "seeds": 25,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Various Artists - This Is Pop - 100 Hits (2022) Mp3 320kbps [PMED...",
+    "gb": 0.86,
+    "seeds": 54,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Neri Per Caso - ...And So This Is Christmas 2008 (2008 - Pop) [Fl...",
+    "gb": 0.13,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "[chamber pop, indie-pop] (2021) Hypnotic Brass Ensemble \u2013 This is...",
+    "gb": 0.19,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "This.Is.Pop.S01.COMPLETE.720p.WEBRip.x264-GalaxyTV \u2b50",
+    "gb": 3.33,
+    "seeds": 25,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "[indie-folk, indie-pop] (2020) This Is The Kit - Off Off On [FLAC...",
+    "gb": 0.28,
+    "seeds": 6,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Icona Pop - This Is... Icona Pop (2013) FLAC",
+    "gb": 0.26,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Ed Sheeran - This is Ed Sheeran (2019) MP3",
+    "gb": 0.38,
+    "seeds": 81,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "NIMA-007 popular Doujin comic live-action This is not my grandfat...",
+    "gb": 1.29,
+    "seeds": 97,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "+++ [FHD] NIMA-007 popular Doujin comic live-action!! This is not...",
+    "gb": 5.91,
+    "seeds": 296,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "MKMP-282 is actress too This actress also Unmercifully fucked the...",
+    "gb": 2.79,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "[chamber pop, indie-folk] (2019) Lambchop - This (is what I wante...",
+    "gb": 0.24,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "JULIA Is Going Undercover At This Popular Titty Pub In The Downto...",
+    "gb": 2.04,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Stacy Snake - this little pint size bitch is a firecracker waitin...",
+    "gb": 2.04,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "[ArenaBG.com]-LegalPorno - Stacy Snake - this little pint size bi...",
+    "gb": 1.18,
+    "seeds": 4,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "[LegalPorno] Stacy Snake - this little pint size bitch is a firec...",
+    "gb": 1.18,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "The Waterboys - This Is the Sea [FLAC RemEd2CD]",
+    "gb": 0.76,
+    "seeds": 5,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Sia - This Is Acting (Deluxe Edition) [2016] [MP3~320Kbps]",
+    "gb": 0.18,
+    "seeds": 106,
+    "protocol": "torrent",
+    "indexer": "TorrentProject2"
+   },
+   {
+    "posting": "Chelsea Cutler \u2013 IS THIS THE END Pop (2026) 320_kbps Beats\u2b50",
+    "gb": 0.09,
+    "seeds": 9,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "[Cattleya] Rich Girl Caretaker: I'm Secretly the Caregiver of the Most Popular Girl in This Rich Kid School - S01E10 - The Plan to Free Narika From Isolation (CR WEB-DL 1080p AAC x264) [67784878] | Saijo no Osewa: Takane no Hanadarake na Meimonkou de, Ga\u2026",
+    "gb": 1.5,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "(Alt. Rock / Pop Punk / Female Vocal) Yours Truly - is this what i look like? (EP) - 2022, MP3, 320 kbps",
+    "gb": 0.05,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "miaa-347 Bitch Orgasms And Cherry-Popping NTR This Classmate Is",
+    "gb": 1.94,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "(Indie, Indie Pop) [WEB] This Is The Kit - Wriggle Out the Restless - 2012, FLAC (tracks), lossless",
+    "gb": 0.2,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "[indie-folk, indie-pop] (2020) This Is The Kit - Off Off On [FLA ...",
+    "gb": 0.28,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "Because This Woman Is Cheeky, Please Re \u25cf Popular cafe clerk str",
+    "gb": 6.51,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "(Pop Rock) [CD] Bee Gees - This Is Where I Came In - 2001, FLAC (image+.cue), lossless",
+    "gb": 0.39,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "This Is The Best Of Harlem!Popular Co-star Work BEST By Luxury A ...",
+    "gb": 2.81,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "(Pop) Petula Clark - This Is My Song (2 CD) - 2009, MP3, 320 kbps",
+    "gb": 0.28,
+    "seeds": 3,
+    "protocol": "torrent",
+    "indexer": "Knaben"
+   },
+   {
+    "posting": "XTC- This is Pop (2018) 1080p HDTV x264",
+    "gb": 2.18,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Various Artists - This Is Pop - 100 Hits (2023) FLAC [PMEDIA] \u00e2\u00ad\u0090\u00ef\u00b8\u008f",
+    "gb": 2.45,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "XTC This Is Pop 2017 1080p WEBRip x265-RARBG",
+    "gb": 1.22,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "Icona Pop - 2013 - This Is    Icona Pop",
+    "gb": 0.26,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "Torrent Downloads"
+   },
+   {
+    "posting": "olo@SIS001@LegalPorno - Stacy Snake - this little pint size bitch is a firecracker waiting to pop IV038",
+    "gb": 0.0,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentKitty"
+   },
+   {
+    "posting": "Icona Pop - This Is... Icona Pop [2013] 320.torrent",
+    "gb": 0.0,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentKitty"
+   },
+   {
+    "posting": "THE BOHEMIANS - THIS IS POP !!!.rar",
+    "gb": 0.0,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentKitty"
+   },
+   {
+    "posting": "Backstreet Boys - This Is Us (2009) - Pop [www.torrentazos.com]",
+    "gb": 0.0,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentKitty"
+   },
+   {
+    "posting": "Anna-Calvi--Is-This-All-There-Is-(2026-Pop-Rock-Alternative-and-Indie)-[Flac-24-..",
+    "gb": 0.21,
+    "seeds": 9,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[Indie-Pop]-Inge-Lamboo--This-Is-How-The-Future-Sounds-2025-FLAC-(Jamal-The-Moro..",
+    "gb": 0.25,
+    "seeds": 8,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[art pop indie pop] (2024) Mal Not Bad  This Is Your New Life [FLAC] [DarkAngi",
+    "gb": 0.18,
+    "seeds": 13,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[indie folk indie pop] (2023) This Is the Kit  Careful of Your Keepers [FLAC]",
+    "gb": 0.2,
+    "seeds": 21,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[POP]--Jennifer-Lopez--This-Is-Me--Now-(Deluxe)--[Hi-Res]-2024-WEB-FLAC-24BIT--4..",
+    "gb": 0.66,
+    "seeds": 18,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "[POP]--Jennifer-Lopez--This-Is-Me--Now-(Deluxe)--2024--WEB-FLAC-16BITS-44-1KHZ-E..",
+    "gb": 0.39,
+    "seeds": 39,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Various Artists  This Is Pop  100 Hits (2023) FLAC [PMEDIA] \u00e2\u00ad\u0090\u00ef\u00b8\u008f",
+    "gb": 2.45,
+    "seeds": 75,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Shitney Beers  This Is Pop (2022) [24Bit 44 1kHz] FLAC [PMEDIA] \u00e2\u00ad\u0090\u00ef\u00b8\u008f",
+    "gb": 0.32,
+    "seeds": 22,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Jennifer-Lopez--This-Is-Me--Then-(20th-Anniversary-Edition)-(2022-Pop)-[Flac-16-..",
+    "gb": 0.48,
+    "seeds": 46,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e04 1080p web h264 bigdoc[eztv re]",
+    "gb": 1.64,
+    "seeds": 11,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "this is pop s01e06 1080p web h264 bigdoc[eztv re]",
+    "gb": 2.18,
+    "seeds": 10,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC This Is Pop 2017 1080p WEBRip x265 RARBG",
+    "gb": 1.22,
+    "seeds": 15,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Icona Pop  2013  This Is  Icona Pop",
+    "gb": 0.26,
+    "seeds": 7,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC This is Pop 2017 1080p WEBRip x264 RARBG",
+    "gb": 1.5,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC This is Pop 2017 WEBRip x264 ION10",
+    "gb": 0.75,
+    "seeds": 2,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC This is Pop 2017 WEBRip XviD MP3 XVID",
+    "gb": 0.99,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC This is Pop 2017 1080p AMZN WEBRip DDP2 0 x264 monkee",
+    "gb": 5.0,
+    "seeds": 1,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "XTC  This is Pop (2018 documentary) 1080p HDTV x264",
+    "gb": 2.18,
+    "seeds": 12,
+    "protocol": "torrent",
+    "indexer": "TorrentDownload"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.72,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E09.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.72,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E07.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.75,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E05.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.72,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E04.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.65,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E03.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.75,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E02.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.65,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E10.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.72,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E08.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.65,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E01.1080p.CR.WEB-DL.AAC2.0.H.264-BiOMA",
+    "gb": 1.65,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Dr.Pimple.Popper.2018.S01E03.This.Cyst.Persists.720p.DSCP.WEB-DL.DDP2.0.H.264-FUZEER",
+    "gb": 1.18,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Dr.Pimple.Popper.2018.S01E03.This.Cyst.Persists.1080p.DSCP.WEB-DL.DDP2.0.H.264-FUZEER",
+    "gb": 2.19,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E12.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.38,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School 2026 S01 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 21.46,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E09 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E10 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E11 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E03 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.9,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E05 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E12 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.2,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E02 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.79,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E06 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E08 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.78,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E07 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.9,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E04 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.78,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School S01E01 1080p CR WEB-DL AAC2.0 H.264-OldT",
+    "gb": 1.8,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.33,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E12.XviD-AFG",
+    "gb": 0.28,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E12.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.89,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E12.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.57,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ownboss-Pop This [Extended Mix]-[CR113B]-SINGLE-WEB-2026-AOV",
+    "gb": 0.01,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.1080p.LINETV.WEB-DL.AAC2.0.H.264-MWeb",
+    "gb": 0.75,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.1080p.Baha.WEB-DL.AAC2.0.H.264-MWeb",
+    "gb": 0.39,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E10.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.33,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.88,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E11.XviD-AFG",
+    "gb": 0.26,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E11.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.57,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E09.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.37,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E10.XviD-AFG",
+    "gb": 0.25,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E10.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.89,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E10.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.57,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E08.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.3,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E09.XviD-AFG",
+    "gb": 0.27,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E09.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.88,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E09.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.57,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E07.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.3,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E08.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.8,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E08.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.51,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E06.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.33,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E07.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.92,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E07.XviD-AFG",
+    "gb": 0.24,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.2026.S01E07.1080p.CR.WEB-DL.AAC2.0.H.264-AnoZu",
+    "gb": 1.6,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich Girl Caretaker-Im Secretly the Caregiver of the Most Popular Girl in This Rich Kid School 2026 S01E06 1080p CR WEB-DL AAC 2.0 H.264-OldT",
+    "gb": 0.84,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E05.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.33,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E06.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.86,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E05.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.89,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E04.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.3,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Vampirina.S02E33E34.Vampopera.This.Haunted.House.Is.Closed.1080p.DSNP.WEB-DL.DDP5.1.x264-AndreMor",
+    "gb": 1.93,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E04.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.8,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E03.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.35,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E03.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.92,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E02.1080p.BILI.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 0.37,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E02.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.81,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E01.1080p.BILI.WEB-DL.JPN.AAC2.0.H.265.MSubs-ToonsHub",
+    "gb": 0.3,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E01.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub",
+    "gb": 1.53,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Rich.Girl.Caretaker.Im.Secretly.the.Caregiver.of.the.Most.Popular.Girl.in.This.Rich.Kid.School.S01E01.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG",
+    "gb": 1.8,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "ElegantAngel.26.05.28.Poppy.Cox.Pretty.Girls.Fuck.Like.This.XXX.1080p.MP4-P2P",
+    "gb": 1.72,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Nubiles.26.04.30.Poppy.Applegate.Let.Me.Take.This.Off.XXX.480p.MP4-XXX",
+    "gb": 0.2,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Nubiles.26.04.30.Poppy.Applegate.Let.Me.Take.This.Off.XXX.2160p.MP4-WRB",
+    "gb": 2.17,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Nubiles.26.04.30.Poppy.Applegate.Let.Me.Take.This.Off.XXX.1080p.MP4-WRB",
+    "gb": 0.98,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Pnk-Try.This.2003.Pop.[Flac.16-44]",
+    "gb": 0.45,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "VA - This Is Dance Electro Pop Vol 23-RH2COMP2279-WEB-2024-ZzZz iNT",
+    "gb": 0.09,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ill.Get.This.S01E06.1080p.WEB.h264-POPPYCOCK",
+    "gb": 0.82,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ill.Get.This.S01E02.1080p.WEB.h264-POPPYCOCK",
+    "gb": 0.95,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ill.Get.This.S01E05.1080p.WEB.h264-POPPYCOCK",
+    "gb": 0.98,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ill.Get.This.S01E04.1080p.WEB.h264-POPPYCOCK",
+    "gb": 0.75,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Ill.Get.This.S01E03.1080p.WEB.h264-POPPYCOCK",
+    "gb": 0.79,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "PornHub.2023.Sofie.Lollipop.Sofie.Becomes.A.Dark.Foxy.On.This.Halloween.Night.XXX.720p.HEVC.x265.PRT[XvX]",
+    "gb": 0.11,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "PornHub.2023.Sofie.Lollipop.Sofie.Becomes.A.Dark.Foxy.On.This.Halloween.Night.XXX.1080p.HEVC.x265.PRT[XvX]",
+    "gb": 0.18,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "XTC.This.Is.Pop.2017.1080p.WEBRip.x265",
+    "gb": 1.35,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Dr.Pimple.Popper.S01E03.This.Cyst.Persists.WEBDL-1080p",
+    "gb": 4.24,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "This.is.Jinsy-S02E07-Population.791.1080p.WEB-DL-Cinefeel",
+    "gb": 1.92,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "Popoff-This Is My Soul-TM235-SINGLE-WEB-2023-AFO INT",
+    "gb": 0.02,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "this.is.pop.s01e07.1080p.web.h264-bigdoc",
+    "gb": 2.38,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   },
+   {
+    "posting": "this.is.pop.s01e04.1080p.web.h264-bigdoc",
+    "gb": 1.81,
+    "seeds": null,
+    "protocol": "usenet",
+    "indexer": "NZBgeek"
+   }
+  ]
+ }
+}
