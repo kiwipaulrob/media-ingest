@@ -121,6 +121,11 @@ client for the first time.
     at all (no magnet, no guid hash), so a hash-keyed check reports "not in the
     queue" for a torrent that is there. `qb.by_title(fragment)` normalises both
     sides; `source.queue()` returns `verified`/`state`/`hash` from the queue.
+  - **A failed verification is not a failed add.** The queue lookup is a second
+    network call and can fail on its own; if its exception reaches the add's result
+    the caller sees `ok: false` for a torrent that was accepted. Keep them separate
+    — `ok` for the add, `verified` for the lookup — and never let a verification
+    error rewrite a success.
   - Magnets show as bare hashes with no name until metadata resolves, so for a
     bare magnet fall back to infohash — and allow 10-30 min of DHT/tracker
     announce before judging seed counts. Skip infohashes already queued (DUP, not
