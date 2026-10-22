@@ -135,3 +135,58 @@ def test_check_row_names_skips_rows_that_have_not_appeared_yet(monkeypatch, tmp_
     monkeypatch.setattr(cli.config, "CHECK_LIST", tmp_path / "check.json")
     assert cli.check_row_names([{"item_id": "", "dest": "/lib/x.mkv"}],
                                journal=tmp_path / "j.jsonl") == []
+
+
+def test_fix_row_name_resolves_by_name_never_by_number(monkeypatch):
+    """The repair must look the episode up BY NAME — looking it up by number is
+    the defect being repaired."""
+    from cli import ingest_new as cli
+
+    asked = {}
+
+    def fake_find(series_id, wanted, **kw):
+        asked["series"] = series_id
+        asked["wanted"] = wanted
+        return {"id": 403448, "name": "Elvis Presley: Elvis Presley",
+                "overview": "The creation of Elvis Presley's debut album.",
+                "air_date": "2001-12-29"}
+
+    posted = {}
+    # The row starts wrong and the write must actually take effect: the repair
+    # verifies by RE-READING, so a fake that keeps returning the old value would
+    # (correctly) report the row as still wrong.
+    row = {"Name": "Judas Priest: British Steel", "IndexNumber": 5,
+           "ParentIndexNumber": 3, "Genres": ["Rock"]}
+
+    def fake_get(path, params=None):
+        return dict(row)
+
+    def fake_post(iid, dto):
+        posted.update(dto)
+        row.update({"Name": dto.get("Name"), "LockedFields": dto.get("LockedFields")})
+
+    monkeypatch.setattr(cli.tmdb, "find_episode_by_name", fake_find)
+    monkeypatch.setattr(cli.jellyfin, "user_id", lambda: "uid")
+    monkeypatch.setattr(cli.jellyfin, "get_json", fake_get)
+    monkeypatch.setattr(cli.jellyfin, "post_item", fake_post)
+
+    ok = cli._fix_row_name("abc", "/lib/S03E05 Elvis Presley - Elvis Presley.mkv", 9048)
+
+    assert ok is True
+    assert asked["wanted"] == "Elvis Presley - Elvis Presley"   # by name
+    assert asked["series"] == 9048
+    assert posted["Name"] == "Elvis Presley: Elvis Presley"
+    assert posted["ProviderIds"] == {"Tmdb": "403448"}          # the neighbour's ids are gone
+    assert posted["LockedFields"] == ["Name", "Overview"]       # cannot be clobbered again
+    assert posted["PremiereDate"] == "2001-12-29"
+    assert "Genres" not in posted                               # 400s the whole update
+
+
+def test_fix_row_name_declines_when_tmdb_has_no_matching_episode(monkeypatch):
+    """No match means leave it alone — never guess an episode."""
+    from cli import ingest_new as cli
+    monkeypatch.setattr(cli.tmdb, "find_episode_by_name", lambda *a, **k: None)
+    monkeypatch.setattr(cli.jellyfin, "user_id", lambda: "uid")
+    monkeypatch.setattr(cli.jellyfin, "post_item",
+                        lambda *a: (_ for _ in ()).throw(AssertionError("must not write")))
+    assert cli._fix_row_name("abc", "/lib/S03E05 Mystery.mkv", 9048) is False
