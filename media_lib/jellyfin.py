@@ -257,6 +257,31 @@ def refresh_library(lib_id: str) -> int:
     return 204
 
 
+def refresh_item(item_id: str, *, metadata: str = "FullRefresh",
+                 images: str = "FullRefresh",
+                 replace_all_metadata: bool = False,
+                 replace_all_images: bool = False) -> int:
+    """Per-item Refresh — the only way to make a known row RE-PROBE its file.
+
+    A library-scoped Refresh re-resolves metadata for known rows but does not
+    re-probe the media, so after a file is swapped in place at the same path the
+    row keeps reporting the OLD stream info (codec, interlaced flag, bitrate).
+    Disk is ground truth; this forces the re-read.
+
+    ReplaceAll flags default to false: turning them on would overwrite hand-set
+    fields. Note this route (unlike the library-level one) accepts the mode
+    params — the library route 400s when they are passed.
+    """
+    params = {
+        "MetadataRefreshMode": metadata,
+        "ImageRefreshMode": images,
+        "ReplaceAllMetadata": "true" if replace_all_metadata else "false",
+        "ReplaceAllImages": "true" if replace_all_images else "false",
+    }
+    _request(f"/Items/{item_id}/Refresh?{urllib.parse.urlencode(params)}", method="POST")
+    return 204
+
+
 def notify_media(paths: Iterable[str], update_type: str = "Created") -> int:
     """Tell the scanner that files appeared.
 

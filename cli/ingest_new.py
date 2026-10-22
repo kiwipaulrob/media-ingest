@@ -22,7 +22,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from media_lib import awaiting, config, jellyfin, place, qb, rowcheck, safety, tmdb
+from media_lib import (awaiting, avsync, config, jellyfin, place, qb, rowcheck,
+                       safety, tmdb)
 
 
 def main(argv=None) -> int:
@@ -115,6 +116,21 @@ def main(argv=None) -> int:
 
     placed = [r for r in results if r.get("ok")]
     if placed:
+        # A/V sync is checked on EVERY placement, not on request. A desynced file
+        # still plays, so no later gate catches it — the viewer does, and by then
+        # it is in the library and already half-watched. What is provable here is
+        # the container-level fault set (offset, drift, missing track, disagreeing
+        # tracks); subjective lip-sync is not testable from the file alone, so a
+        # pass must not be read as "the dialogue looks right" (see media_lib.avsync).
+        for r in placed:
+            try:
+                verdict = avsync.check(config.to_disk(r["dest"]))
+            except Exception as exc:  # noqa: BLE001 - a check that crashes must not block placement
+                print(f"  SYNC-CHECK-FAIL {type(exc).__name__}: {exc}", flush=True)
+                continue
+            r["sync"] = verdict.get("verdict")
+            if verdict.get("verdict") != "ok":
+                print(f"  {avsync.describe(verdict)} — {Path(r['dest']).name[:46]}", flush=True)
         # A library Refresh re-resolves KNOWN rows; it does NOT discover new
         # files. Without this call a placement stays invisible until the next
         # full discovery — proven the hard way on two episodes.
