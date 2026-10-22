@@ -429,10 +429,17 @@ def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[
         # omitting it reported every successful add as a failure.
         ok = status in (200, 201, 202, 204, 409)
         title = pick.get("title") or ""
-        entry = qb.by_title(title) if ok else None
-        if ok and force and entry:
-            qb.force_start([entry.get("hash") or ""])
-            entry = qb.by_title(title) or entry
+        # A failed VERIFICATION must never be reported as a failed ADD: the queue
+        # lookup is a second network call and can fail on its own. Degrade to
+        # verified=False and let the caller decide.
+        entry = None
+        try:
+            entry = qb.by_title(title) if ok else None
+            if ok and force and entry:
+                qb.force_start([entry.get("hash") or ""])
+                entry = qb.by_title(title) or entry
+        except Exception:  # noqa: BLE001
+            entry = None
         return {
             "ok": ok,
             "kind": "torrent",

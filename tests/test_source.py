@@ -277,9 +277,34 @@ def test_queue_treats_202_as_success(monkeypatch):
     from media_lib import source
 
     monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    # queue() also resolves the torrent to force-start it; mock that lookup too,
+    # or the test reaches for a live queue.
+    monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: None)
+    monkeypatch.setattr(source.qb, "force_start", lambda hashes, op=None: 200)
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
                         "title": "x"})
     assert out["ok"] is True and out["http"] == 202
+    # No queue entry found, but the ADD still succeeded — separate facts.
+    assert out["verified"] is False
+
+
+def test_a_failed_verification_is_not_a_failed_add(monkeypatch):
+    """The queue lookup is a second network call; it must not poison the result.
+
+    It did: an unreachable queue made every add report ok=False even though the
+    torrent had been accepted, which is how CI failed on the 202 test.
+    """
+    from media_lib import source
+
+    def boom(title, op=None):
+        raise OSError("queue unreachable")
+
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    monkeypatch.setattr(source.qb, "by_title", boom)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "c" * 40,
+                        "protocol": "torrent", "title": "x"})
+    assert out["ok"] is True
+    assert out["verified"] is False
 
 
 def test_queue_still_rejects_a_real_failure(monkeypatch):
