@@ -99,3 +99,37 @@ library.
 - Read plugin input schemas from the plugin sources on disk
   (`.../FlowPlugins/CommunityFlowPlugins/<area>/<plugin>/1.0.0/index.js`,
   the `inputs:` block) rather than guessing names.
+
+## Three silent blockers that make Tdarr look "configured but dead"
+
+All three were live on 23 Oct 2026. Each one returns HTTP 200 and logs nothing
+alarming, so the cluster looks healthy while processing absolutely nothing.
+
+1. **The node schedule is all zeros.** `workerLimits` can say
+   `transcodecpu: 2` and the node still runs **no worker at all** if every
+   hour in `NodeJSONDB.schedule` has `transcodecpu: 0`. Fix:
+   `scheduleEnabled: false` so the node honours `workerLimits`; the night-only
+   policy then lives where it belongs, on each LIBRARY's schedule (23:00-05:00).
+   Check: `[h['_id'] for h in node['schedule'] if h['transcodecpu']]` — empty
+   means the node can never transcode.
+
+2. **`cruddb` update needs `docID`, separately from `obj`.** Passing the whole
+   document (with `_id` inside) and no `docID` returns 200 and changes
+   **nothing**. A script that prints "False -> True" from its own local
+   variable will happily lie to you. Always re-read with `getAll` and assert.
+
+3. **Library `cache` must be `/temp`.** Unset, the node refuses every flow with
+   `Error: Transcode Cache is not set. Set it in the library settings before
+   running a flow.` — visible only in `/opt/tdarr-node/logs/Tdarr_Node_Log.txt` on
+   node host proxmox4, nowhere near the server UI.
+
+Also: `update-node` takes the **live** node id from `get-nodes`
+(e.g. `rdH2eZP`), not the `NodeJSONDB` doc `_id` (e.g. `prox4`). Wrong id
+returns `OK` and does nothing.
+
+Right-sized scan: `scan-files` with `mode: scanFindNew` and the library's own
+folder. Per-library totals differ (musicdocos 2,260 files vs musicdocos-series
+2,665), which is how you confirm the scan stayed inside its library.
+
+Working implementation: `scripts/tdarr_attach_libraries.py` (idempotent,
+verifies by re-read) and `scripts/tdarr_enable.py` (node schedule + worker limits).
