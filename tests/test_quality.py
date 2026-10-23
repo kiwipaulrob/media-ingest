@@ -1,0 +1,70 @@
+"""The replacement-quality gate.
+
+Written after queueing replacement downloads for content already held at the SAME
+quality (24 Oct 2026): a search sorted on seeders picked three PDTV rips with no
+resolution tag to "replace" 832p copies we already had. The rule these tests pin is
+simple — an unproven release is not an upgrade.
+"""
+from __future__ import annotations
+
+import pytest
+
+from media_lib import quality
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("Some Doc 2024 1080p WEB-DL x264", 1080),
+    ("Gig 2019 720p HDTV x264", 720),
+    ("Film 2160p UHD BluRay", 2160),
+    ("Old Thing 576p DVDRip", 576),
+    ("Weird 4K Remaster", 2160),
+])
+def test_release_height_reads_resolution_tags(title, expected):
+    assert quality.release_height(title) == expected
+
+
+@pytest.mark.parametrize("title", [
+    "BBC Storyville 2013 The Great Hip Hop Hoax PDTV x264",
+    "Arena The Brian Epstein Story PDTV XviD",
+    "Some Show DVDRip XviD-MEDiAMANiACS",
+])
+def test_untagged_sd_releases_have_no_height(title):
+    assert quality.release_height(title) is None
+    assert quality.is_sd_release(title) is True
+
+
+def test_upgrade_is_the_only_thing_queued():
+    v = quality.verdict("Urgh A Music War 1981 720p WEBRip", held_height=464)
+    assert v["verdict"] == "upgrade" and v["queue"] is True
+
+
+def test_same_quality_is_never_queued():
+    v = quality.verdict("Doc 2024 1080p WEB-DL", held_height=1080)
+    assert v["verdict"] == "same-or-worse"
+    assert v["queue"] is False
+
+
+def test_lower_quality_is_never_queued():
+    v = quality.verdict("Doc 720p HDTV", held_height=1080)
+    assert v["queue"] is False
+
+
+def test_untagged_sd_against_a_held_copy_is_not_queued():
+    """The exact mistake: a PDTV rip "replacing" an 832p copy it cannot beat."""
+    v = quality.verdict("BBC Storyville 2013 The Great Hip Hop Hoax PDTV x264",
+                        held_height=832)
+    assert v["verdict"] == "unknown"
+    assert v["queue"] is False
+    assert "cannot prove" in v["reason"]
+
+
+def test_a_gap_is_always_worth_filling():
+    v = quality.verdict("Cinema Perverso 720p WEBRip", held_height=None)
+    assert v["verdict"] == "no-local-copy" and v["queue"] is True
+
+
+def test_decide_uses_the_held_copy(monkeypatch):
+    monkeypatch.setattr(quality, "held_height_for", lambda term: 464)
+    assert quality.decide("Film 720p WEBRip", "Film")["queue"] is True
+    monkeypatch.setattr(quality, "held_height_for", lambda term: 1080)
+    assert quality.decide("Film 720p WEBRip", "Film")["queue"] is False

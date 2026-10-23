@@ -32,7 +32,7 @@ from typing import Any, Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from media_lib import sab  # noqa: E402
+from media_lib import quality, sab  # noqa: E402
 
 _STOP = {"1080p", "720p", "480p", "2160p", "hdtv", "webrip", "web", "webdl", "bluray",
          "x264", "x265", "hevc", "h264", "aac", "ac3", "ddp", "dd5", "10bit", "proper",
@@ -63,12 +63,38 @@ def prowlarr_search(term: str, limit: int = 40) -> List[Dict[str, Any]]:
         return []
 
 
+
+def _queue(result: Dict[str, Any]) -> bool:
+    """Add one Prowlarr result to qBittorrent (magnet preferred) or SABnzbd."""
+    import subprocess
+    from media_lib import qb
+    url = result.get("downloadUrl") or ""
+    if result.get("protocol") == "usenet":
+        from media_lib import sab
+        try:
+            return bool(sab.add_url(url, name=str(result.get("title", "")), category="movies"))
+        except Exception:
+            return False
+    if not url:
+        return False
+    hdr = subprocess.run(["curl", "-s", "-m", "60", "-D", "-", "-o", "/dev/null", url],
+                         capture_output=True, text=True, timeout=90).stdout
+    mag = next((ln.split(": ", 1)[1].strip() for ln in hdr.splitlines()
+                if ln.lower().startswith("location:")), "")
+    try:
+        return qb.add(mag if mag.startswith("magnet:") else url, category="musicdocos") in (200, 409)
+    except Exception:
+        return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--retry-small", action="store_true",
                     help="requeue only failures <=10 blocks short")
     ap.add_argument("--search", action="store_true",
                     help="search Prowlarr for replacements of hopeless failures")
+    ap.add_argument("--queue-upgrades", action="store_true",
+                    help="with --search, queue only releases PROVEN better than what we hold")
     ap.add_argument("--limit", type=int, default=60)
     args = ap.parse_args()
 
@@ -123,10 +149,19 @@ def main() -> int:
             if not keep:
                 print("      no alternative found")
                 continue
+            queued = False
             for r in keep[:3]:
                 size = int(r.get("size") or 0) / 1e9
-                print(f"      {r.get('protocol','?'):<7} {size:5.2f}GB "
-                      f"seeds={str(r.get('seeders','-')):<4} {str(r.get('title'))[:58]}")
+                # NEVER queue a replacement on seeds alone: it must beat what we hold.
+                v = quality.decide(str(r.get("title", "")), title)
+                flag = {"upgrade": "QUEUE", "no-local-copy": "QUEUE(GAP)",
+                        "same-or-worse": "skip", "unknown": "skip"}[v["verdict"]]
+                print(f"      [{flag:<9}] {r.get('protocol','?'):<7} {size:5.2f}GB "
+                      f"seeds={str(r.get('seeders','-')):<4} {str(r.get('title'))[:50]}")
+                print(f"                  {v['reason']}")
+                if args.queue_upgrades and v["queue"] and not queued:
+                    queued = _queue(r)
+                    print(f"                  -> {'queued' if queued else 'queue FAILED'}")
     return 0
 
 

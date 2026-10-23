@@ -462,3 +462,32 @@ SABnzbd is the Usenet half of the fetch role — full deploy + provider-server r
 - **Approval requests carry the full picture inline**: what the item is, why
   the decision matters, and what each choice concretely does — never assume
   prior research was read.
+
+### Never queue a replacement without proving it is an upgrade
+
+Got this wrong on 24 Oct 2026: four replacement releases were queued for content already
+in the library, and **three were the same quality** — PDTV/x264 rips carrying no
+resolution tag, chosen because the search sorted on seeders and treated "untagged" as
+"low". That costs bandwidth, disk and transcode hours to arrive back where we started.
+
+`media_lib/quality.py` decides:
+
+| candidate | held | verdict | queue? |
+|---|---|---|---|
+| `... 720p WEBRip` | 464p | upgrade | **yes** |
+| `... PDTV x264` (no height) | 832p | unknown | **no** |
+| `... 1080p WEB-DL` | 1080p | same-or-worse | **no** |
+| anything | nothing held | no-local-copy | **yes** |
+
+```python
+from media_lib import quality
+quality.decide(candidate_title, search_term)   # probes the real held file
+quality.verdict(title, held_height)            # pure decision
+```
+
+An untagged SD release is **not** a proven upgrade — report it for a human decision.
+`scripts/usenet_triage.py --search --queue-upgrades` applies the gate and labels every
+candidate QUEUE / skip with the reason.
+
+Sort candidates by **resolution first, seeds second** — seeders alone is how a PDTV rip
+outranks a genuine 1080p release.
