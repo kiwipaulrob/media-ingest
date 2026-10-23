@@ -360,6 +360,17 @@ prove field order and cadence: `references/interlaced-reencode.md`.
 | Wrap | `tdarr_preserve_userdata.py snapshot` / `restore` | keep played/resume state |
 | Verify | `jellyfin_dead_rows.py` | dead rows, generic names, mis-nesting |
 | Report | `tdarr_status.py` | progress, throughput, node load, scope check |
+| Scan | `tdarr_scan.py <lib>\|--all` | one library, own folder, refuses parents |
+
+These are also registered as plugin tools, which is the preferred path from an agent
+session because the argument surface is declared and constrained:
+
+| Tool | Use |
+|---|---|
+| `media_recode_status` | read-only progress/load/scope report |
+| `media_recode_scan` | safe scan (own folder, sequential, refuses parents) |
+| `media_recode_start` | open the window + requeue failures |
+| `media_recode_prune` | report or `apply=true` remove foreign records |
 
 Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0 and
 `dead_rows` shows 0 before declaring a batch done.
