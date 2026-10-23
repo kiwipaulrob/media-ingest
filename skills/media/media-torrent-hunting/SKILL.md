@@ -395,6 +395,51 @@ hunt YouTube before giving up. yt-dlp is NOT installed on CT101 — run it via u
   nothing — encryption is CDN-level for anonymous and logged-in sessions
   alike. Treat NZOS titles as stream-only and keep hunting other sources.
 
+## Queue health — check throughput before blaming swarms
+
+A torrent that stays at `0.0%` is not necessarily dead. Before concluding anything about
+seeders, check the client's aggregate state:
+
+```python
+json.loads(qb._opener().open(f"{qb._base()}/api/v2/transfer/info").read())["dl_info_speed"]
+```
+
+Seen for real (24 Oct 2026): **100 force-started torrents against
+`max_active_downloads: 25`, aggregate download 0.0 MB/s**. Nothing was progressing and
+nothing new could start, so freshly queued upgrades looked like dead posts.
+
+Diagnose with the state histogram (`Counter(t["state"] for t in qb.torrents())`):
+
+| state | meaning | action |
+|---|---|---|
+| `forcedDL` / `forcedMetaDL` far above the cap | clients choke; nothing finishes | `qb.set_force(hashes, False)` on the dead weight |
+| `missingFiles` | the data is already gone | safe to remove (`delete_files=False`) |
+| `forcedMetaDL` with 0 peers for hours | listed seeds do not exist | leave un-forced; it is not coming |
+
+**Un-force only what is idle** — keep torrents with `progress > 0` or `dlspeed > 0` (and
+anything just added) forced, or you will stall the downloads that were working. Un-forcing
+deletes nothing and is reversible; deleting is a `media-deletion-policy` decision.
+
+## Probing many files: use the Tdarr node, not CT105
+
+`pct exec 105 -- ffprobe` is a **docker wrapper** (`docker run --rm -v /mnt/zmedia ...`), so
+one probe costs a container start and a direct call returns an empty height — a scan built
+that way silently reports **0 items**. For batches, run ffprobe inside the Tdarr node,
+which has the share mounted, and map `/mnt/zmedia/ -> /media/`:
+
+```bash
+ssh root@192.168.214.131 "docker exec tdarr-node sh -c 'for f in "$@"; do ...; done' sh /media/..."
+```
+
+Chunk ~60 paths per call; 350 files probe in a couple of minutes.
+
+## Ingest checks must be episode-level, not series-level
+
+Comparing a downloaded episode's name against library **series** names says "held" for
+every episode of that series and hides whole un-ingested seasons. Match on
+`(season, episode)` against Jellyfin's `ParentIndexNumber` / `IndexNumber` per `SeriesName`.
+Doing it loosely reported 15 Later with Jools Holland episodes (~29 GB) as already present.
+
 ## Usenet downloader (SABnzbd on CT101)
 
 SABnzbd is the Usenet half of the fetch role — full deploy + provider-server recipe in `references/usenet-setup.md` (linuxserver Docker shape, `set_config` API, NNTP auth proof). Prowlarr indexer rules above apply unchanged to Usenet indexers (`protocol: usenet` needs `redirect: true`; trial API keys fail validation — verify with `t=caps`/`t=search` first).
@@ -477,7 +522,42 @@ resolution tag, chosen because the search sorted on seeders and treated "untagge
 | `... 720p WEBRip` | 464p | upgrade | **yes** |
 | `... PDTV x264` (no height) | 832p | unknown | **no** |
 | `... 1080p WEB-DL` | 1080p | same-or-worse | **no** |
-| anything | nothing held | no-local-copy | **yes** |
+| anything | **confirmed** nothing held | no-local-copy | **yes** |
+| anything | held but unmeasurable | held-unknown | **no** |
+| unrelated title | anything | different-title | **no** |
+| `... 720p` | 660p | marginal | **no** |
+
+**Uncertainty must never resolve to "download".** The first version of this gate collapsed
+"could not probe what we hold" into "we hold nothing", and queued a dozen downloads that
+included content already held at 1080p **and a `The Lone Ranger (2013)` release offered as
+a replacement for a music documentary**. `held_state_for()` therefore distinguishes `none`
+(a real gap) from `unprobeable` / `ambiguous`, and only `none` or a proven height increase
+may queue.
+
+**Title matching is the hard part.** Loose word overlap approved all of these:
+
+| wanted | offered |
+|---|---|
+| Cajun Country | Cooks Country S18E18 Cajun Cooking |
+| Dig! | Stranger Things S02E05 Chapter Five Dig Dug |
+| The Filth and the Fury | c4 wrestling 2019 05 24 the filth and the fury |
+| Stairway to Heaven | X art Stairway To Heaven **II** 4K |
+
+`title_matches()` now strips release-name junk and broadcaster prefixes, requires **every**
+wanted word, allows at most `MAX_EXTRA_WORDS = 2` of the candidate's own, and refuses:
+- an **episodic** release for a standalone film (and the reverse);
+- a **sequel** (`II`, `III`, `part 2`) when the wanted title has none;
+- a **year** more than `YEAR_TOLERANCE = 1` from the library item's — film production,
+  broadcast and release years legitimately differ by a year either side, but no further.
+
+`MIN_GAIN = 1.25` rejects trivia like 468p → 480p or 660p → 720p: same cost, no visible
+benefit. **Review the shortlist before queueing** — a concert film can share an album
+documentary's exact name (`Def Leppard: Hysteria` vs `Hysteria At The O2`) and no generic
+rule separates them.
+
+**Replacement hunting is rarely the answer for an old SD library.** Scanning both music
+libraries found **347 items under 720p** but only **11** with a better release available
+anywhere the indexers could see. The lever there is re-encoding, not re-downloading.
 
 ```python
 from media_lib import quality

@@ -394,3 +394,15 @@ Rules:
   Tdarr (`ApiKeysJSONDB`), update both node containers' `apiKey` env and `/root/.hermes/.env`,
   then remove the old one. Recreating a node container aborts any encode in progress, so
   rotate when the nodes are idle.
+
+## Probing a whole library (do not use CT105's ffprobe)
+
+CT105's ffprobe is a **docker wrapper** — one container start per file, and a direct
+`/usr/lib/jellyfin-ffmpeg/ffprobe` call returns empty (a scan built that way reported
+0 items across 798 files). Batch-probe inside the Tdarr node instead, mapping the share:
+
+    # disk /mnt/zmedia/videos/x -> node /media/videos/x
+    ssh root@192.168.214.131 "docker exec tdarr-node sh -c '<loop over paths>'"
+
+~60 paths per call; ~350 files take a couple of minutes. `scripts/hunt_lowres_upgrades.py
+--scan` does this and writes state/lowres.json.

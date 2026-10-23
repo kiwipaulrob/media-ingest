@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import urllib.error
+import time
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
@@ -208,6 +209,36 @@ def set_force(hashes: List[str], value: bool, op=None) -> int:
             return r.status
     except urllib.error.HTTPError as exc:
         return exc.code
+
+
+def add_verified(url: str, title: str, category: str = "", settle: int = 8) -> Dict[str, Any]:
+    """Add a release, force-start it, and confirm it is really in the queue.
+
+    The add status alone is not evidence: 202 means accepted, 409 means already there, and
+    an unforced add sits in queuedDL forever because this install runs far more downloads
+    than max_active_downloads. So verify by TITLE after a short settle, then force-start.
+
+    Returns {'ok', 'http', 'verified', 'hash', 'state'}. A failed verification is not a
+    failed add — keep the two apart, or a lookup error will rewrite a success.
+    """
+    status = add(url, category=category)
+    result: Dict[str, Any] = {"ok": status in (200, 202, 409), "http": status,
+                              "verified": False, "hash": None, "state": None}
+    if not result["ok"]:
+        return result
+    try:
+        found = None
+        for _ in range(3):
+            time.sleep(settle)
+            found = by_title(title)
+            if found:
+                break
+        if found:
+            result.update(verified=True, hash=found.get("hash"), state=found.get("state"))
+            force_start([found["hash"]])
+    except Exception:
+        pass
+    return result
 
 
 def by_title(fragment: str, op=None) -> Optional[Dict[str, Any]]:

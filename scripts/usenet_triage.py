@@ -82,7 +82,9 @@ def _queue(result: Dict[str, Any]) -> bool:
     mag = next((ln.split(": ", 1)[1].strip() for ln in hdr.splitlines()
                 if ln.lower().startswith("location:")), "")
     try:
-        return qb.add(mag if mag.startswith("magnet:") else url, category="musicdocos") in (200, 202, 409)
+        res = qb.add_verified(mag if mag.startswith("magnet:") else url,
+                              str(result.get("title", "")), category="musicdocos")
+        return bool(res["ok"] and res["verified"])
     except Exception:
         return False
 
