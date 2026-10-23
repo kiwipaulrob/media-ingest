@@ -164,3 +164,48 @@ Jellyfin items, so a library refresh is required afterwards.
   contaminated scan as success). Re-read library/flow state immediately before
   and after any change, and treat another worker's "verified" comment as
   unverified until you check it yourself.
+
+## Adding a node on a bare Proxmox host (prox3, 23 Oct 2026)
+
+prox3 (192.168.214.131) had Docker but **no media access at all** — an empty
+placeholder tree at `/mnt/zmedia/videos`. The media was physically moved from
+prox3 to prox4, so anything pointing at the old path is looking at nothing.
+
+Five things had to be right, and each fails differently:
+
+1. **Media mount.** No NFS on prox4 (`/etc/exports` empty, nfs-server inactive), so
+   CIFS is the only route, and the `[zmedia]` share requires auth
+   (`valid users = root musicassistant`). The working credentials live at
+   `/etc/samba/creds-filebrowser` on prox2; they were copied to
+   `/etc/samba/zmedia.cred` (mode 600) on prox3. Mount options that work:
+   `credentials=...,vers=3.1.1,uid=0,gid=0,file_mode=0777,dir_mode=0777,soft,nounix,_netdev,nofail`.
+   Verify with a known file, never by trusting the mount: `Hung Up on a Dream`
+   must be exactly 1766567575 bytes.
+2. **`--security-opt apparmor=unconfined`.** Without it the container dies in a
+   loop with `s6-ipcserver-socketbinder: fatal: unable to create socket:
+   Permission denied`. Easy to miss because the container reports `Up`.
+3. **Pin the image to the server's version.** `tdarr_node:latest` is now 3.01.00
+   while the server is 3.00.00, and the node exits with
+   `Node version 3.01.00 does not match Server version 3.00.00`. Use the exact
+   tag (`haveagitgat/tdarr_node:3.00.00`), not `:latest`.
+4. **Set `workerLimits` — a new node defaults to ALL ZEROS.** Same failure as
+   the schedule trap: registered, connected, and incapable of work.
+5. **Registration is not readiness.** A node logs
+   `Node connected & registered, count:1` while still doing nothing. Prove it
+   functionally: `docker exec tdarr-node sh -c 'ls /media/videos/musicdocos | wc -l'`
+   (must be 634), a 32 MB dd into `/temp` (writable), and `which ffmpeg`.
+
+Deploy one-liner (prox3):
+
+```bash
+docker run -d --name tdarr-node --restart unless-stopped \
+  --security-opt apparmor=unconfined \
+  -e serverIP=192.168.214.23 -e serverPort=8266 -e nodeName=prox3 \
+  -e apiKey=<tapi_key> -e TZ=Pacific/Auckland -e PUID=0 -e PGID=0 \
+  -v /mnt/zmedia:/media -v /var/cache/tdarr:/temp \
+  haveagitgat/tdarr_node:3.00.00
+```
+
+Then `scripts/tdarr_node_enable.py prox3 2 1` on the server side.
+Note `get-nodes` is GET-only (405 on POST) and `update-node` replies with a plain
+`OK`, not JSON — both break naive POST-always clients.
