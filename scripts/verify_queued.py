@@ -22,9 +22,10 @@ sys.path.insert(0, ".")
 QB = "http://192.168.214.11:8090"
 
 
-# Title lookup and force-start live in media_lib.qb so this verifier and
-# source.queue() agree on what "in the queue" means.
-from media_lib import qb  # noqa: E402
+# NOTE: this predates media_lib.qb and talks to qBittorrent with its own
+# qb_get/qb_post helpers below. It does NOT share source.queue()'s implementation,
+# so a change to queue semantics must be made in both places. Consolidating onto
+# media_lib.qb is the intended cleanup; not done while a batch was running.
 
 
 def norm(text: str) -> str:

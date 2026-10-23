@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tdarr_kick import LIBS, api, crud  # noqa: E402
+from tdarr_kick import LIBS, crud  # noqa: E402
 
 NODES = {"prox3": "root@192.168.214.131", "prox4": "root@192.168.214.132"}
 LOAD_SCRIPT = r'''

@@ -14,8 +14,6 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, ".")
-from media_lib import jellyfin  # noqa: E402
-
 DOWNLOADS = "/mnt/zmedia/downloads"
 VIDEO = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov")
 STOP = {"the", "and", "of", "a", "in", "on", "classic", "albums", "album",

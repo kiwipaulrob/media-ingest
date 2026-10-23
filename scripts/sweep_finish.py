@@ -80,7 +80,7 @@ def main() -> int:
     shelf = held[0]["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
     probe = run(f'{FFPROBE} -v error -select_streams v:0 -show_entries stream=codec_name,width,height '
                 f'-show_entries format=duration -of default=noprint_wrappers=1 "{shelf}"')
-    kv = dict(l.split("=", 1) for l in probe.strip().splitlines() if "=" in l)
+    kv = dict(line.split("=", 1) for line in probe.strip().splitlines() if "=" in line)
     print(f"  library copy verified: {kv.get('codec_name')} {kv.get('width')}x{kv.get('height')} "
           f"{float(kv.get('duration', 0) or 0)/60:.1f} min")
     tor = [t for t in qb.torrents() if t["hash"].startswith("734823429fed")]

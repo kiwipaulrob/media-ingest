@@ -15,7 +15,6 @@ import argparse
 import json
 import subprocess
 import sys
-from collections import Counter
 
 sys.path.insert(0, ".")
 from media_lib import jellyfin  # noqa: E402

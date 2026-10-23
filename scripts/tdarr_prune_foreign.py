@@ -48,7 +48,7 @@ def disk_exists(paths: list[str]) -> dict[str, bool]:
     r = subprocess.run(["ssh", "-o", "ConnectTimeout=15", PROBE_HOST, script],
                        input="\n".join(host) + "\n", capture_output=True,
                        text=True, timeout=900)
-    flags = [l for l in r.stdout.splitlines() if l.strip()]
+    flags = [line for line in r.stdout.splitlines() if line.strip()]
     return {p: (f == "E") for p, f in zip(paths, flags)}
 
 

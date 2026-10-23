@@ -4,7 +4,6 @@ The two rules worth protecting here are:
   * a failing provider is REPORTED, never silently downgraded to 'no results'
   * every merged field records which provider supplied it
 """
-import pytest
 
 from media_lib.providers import cache, chain
 from media_lib.providers.base import Candidate, Provider, Record, merge

@@ -24,7 +24,6 @@ means the bytes are shared with a library copy and removing them would destroy i
 import json
 import subprocess
 import sys
-import time
 
 sys.path.insert(0, ".")
 
@@ -116,8 +115,13 @@ def main() -> int:
             p = i["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
             sizes[i["Id"]] = run(f'stat -c %s "{p}"').strip()
         print(f"  sizes: {list(sizes.values())}")
-        if len(set(sizes.values())) == 1:
-            keep, drop = files[0], files[1]
+        # Require real numbers: a failed stat yields an error string or "", and two
+        # failures must never compare as "byte-identical" on a delete path.
+        numeric = all(v.isdigit() for v in sizes.values())
+        if not numeric:
+            print("  could not read both sizes — NOT deleting anything")
+        elif len(set(sizes.values())) == 1:
+            drop = files[1]
             dp = drop["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
             links = nlink(dp)
             if links != 1:

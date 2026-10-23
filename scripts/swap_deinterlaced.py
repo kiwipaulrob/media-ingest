@@ -60,7 +60,6 @@ def probe(path: str) -> dict:
 
 
 def playing() -> list:
-    uid = jellyfin.user_id()
     sessions = jellyfin.get_json("/Sessions") or []
     return [s.get("UserName") for s in sessions if s.get("NowPlayingItem")]
 

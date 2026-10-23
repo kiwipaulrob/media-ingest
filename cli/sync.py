@@ -18,7 +18,6 @@ copy vendored into this repo are separate files and must not silently diverge.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -147,7 +146,7 @@ def cmd_status(args) -> int:
     print(f"branch {branch or '(detached)'} at {head}")
     print(f"vs origin/master: ahead {ahead}, behind {behind}")
 
-    dirty_files = [l for l in dirty.splitlines() if l.strip()]
+    dirty_files = [row for row in dirty.splitlines() if row.strip()]
     print(f"working tree: {'clean' if not dirty_files else f'{len(dirty_files)} uncommitted'}")
     for line in dirty_files[:10]:
         print("   ", line)

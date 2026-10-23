@@ -27,7 +27,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -114,7 +114,6 @@ def cmd_restore(args) -> int:
         seen.add(k)
         ud = it.get("UserData") or {}
         cur_played = bool(ud.get("Played"))
-        cur_count = int(ud.get("PlayCount") or 0)
         cur_pos = int(ud.get("PlaybackPositionTicks") or 0)
         # Trust the Played FLAG alone. Jellyfin can hold PlayCount>0 with
         # Played=False (a part-watched item), so deriving "played" from the count

@@ -1,7 +1,7 @@
 name: media-ingest
 label: Media Ingest
 kind: standalone
-version: 0.2.0
+version: 0.3.0
 author: Paul Robertson
 homepage: https://github.com/kiwipaulrob/media-ingest
 description: >
@@ -17,6 +17,10 @@ provides_tools:
   - media_verify
   - media_source_plan
   - media_source_queue
+  - media_recode_status
+  - media_recode_scan
+  - media_recode_start
+  - media_recode_prune
 provides_hooks: []
 requires_env:
   - name: JELLYFIN_API_KEY

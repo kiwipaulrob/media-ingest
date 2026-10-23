@@ -11,7 +11,6 @@ Usage:
 """
 import argparse
 import sys
-import time
 
 sys.path.insert(0, ".")
 from cli.ingest_new import _fix_row_name  # noqa: E402  (same repair path as the CLI)

@@ -10,14 +10,13 @@ a plain add lands in `queuedDL` and never starts. Each added torrent is force-st
 and then verified present — an add that is not verified is not a queued download.
 """
 import json
-import re
 import sys
 import time
 import urllib.parse
 import urllib.request
 
 sys.path.insert(0, ".")
-from media_lib import config, source  # noqa: E402
+from media_lib import source  # noqa: E402
 
 QB = "http://192.168.214.11:8090"
 

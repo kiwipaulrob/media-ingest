@@ -33,7 +33,8 @@ def _env() -> Dict[str, str]:
     env = dict(os.environ)
     for key in ('JELLYFIN_URL', 'JELLYFIN_API_KEY', 'JELLYFIN_USER_ID',
                 'TMDB_API_KEY', 'MEDIA_IMAGE', 'QB_URL', 'QB_USER', 'QB_PASS',
-                'PROWLARR_URL', 'PROWLARR_API_KEY', 'SABNZBD_URL', 'SABNZBD_API_KEY'):
+                'PROWLARR_URL', 'PROWLARR_API_KEY', 'SABNZBD_URL', 'SABNZBD_API_KEY',
+                'TDARR_API_KEY'):
         val = get_secret(key, '') or ''
         if val:
             env[key] = val
@@ -278,6 +279,135 @@ def _check_available() -> bool:
     return bool(get_secret('JELLYFIN_API_KEY', '') or os.environ.get('JELLYFIN_API_KEY'))
 
 
+# --------------------------------------------------------------- recode (Tdarr)
+def _script(name: str, args: List[str], timeout: int = 600) -> Dict[str, Any]:
+    """Run an operational script in scripts/ and capture its output.
+
+    These are script-backed rather than CLI modules because they are the fast-moving
+    operational layer; promote one to a cli/ verb when it stops changing shape.
+    """
+    proc = subprocess.run(
+        [sys.executable, os.path.join(MEDIA_OPS, 'scripts', name), *args],
+        cwd=MEDIA_OPS, env=_env(), capture_output=True, text=True, timeout=timeout)
+    return {'returncode': proc.returncode, 'stdout': proc.stdout[-6000:],
+            'stderr': proc.stderr[-2000:]}
+
+
+RECODE_STATUS_SCHEMA = {
+    'name': 'media_recode_status',
+    'description': (
+        'Read-only. Report Tdarr recoding progress: per-library done/queued from live '
+        'file state, historical vs live errors, node CPU/load/encodes, and a scope '
+        'check for records sitting outside their library. Safe to call any time.'),
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'recent': {'type': 'integer',
+                       'description': 'How many recently finished files to list (default 10).'},
+        },
+        'required': [],
+    },
+}
+
+
+def _handle_recode_status(args: dict, **kw) -> str:
+    recent = int(args.get('recent') or 10)
+    res = _script('tdarr_status.py', ['--recent', str(recent)], timeout=300)
+    if res['returncode'] != 0:
+        return _error(f"status failed: {res['stderr'] or res['stdout']}")
+    return json.dumps({'report': res['stdout']}, ensure_ascii=False)
+
+
+RECODE_SCAN_SCHEMA = {
+    'name': 'media_recode_scan',
+    'description': (
+        'Rebuild the Tdarr work queue by scanning ONE library with its own folder, '
+        'sequentially. Refuses a parent path and never runs two scans at once — both '
+        'mistakes silently queue other libraries\' media for transcoding.'),
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'library': {'type': 'string', 'enum': ['musicdocos', 'musicdocos-series'],
+                        'description': 'Library to scan. Omit and set all=true for both.'},
+            'all': {'type': 'boolean',
+                    'description': 'Scan every library, one at a time.'},
+            'verify': {'type': 'boolean',
+                       'description': 'Also report rows that fall outside their folder.'},
+        },
+        'required': [],
+    },
+}
+
+
+def _handle_recode_scan(args: dict, **kw) -> str:
+    cmd: List[str] = []
+    if args.get('all'):
+        cmd.append('--all')
+    elif args.get('library'):
+        cmd.append(str(args['library']))
+    else:
+        return _error("give library=<name> or all=true")
+    if args.get('verify'):
+        cmd.append('--verify')
+    res = _script('tdarr_scan.py', cmd, timeout=5400)
+    return json.dumps({'returncode': res['returncode'], 'stdout': res['stdout'],
+                       'stderr': res['stderr']}, ensure_ascii=False)
+
+
+RECODE_START_SCHEMA = {
+    'name': 'media_recode_start',
+    'description': (
+        'Open the transcode window outside its scheduled hours and requeue failed '
+        'files. Does NOT scan — call media_recode_scan afterwards, because a schedule '
+        'window alone leaves the queue empty and the nodes idle.'),
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'until_hour': {'type': 'integer',
+                           'description': 'Open hour blocks from now up to this hour (default 23).'},
+            'requeue_errors': {'type': 'boolean',
+                               'description': 'Put previously failed files back to Queued (default true).'},
+        },
+        'required': [],
+    },
+}
+
+
+def _handle_recode_start(args: dict, **kw) -> str:
+    cmd = ['--until-hour', str(int(args.get('until_hour') or 23))]
+    if args.get('requeue_errors', True):
+        cmd.append('--requeue-errors')
+    res = _script('tdarr_kick.py', cmd, timeout=900)
+    if res['returncode'] != 0:
+        return _error(f"start failed: {res['stderr'] or res['stdout']}")
+    return json.dumps({'stdout': res['stdout']}, ensure_ascii=False)
+
+
+RECODE_PRUNE_SCHEMA = {
+    'name': 'media_recode_prune',
+    'description': (
+        'Find Tdarr records whose path sits OUTSIDE their library folder (the result of '
+        'scanning a parent directory) and optionally remove them. Removal is DB-only: '
+        'the media file is never touched. Defaults to a report; set apply=true to prune.'),
+    'parameters': {
+        'type': 'object',
+        'properties': {
+            'apply': {'type': 'boolean',
+                      'description': 'Actually remove the records. Omit to report only.'},
+        },
+        'required': [],
+    },
+}
+
+
+def _handle_recode_prune(args: dict, **kw) -> str:
+    cmd = ['--apply'] if args.get('apply') else []
+    res = _script('tdarr_prune_foreign.py', cmd, timeout=1800)
+    return json.dumps({'applied': bool(args.get('apply')),
+                       'returncode': res['returncode'], 'stdout': res['stdout'],
+                       'stderr': res['stderr']}, ensure_ascii=False)
+
+
 TOOLS = (
     (SCAN_SCHEMA, _handle_scan),
     (PLAN_SCHEMA, _handle_plan),
@@ -285,6 +415,10 @@ TOOLS = (
     (VERIFY_SCHEMA, _handle_verify),
     (SOURCE_PLAN_SCHEMA, _handle_source_plan),
     (SOURCE_QUEUE_SCHEMA, _handle_source_queue),
+    (RECODE_STATUS_SCHEMA, _handle_recode_status),
+    (RECODE_SCAN_SCHEMA, _handle_recode_scan),
+    (RECODE_START_SCHEMA, _handle_recode_start),
+    (RECODE_PRUNE_SCHEMA, _handle_recode_prune),
 )
 
 

@@ -3,6 +3,35 @@
 Notable changes to the media-ingest plugin and the operational scripts that
 support it. Versions track `plugins/media-ingest/plugin.yaml`.
 
+## 0.3.0 — 2026-10-23
+
+The Tdarr operations became agent-facing tools, after a review pass.
+
+### Added
+- Plugin tools `media_recode_status`, `media_recode_scan`, `media_recode_start`
+  and `media_recode_prune`.
+- `scripts/tdarr_scan.py` — scans one library with its OWN folder and refuses a
+  parent path. A parent path once queued 1,266 files from other libraries, and
+  two concurrent scans cross-assign rows; both are now impossible by construction.
+- `tests/test_tdarr_scripts.py` (11 tests) covering the midnight rollover, scan
+  scope guards, scanner-status parsing and watch-state keying.
+
+### Fixed
+- `open_window` only opened the CURRENT day's hour blocks, so an overnight run
+  started at 22:00 opened nothing after 23:00. It now walks across midnight.
+- `tdarr_scan` only watched its own library's scanner; it now refuses to start
+  while EITHER library is scanning.
+- `post_ingest_sweep.py` treated two failed `stat` calls (empty or error strings)
+  as byte-identical and would delete a copy. It now requires numeric sizes first.
+- `tdarr_scan` reported "Found: N Checking:0" as idle. That is the transient
+  pre-extraction state, so a second scan could start on top of a running one.
+- Duplicate imports and dead variables introduced by the API-key patch; stale
+  comment in `verify_queued.py` claiming it shared `media_lib.qb` when it has its
+  own qBittorrent helpers.
+
+### Changed
+- `ruff` is clean across `media_lib`, `cli`, `scripts` and `plugins`.
+
 ## 0.2.0 — 2026-10-23
 
 Tdarr became the only sanctioned transcoder, and the tooling around it was

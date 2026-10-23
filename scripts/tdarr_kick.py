@@ -19,8 +19,6 @@ import json
 import sys
 import urllib.request
 
-import os
-import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -64,10 +62,26 @@ def crud(collection: str, mode: str, obj=None, doc_id=None):
     return api("cruddb", {"data": data})
 
 
+def blocks_until(now: dt.datetime, until_hour: int) -> list[str]:
+    """Every hour block from the current hour through `until_hour`, ACROSS midnight.
+
+    The first version matched only today's day prefix, so starting a run at 22:00
+    with --until-hour 5 opened nothing after 23:00: the blocks it needed belong to
+    tomorrow. Walking forward handles the rollover.
+    """
+    cur = now.replace(minute=0, second=0, microsecond=0)
+    seen = []
+    for _ in range(48):                       # hard bound: two days is plenty
+        seen.append(f"{DAYS[cur.weekday()]}:{cur.hour:02d}-{(cur.hour + 1) % 24:02d}")
+        if cur.hour == until_hour:
+            break
+        cur += dt.timedelta(hours=1)
+    return seen
+
+
 def open_window(libs: dict[str, str], until_hour: int) -> None:
-    """Tick every hour block from now until `until_hour` (inclusive-of-start)."""
-    now = dt.datetime.now()
-    day = DAYS[now.weekday()]
+    """Tick every hour block from now until `until_hour` (inclusive)."""
+    wanted = set(blocks_until(dt.datetime.now(), until_hour))
     settings = crud("LibrarySettingsJSONDB", "getAll")
     settings = settings if isinstance(settings, list) else list(settings.values())
     for lib in settings:
@@ -76,10 +90,7 @@ def open_window(libs: dict[str, str], until_hour: int) -> None:
         changed = []
         for block in lib.get("schedule") or []:
             bid = str(block.get("_id", ""))
-            if not bid.startswith(day + ":"):
-                continue
-            start_hour = int(bid.split(":")[1].split("-")[0])
-            if now.hour <= start_hour <= until_hour and not block.get("checked"):
+            if bid in wanted and not block.get("checked"):
                 block["checked"] = True
                 changed.append(bid)
         if changed:

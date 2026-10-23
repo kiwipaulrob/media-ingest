@@ -63,13 +63,13 @@ def classify(uid: str, series_id: str):
             extras += 1
             continue
         want = rowcheck.tokens(name)
-        best, score = "", 0.0
+        score = 0.0
         for hname, htoks in held_index:
             if not htoks or not want:
                 continue
             overlap = len(want.intersection(htoks)) / max(1, len(want))
             if overlap > score:
-                best, score = hname, overlap
+                score = overlap
         (dupes if score >= 0.6 else absent).append(name)
     return absent, dupes, extras, len(held)
 
