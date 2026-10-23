@@ -1,3 +1,13 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Operational state is generated on every run: plans, manifests, snapshots.
+# It also holds personal viewing data (userdata-snapshot.json), and this
+# repository is PUBLIC. Curated decisions stay tracked.
+state/*
+!state/alias-approved.json
+
+# Local scratch / reports
+baseline/
+*.log
