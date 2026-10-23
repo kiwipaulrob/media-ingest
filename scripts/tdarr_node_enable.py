@@ -20,7 +20,22 @@ import json
 import sys
 import urllib.request
 
-KEY = "tapi_40c41a4b3245a315d16153d692a264f8"
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from media_lib.jellyfin import env as _env  # noqa: E402
+
+# Never inline the key: this repo is PUBLIC. Read it from the shared .env
+# (TDARR_API_KEY) or the process environment. A previous version hardcoded a
+# `tapi_...` literal here, which put a live credential in public git history.
+KEY = _env("TDARR_API_KEY")
+if not KEY:
+    raise SystemExit(
+        "TDARR_API_KEY is not set. Add TDARR_API_KEY=<tapi_...> to /root/.hermes/.env "
+        "(the key itself must never be committed)."
+    )
 BASE = "http://192.168.214.23:8265/api/v2"
 
 

@@ -331,3 +331,21 @@ terminal instead.
 Verdicts to expect: three workers per 8-core node gives ~99% CPU on prox3 and ~75% on
 prox4 (which also serves CIFS at ~32 MB/s). Oversubscribing to four pushed prox3 load from
 26 to 43 with no throughput gain.
+
+## The API key never goes in the code — this repo is PUBLIC
+
+Four Tdarr scripts carried a literal `tapi_...` API key, committed and pushed to
+`github.com/kiwipaulrob/media-ingest`, which is a **public** repository. Removing the
+literal fixes the working tree but NOT the history: the credential stays readable in
+`git log -S` for anyone who clones.
+
+Rules:
+
+* Read credentials through `media_lib.jellyfin.env("TDARR_API_KEY")` — process env first,
+  then `/root/.hermes/.env`. Raise and stop if it is missing; never fall back to a literal.
+* Before committing any script that talks to a service, run
+  `grep -rnE "(api[_-]?key|token|secret)\s*=\s*['\"][A-Za-z0-9_-]{16,}"` over it.
+* A leaked key is not fixed by a commit — the key must be **rotated**: insert a new key in
+  Tdarr (`ApiKeysJSONDB`), update both node containers' `apiKey` env and `/root/.hermes/.env`,
+  then remove the old one. Recreating a node container aborts any encode in progress, so
+  rotate when the nodes are idle.
