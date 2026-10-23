@@ -150,8 +150,9 @@ def completed_candidates(
 def add(url: str, category: str = "", op=None) -> int:
     """Queue a magnet or a Prowlarr downloadUrl. Returns the HTTP status.
 
-    409 means the release is already queued — that is success for our purposes,
-    not a failure, so it is returned rather than raised.
+    Success is 200 **or 202** (qBittorrent answers 202 for an accepted add — a caller
+    that only accepts 200 reports a successful add as a failure), and 409 means the
+    release is already queued, which is also success for our purposes.
     """
     op = op or _opener()
     data = {"urls": url}

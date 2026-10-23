@@ -145,7 +145,7 @@ def queue_torrent(result: Dict[str, Any]) -> bool:
     mag = next((ln.split(": ", 1)[1].strip() for ln in hdr.splitlines()
                 if ln.lower().startswith("location:")), "")
     try:
-        return qb.add(mag if mag.startswith("magnet:") else url, category="musicdocos") in (200, 409)
+        return qb.add(mag if mag.startswith("magnet:") else url, category="musicdocos") in (200, 202, 409)
     except Exception:
         return False
 

@@ -34,6 +34,7 @@ RELEASE_JUNK = set("""
 dvdrip dvdscr dvd5 dvd9 bluray brrip bdrip remux x264 x265 h264 h265 hevc avc xvid divx
 aac ac3 dts dd5 ddp5 flac mp3 mkv mp4 avi ts m2ts 10bit 8bit proper repack extended
 internal limited complete season multi sub subs eng english french ger ita spa hardcoded
+mvgroup org forum yts rarbg miserable eztv bigdoc megusta scene rip xpost
 """.split())
 
 #: Broadcasters that prefix a title in release names but are not part of it.
@@ -51,6 +52,9 @@ MIN_GAIN = 1.25
 YEAR_TOLERANCE = 1
 
 _EPISODE_RE = re.compile(r"\bs\d{1,2}\s*e\d{1,3}\b|\bs\d{2}\b|\bepisode\s*\d+\b")
+
+#: Markers that make a release a DIFFERENT work, not a better copy of the same one.
+_SEQUEL_RE = re.compile(r"\b(?:ii|iii|iv|part\s*[2-9]|vol(?:ume)?\s*[2-9])\b")
 
 
 def release_height(title: str) -> Optional[int]:
@@ -112,6 +116,9 @@ def title_matches(candidate: str, wanted: str) -> bool:
     if not want <= cand:
         return False
     if _EPISODE_RE.search(_normalise(candidate)) and not _EPISODE_RE.search(_normalise(wanted)):
+        return False
+    # A sequel is a different film: "Stairway To Heaven II" is not "Stairway to Heaven".
+    if _SEQUEL_RE.search(_normalise(candidate)) and not _SEQUEL_RE.search(_normalise(wanted)):
         return False
     return len(cand - want) <= MAX_EXTRA_WORDS
 
