@@ -150,7 +150,8 @@ credit buys articles the backbone does not hold.
 
 | Shortfall | Meaning | Action |
 |---|---|---|
-| **<= 10 blocks** | near-complete, a fill server may cover it | one retry |
+| **`bytes == downloaded`** | SAB fetched everything the providers would serve, then repair failed — the articles do **not exist upstream** | **never retry** — replace the release |
+| **<= 10 blocks** | near-complete, a fill server may cover it (only when the download did NOT fetch everything) | one retry |
 | **11–100** | usually dead | one attempt, then replace the release |
 | **> 100** | hopeless | replace the release, never retry |
 | `Corrupt RAR` / `Bad archive` / `RAR files failed to verify` | damaged post | replace |

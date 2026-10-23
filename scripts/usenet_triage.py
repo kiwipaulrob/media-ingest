@@ -77,12 +77,13 @@ def main() -> int:
     for j in hist:
         if str(j.get("status")).lower() != "failed":
             continue
-        c = sab.classify_failure(j.get("fail_message", ""))
+        c = sab.classify_failure(j.get("fail_message", ""), j)
         rec = dict(j)
         rec["class"] = c
         buckets.setdefault(c["kind"], []).append(rec)
 
-    order = ["retry", "maybe", "dead-post", "damaged-post", "missing-from-provider", "other"]
+    order = ["retry", "maybe", "dead-post", "post-incomplete-at-provider",
+             "damaged-post", "missing-from-provider", "other"]
     total = sum(len(v) for v in buckets.values())
     print(f"{total} failed job(s) in the last {args.limit} history entries\n")
     for kind in order:

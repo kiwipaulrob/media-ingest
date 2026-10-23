@@ -113,14 +113,36 @@ REPAIR_MEDIUM = 100     # 11-100: usually dead, but a second provider may fill i
 DEAD_SHORT_RE = re.compile(r"\((\d+)\s+short\)")
 
 
-def classify_failure(message: str) -> Dict[str, Any]:
+def classify_failure(message: str, job: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Bucket a SAB failure so callers do not retry hopeless jobs.
 
     Learned the hard way (24 Oct 2026): 32 failed jobs were retried after a block
     account was topped up and every one failed identically. Credit never fixes a
     post whose articles are missing from the backbone.
+
+    The sharpest signal is not the shortfall at all — it is `bytes == downloaded`:
+    SAB fetched everything the providers would serve and THEN failed repair, which
+    proves the missing articles do not exist upstream. A retry then re-downloads
+    nothing and fails identically, whether it is 1 block short or 1595.
     """
     msg = str(message or "")
+    fetched_all = False
+    if isinstance(job, dict):
+        try:
+            got = int(job.get("downloaded") or 0)
+            want = int(job.get("bytes") or 0)
+            fetched_all = bool(want and got >= want)
+        except (TypeError, ValueError):
+            fetched_all = False
+    result = _classify_by_message(msg)
+    if fetched_all and result["retry_worthwhile"]:
+        result = {"kind": "post-incomplete-at-provider",
+                  "blocks_short": result.get("blocks_short"),
+                  "retry_worthwhile": False}
+    return result
+
+
+def _classify_by_message(msg: str) -> Dict[str, Any]:
     m = DEAD_SHORT_RE.search(msg)
     if m:
         short = int(m.group(1))
