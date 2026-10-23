@@ -209,3 +209,33 @@ docker run -d --name tdarr-node --restart unless-stopped \
 Then `scripts/tdarr_node_enable.py prox3 2 1` on the server side.
 Note `get-nodes` is GET-only (405 on POST) and `update-node` replies with a plain
 `OK`, not JSON — both break naive POST-always clients.
+
+## Starting a run outside the scheduled window
+
+The libraries only process in their scheduled hours (23:00-05:00 by default). To run now,
+three things must all be true — the first two are obvious, the third is not:
+
+1. **Library `processTranscodes`** true and a **`cache`** set (`/temp`).
+2. **Schedule hour blocks ticked.** They are `{"_id": "Fri:19-20", "checked": false}`.
+   `scripts/tdarr_kick.py --until-hour 23` ticks from the current hour onward.
+3. **A queue exists at all.** With `SettingsGlobalJSONDB.lastQueueUpdateTime = 0` the
+   server has never built a work queue, and ticking the schedule is not enough — nodes
+   stay at zero workers and the log shows only hourly plugin syncs. **Triggering
+   `scan-files` (`scanFindNew`) rebuilds it**, and workers start within a minute.
+
+Verify by looking for `tdarr-ffmpeg` processes on the node hosts, NOT at `get-nodes`:
+it reports `workers: {}` even while eight ffmpeg processes are running flat out.
+
+Retrying failed files: `POST /api/v2/bulk-update-files` with
+`{"fileIds": [...], "updatedObj": {"TranscodeDecisionMaker": "Queued"}}`. Details that
+cost time:
+
+* `cruddb` file docs come back with **`DB` (uppercase)** and use the **file path as `_id`**;
+  the SQLite columns (`db`, `transcode_decision_maker`) are not what the API returns.
+* `set-all-status` is library-wide and would reset successful files too — use
+  `bulk-update-files` for targeted requeues.
+
+Measured load with 4 workers per node (8 cores each): prox3 saturates at ~99% CPU with
+~955% CPU demand and load ~39; prox4 runs ~78% with ~711% demand because it also serves
+the CIFS share (32 MB/s out). Jellyfin's host stays idle at ~10%. Four workers per 8-core
+node is oversubscribed — three is the sensible ceiling.
