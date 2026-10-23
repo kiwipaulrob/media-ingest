@@ -10,12 +10,57 @@ every use; "installed" does not mean "working".
 |---|---|---|
 | Server | CT114 on proxmox2 | `192.168.214.23` — 8265 web, 8266 API, 8267 node |
 | Node | proxmox4 (`.132`) | container `tdarr-node`, `--cpus 6`, `apparmor=unconfined`, `PUID/PGID=0`, `/mnt/zmedia -> /media`, `/tmp/tdarr-cache -> /temp` |
+| Node | proxmox3 (`.131`) | container `tdarr-node`, `apparmor=unconfined`, `PUID/PGID=0`, `/mnt/zmedia -> /media`, `/var/cache/tdarr -> /temp` |
 
-Tdarr 3.00.00 (`haveagitgat/tdarr:latest`). Node registers as `prox4`, live id
-`rdH2eZP` (the `NodeJSONDB` doc `_id` is `prox4` — API calls like
-`update-node`/`alter-worker-limit` want the LIVE `rdH2eZP`). Node schedule is
-`scheduleEnabled:false` with `workerLimits` 2×transcodecpu + 1×healthcheckcpu;
-the night policy lives on each LIBRARY's schedule (23:00–05:00), not the node.
+Tdarr 3.00.00. **Pin the node image as `haveagitgat/tdarr_node:3.00.00`** — the
+`:latest` tag on proxmox3 is 3.01.00 and refuses to connect to a 3.00.00 server.
+Live node ids as of 23 Oct 2026 (they CHANGE when a node container is
+recreated): proxmox3 `56NMCso`, proxmox4 `kmbgD32`. The `NodeJSONDB` doc `_id`
+stays the node name (`prox3`/`prox4`) — API calls like `update-node`/
+`alter-worker-limit` want the LIVE id, so look it up with `get-nodes` rather
+than hardcoding one. Node schedule is `scheduleEnabled:false` with
+`workerLimits` 3×transcodecpu + 1×healthcheckcpu; the night policy lives on each
+LIBRARY's schedule (23:00–05:00), not the node.
+
+## Rotating the API key — it lives in THREE places (proven 23 Oct 2026)
+
+Rotating the key is not a one-liner: the server **re-seeds the old key on every
+boot** from its own env, so deleting the DB row alone silently reverts.
+
+| Where | What | Effect |
+|---|---|---|
+| Server container env `seededApiKey` (CT114) | authoritative | on boot, "Created seeded API key" re-inserts it into the DB |
+| `apikeysjsondb` in `/app/server/Tdarr/DB2/SQL/database.db` | the key rows (`id` = the key itself, `json_data = {_id, date}`) | loaded into memory at boot only |
+| Node containers' `apiKey` env + `/root/.hermes/.env` `TDARR_API_KEY` | consumers | a mismatch locks that node out |
+
+Traps confirmed the hard way:
+
+1. **`cruddb` on `ApiKeysJSONDB` returns 403** through api-key auth — keys
+   cannot be managed over the API. Use the sqlite table, or the UI
+   (Settings → API keys).
+2. **The server caches keys in memory at boot.** A freshly inserted key is 401
+   until `docker restart tdarr`; a deleted key keeps working until restart.
+3. **`seededApiKey` wins.** Restart after a delete = old key back in the DB and
+   valid again. Fix the env first: recreate the server container with
+   `-e seededApiKey=<new>` — **pin the server image by ID** (`haveagitgat/tdarr:
+   latest` may have moved to 3.01.00), keep the 8265/8266 port maps and the
+   `/opt/tdarr/{configs,logs,server}` + `/mnt/zmedia:/media` mounts.
+4. **Recreating a node container issues a NEW live node id** and can drop
+   `workerLimits`; re-apply with `scripts/tdarr_node_enable.py <node> 3 1` and
+   check `nodePaused` (it usually survives) before expecting work.
+5. **Drain, don't wait for the backlog to empty** (900+ files). `update-node
+   {nodePaused:true}` on both nodes, then poll
+   `ps -eo comm | grep -c tdarr-ffmpeg` on the hosts until 0 — in-flight jobs
+   finish in minutes, the queue stops refilling. Reverse with `nodePaused:false`
+   after the key matrix checks out.
+6. Safe order (both keys valid throughout): insert NEW row + restart server →
+   verify NEW 200 / OLD 200 → recreate nodes with NEW → prune every row but NEW
+   → recreate server container with `seededApiKey=NEW` → restart → verify
+   NEW 200 / OLD 401. Keep a DB copy of the old row until the nodes register.
+   Do not pipe a `bash -s` script and read the key on the same stdin stream —
+   bash's parser can eat the next script line; push the script with `pct push`
+   and pass the key as the only stdin.
+
 
 | Library | id | folder | flow | transcodes |
 |---|---|---|---|---|
