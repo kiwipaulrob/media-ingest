@@ -289,6 +289,29 @@ def refresh_item(item_id: str, *, metadata: str = "FullRefresh",
     return 204
 
 
+def set_overview(item_id: str, overview: str, *, lock: bool = True) -> Dict[str, Any]:
+    """Surgically write an item's Overview and lock it. Returns the re-read row.
+
+    POST /Items/{id} replaces the item's metadata wholesale, so a partial body wipes
+    fields. The current DTO is therefore fetched first and ONLY Overview/LockedFields
+    are changed — the standing rule for this library: surgical writes, and lock the
+    field afterwards so a later refresh cannot revert it.
+    """
+    uid = user_id()
+    dto = json.loads(_request(f"/Users/{uid}/Items/{item_id}") or "{}")
+    if not dto:
+        raise JellyfinError(f"item {item_id} not found")
+    dto["Overview"] = overview
+    if lock:
+        locked = list(dto.get("LockedFields") or [])
+        if "Overview" not in locked:
+            locked.append("Overview")
+        dto["LockedFields"] = locked
+    _request(f"/Items/{item_id}", method="POST", body=dto)
+    return json.loads(
+        _request(f"/Users/{uid}/Items/{item_id}?Fields=Overview,LockedFields") or "{}")
+
+
 def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg") -> int:
     """Upload an item's Primary image.
 
