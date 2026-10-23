@@ -41,7 +41,7 @@ VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov", ".webm", ".mpg", ".w
 def disk_files(host: str) -> Set[str]:
     """Every media file under the two libraries, as host paths."""
     roots = " ".join(f"{REMOTE_ROOT}/{lib}" for lib in PARENTS)
-    expr = " -o ".join(f'-name "*{e}"' for e in VIDEO_EXT)
+    expr = " -o ".join(f'-iname "*{e}"' for e in VIDEO_EXT)
     cmd = f'find {roots} -type f \\( {expr} \\) 2>/dev/null'
     out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", host, cmd],
                          capture_output=True, text=True, timeout=600)
@@ -85,8 +85,12 @@ def remote_existing(host: str, paths: List[str]) -> Set[str]:
     if not paths:
         return set()
     script = "while IFS= read -r p; do [ -e \"$p\" ] && printf '%s\\n' \"$p\"; done"
+    # Trailing newline matters: `while read` returns non-zero on EOF for a final
+    # line with no newline and never runs the body for it, so the last candidate
+    # is silently reported as missing. That produced a false "dead row".
+    payload = "\n".join(paths) + "\n"
     out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", host, script],
-                         input="\n".join(paths), capture_output=True, text=True,
+                         input=payload, capture_output=True, text=True,
                          timeout=600)
     if out.returncode != 0:
         raise SystemExit(f"existence check failed: {out.stderr.strip()[:200]}")

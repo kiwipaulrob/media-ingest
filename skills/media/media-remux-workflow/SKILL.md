@@ -45,6 +45,16 @@ python3 scripts/jellyfin_dead_rows.py        # DEAD ROW = item whose path is gon
 A folder-item (DVD/`VIDEO_TS`) has a DIRECTORY path, so a file-only listing reports
 every one as dead. Test existence (`[ -e ]`), never infer it from a `find` of files.
 
+Two traps that produce FALSE dead rows, both hit on 23 Oct 2026:
+
+* `while IFS= read -r p` returns non-zero at EOF for a final line with no trailing
+  newline and never runs the body, so the last candidate is never tested. Feed
+  `'\n'.join(paths) + '\n'`.
+* `find -name "*.mp4"` is case sensitive and misses `.MP4`. Use `-iname`.
+
+Check the verdict against the disk before reporting it: a "dead" item whose file is
+plainly present in `ls` means the checker is wrong, not Jellyfin.
+
 ## STOP — recoding is Tdarr's job (standing order, Paul, 23 Oct 2026)
 
 **Never hand-roll an ffmpeg recode batch.** Tdarr is installed and is the only
