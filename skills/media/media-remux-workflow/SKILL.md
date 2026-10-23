@@ -10,6 +10,30 @@ Converting aging containers (AVI/DivX-era) to MKV for fast playback start
 and seeking, plus H.264 re-encodes for sources too damaged to remux.
 Stream-copy changes no pixels — the win is index behavior, not space.
 
+## Unnamed and mis-nested items hide from every search
+
+Jellyfin falls back to names like **"Video"**, "Movie", "Feature" when it cannot parse a
+title. Such an item is invisible to name search — a genuine Joy Division feature sat in
+the library called "Video", so searching "Joy Division" never listed it and it looked
+like a duplicate when found by path. Files parked inside a `VIDEO_TS/` directory that are
+not `.VOB/.IFO/.BUP` are the same problem: the folder implies a DVD that is not there.
+
+`scripts/jellyfin_dead_rows.py` now reports both (`GENERIC NAMES`, `MIS-NESTED IN
+VIDEO_TS`). Before assuming a row is a duplicate, search by **path**, not name.
+
+**Identify unnamed media from its title card, do not guess.** Extract frames and read the
+text:
+
+```bash
+ffmpeg -v error -ss 8 -i "$F" -frames:v 1 -q:v 2 -y /tmp/title.jpg   # then view it
+```
+
+Sampling 1/4/8/12s found the on-screen caption `WIRED / Feature / Joy Division / Fac 211`,
+which identified the film as FAC 211 — the 1988 Channel 4 *Wired* documentary — and gave a
+name far better than any inference from the folder name. Reading container tags helps too;
+this file carried `title=VTS_01_1.VOB` and `encoder=SUPER(C)` from a 2007 conversion, which
+is why it had a `.VOB.MP4` double extension despite being plain h264/AAC.
+
 ## Changing the container breaks watch state — preserve it
 
 Tdarr's flow emits `.mkv`, so `X.avi` becomes `X.mkv`. Jellyfin treats that as a NEW

@@ -36,6 +36,12 @@ PARENTS = {
 REMOTE_ROOT = "/mnt/zmedia/videos"
 JF_ROOT = "/data"
 VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov", ".webm", ".mpg", ".wmv")
+# Names Jellyfin falls back to when it cannot parse a title. They hide an item from
+# every name search, which is how an unnamed feature survived unnoticed: searching
+# "Joy Division" missed it because the item was literally called "Video".
+GENERIC_NAMES = {"video", "movie", "feature", "untitled", "title", "clip", "tv",
+                 "episode", "unknown", "dvd", "main"}
+DVD_EXTS = (".vob", ".ifo", ".bup")
 
 
 def disk_files(host: str) -> Set[str]:
@@ -137,6 +143,19 @@ def main() -> int:
             print(f"     {os.path.basename(p)}  ->  {os.path.basename(actual)}")
 
     print(f"\nfolder-items (directory paths, all present): {len(folder_items)}")
+
+    # Items that are hard to find and easy to misjudge: generic names, and files
+    # parked inside a VIDEO_TS tree that are not actually DVD files.
+    junk = [(p, i) for p, i in items.items()
+            if str(i.get("name", "")).strip().lower() in GENERIC_NAMES]
+    fake_dvd = [(p, i) for p, i in items.items()
+                if "/VIDEO_TS/" in p and not p.lower().endswith(DVD_EXTS)]
+    print(f"\nGENERIC NAMES (invisible to name search): {len(junk)}")
+    for p, i in junk[:args.show]:
+        print(f"   [{i['lib']}] {i['name']!r}  {os.path.basename(p)}")
+    print(f"\nMIS-NESTED IN VIDEO_TS (not a DVD file): {len(fake_dvd)}")
+    for p, i in fake_dvd[:args.show]:
+        print(f"   [{i['lib']}] {i['name'][:50]}  {os.path.basename(p)}")
 
     print(f"\nUNINDEXED (file on disk, no item): {len(unindexed)}")
     for f in unindexed[:args.show]:
