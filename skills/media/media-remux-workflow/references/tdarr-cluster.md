@@ -239,3 +239,30 @@ Measured load with 4 workers per node (8 cores each): prox3 saturates at ~99% CP
 ~955% CPU demand and load ~39; prox4 runs ~78% with ~711% demand because it also serves
 the CIFS share (32 MB/s out). Jellyfin's host stays idle at ~10%. Four workers per 8-core
 node is oversubscribed — three is the sensible ceiling.
+
+## Changing worker counts (and how to know it worked)
+
+`alter-worker-limit` with `{"nodeID":..., "process":"increase"|"decrease",
+"workerType":"transcodecpu"}` adjusts the count, and `update-node` with
+`nodeUpdates.workerLimits` (or a `NodeJSONDB` update on `docID=<nodeName>`) sets the
+stored value so a reload cannot restore the old one. Do both.
+
+Two things mislead when checking:
+
+* **`ps` keeps showing the old count.** Lowering the limit does not kill running
+  encodes — the extra slot drains when that job finishes, and no replacement spawns.
+  Expect the old number for as long as the longest job runs (30-40 min on a 3-hour
+  source). That is the correct, graceful behaviour, not a failed change.
+* **`get-nodes` reports `config.workerLimits: null`** and the node's own
+  `Tdarr_Node_Config.json` has `workerLimits: null` too — the node holds no limit.
+
+Authoritative check: `POST /api/v2/poll-worker-limits {"data":{"nodeID":...}}` returns
+what the server is actually telling the node, plus `queueLengths`:
+
+```
+{"workerLimits":{"transcodecpu":3,...},"queueLengths":{"transcodecpu":20,...}}
+```
+
+Set 3 transcode workers per 8-core node. Four oversubscribes (~955% CPU demand on 800%
+capacity, load ~40, x264 threads queueing); three keeps a saturated node under capacity
+and leaves prox4 room to serve CIFS reads to the other nodes.
