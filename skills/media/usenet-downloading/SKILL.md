@@ -155,7 +155,16 @@ resolution tag, chosen because the search sorted on seeders and treated "untagge
 | `... 720p WEBRip` | 464p | upgrade | **yes** |
 | `... PDTV x264` (no height) | 832p | unknown | **no** |
 | `... 1080p WEB-DL` | 1080p | same-or-worse | **no** |
-| anything | nothing held | no-local-copy | **yes** |
+| anything | confirmed nothing held | no-local-copy | **yes** |
+| anything | held but unmeasurable | held-unknown | **no** |
+| unrelated title | anything | different-title | **no** |
+
+**Uncertainty must never resolve to "download".** The first version of this gate treated
+"could not probe what we hold" as "we hold nothing" and queued a dozen more, including
+a `The Lone Ranger (2013)` release offered as a replacement for a music documentary.
+`held_state_for()` therefore distinguishes `none` (a real gap) from `unprobeable` and
+`ambiguous`, and `title_matches()` requires 60% of the wanted title's words before a
+candidate counts as the same programme.
 
 ```python
 from media_lib import quality

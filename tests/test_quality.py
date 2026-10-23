@@ -58,13 +58,37 @@ def test_untagged_sd_against_a_held_copy_is_not_queued():
     assert "cannot prove" in v["reason"]
 
 
-def test_a_gap_is_always_worth_filling():
-    v = quality.verdict("Cinema Perverso 720p WEBRip", held_height=None)
+def test_a_confirmed_gap_is_worth_filling():
+    v = quality.verdict("Cinema Perverso 720p WEBRip", held_height=None, held_state="none")
     assert v["verdict"] == "no-local-copy" and v["queue"] is True
 
 
+def test_an_unmeasurable_held_copy_is_not_a_gap():
+    """The second mistake: 'could not probe' was read as 'we hold nothing'."""
+    for state in ("unprobeable", "ambiguous"):
+        v = quality.verdict("Some Doc 720p WEBRip", held_height=None, held_state=state)
+        assert v["verdict"] == "held-unknown", state
+        assert v["queue"] is False, state
+
+
+def test_an_unrelated_release_is_never_a_replacement():
+    """A Lone Ranger release was once queued for a music documentary."""
+    v = quality.verdict("The.Lone.Ranger.2013.MULTi.1080p.BluRay", held_height=480,
+                        held_state="held", wanted_title="Urgh A Music War 1981")
+    assert v["verdict"] == "different-title"
+    assert v["queue"] is False
+
+
+def test_title_matching_accepts_the_right_programme():
+    assert quality.title_matches("Urgh A Music War 1981 720p WEBRip", "Urgh A Music War 1981")
+    assert quality.title_matches("BBC Storyville 2013 The Great Hip Hop Hoax PDTV",
+                                 "The Great Hip Hop Hoax")
+
+
 def test_decide_uses_the_held_copy(monkeypatch):
-    monkeypatch.setattr(quality, "held_height_for", lambda term: 464)
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 464, "matched": "Film"})
     assert quality.decide("Film 720p WEBRip", "Film")["queue"] is True
-    monkeypatch.setattr(quality, "held_height_for", lambda term: 1080)
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 1080, "matched": "Film"})
     assert quality.decide("Film 720p WEBRip", "Film")["queue"] is False

@@ -6,8 +6,6 @@ incomplete when it arrived.
 """
 from __future__ import annotations
 
-import pytest
-
 from media_lib import completeness
 
 

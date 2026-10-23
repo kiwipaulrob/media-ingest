@@ -65,7 +65,6 @@ def test_library_path_rejects_unknown_and_parent():
 ])
 def test_scanner_progress_ignores_the_memory_pair(text, expected):
     """The status text carries TWO 'x/y' pairs; the memory one must not be read."""
-    from tdarr_scan import scanner_progress
 
     class FakeAPI:
         @staticmethod
