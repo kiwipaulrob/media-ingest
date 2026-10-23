@@ -266,3 +266,29 @@ what the server is actually telling the node, plus `queueLengths`:
 Set 3 transcode workers per 8-core node. Four oversubscribes (~955% CPU demand on 800%
 capacity, load ~40, x264 threads queueing); three keeps a saturated node under capacity
 and leaves prox4 room to serve CIFS reads to the other nodes.
+
+## NEVER pass a parent path to scan-files
+
+`scan-files` takes `arrayOrPath` and indexes **everything beneath it into the library being
+scanned**. Calling it with `/media/videos` while scanning `musicdocos` pulled 539 records
+from Films, TV, DocuSeries and `_staging-*` into the music library, and 727 more into
+`musicdocos-series` — 1,266 files queued for transcoding on a music-docs flow. Nothing
+warns: the counts simply grow and work starts on the wrong media.
+
+**Always pass the library's own folder**: `/media/videos/musicdocos`, never its parent.
+
+Detect it by checking every record's path against its library root:
+
+```python
+root = f"/media/videos/{name}/"
+foreign = [d for d in docs if d.get("DB")==db and not d["file"].startswith(root)]
+```
+
+Repair with `scripts/tdarr_prune_foreign.py` (`--apply`), which uses `cruddb`
+`removeOne` per record — a DB-only delete. The two obvious endpoints are both wrong:
+`remove-library-files` takes only a DB id and would drop the legitimate records too, and
+`bulk-delete-files` deletes media from **disk**. The prune script proves the media is
+untouched by counting `[ -e ]` before and after (1,266/1,266 both times).
+
+After pruning, the file states return to their true size (663 / 264) and the workflow is
+safe again.
