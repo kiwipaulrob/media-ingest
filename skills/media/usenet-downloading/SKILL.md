@@ -140,3 +140,40 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
     before spending more block space — but distrust an NZB-embedded password
     once SAB reports all-supplied-passwords-tried, and abandon the post when
     no board carries it rather than re-downloading identical bytes.
+
+## "Not enough repair blocks" is NOT a credit problem
+
+Cost real time on 24 Oct 2026: 32 failed downloads were retried after a block account
+was topped up, and **every one failed identically**. The shortfall number is the whole
+diagnosis — it counts articles missing from EVERY configured provider, and no amount of
+credit buys articles the backbone does not hold.
+
+| Shortfall | Meaning | Action |
+|---|---|---|
+| **<= 10 blocks** | near-complete, a fill server may cover it | one retry |
+| **11–100** | usually dead | one attempt, then replace the release |
+| **> 100** | hopeless | replace the release, never retry |
+| `Corrupt RAR` / `Bad archive` / `RAR files failed to verify` | damaged post | replace |
+| `Not on your server(s)` / `Aborted, cannot be completed` | absent from provider | replace |
+
+Use `scripts/usenet_triage.py`, which classifies from SAB history:
+
+```bash
+python3 scripts/usenet_triage.py                # bucket every failure
+python3 scripts/usenet_triage.py --retry-small  # requeue only <=10-block jobs
+python3 scripts/usenet_triage.py --search       # find replacement releases
+```
+
+`media_lib/sab.classify_failure()` holds the same thresholds for code paths.
+
+**Two traps around retries:**
+
+* A **paused job or paused queue silently swallows retries** — `sab.retry()` returns
+  True and nothing runs. Check `queue.paused` and resume: `sab._call("resume")`, and
+  resume an individually paused slot with `sab._call("queue", name="resume", value=nzo_id)`.
+* Retrying costs block data. Classify FIRST so the data goes to jobs that can finish.
+
+When a post is hopeless, replace rather than retry: search for the same title from a
+different release group. Confirmed on 24 Oct — `BBC Arena 1998 The Brian Epstein Story
+1080p HDTV x265 MVGroup` failed 72 blocks short on both providers, so the release had to
+change, not the credit.

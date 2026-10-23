@@ -103,3 +103,37 @@ def retryable_failures(limit: int = 20) -> List[Dict[str, Any]]:
 def retry(nzo_id: str) -> bool:
     """Re-queue one history slot. Each retry spends block data."""
     return bool(_call("retry", value=nzo_id).get("status"))
+
+# Failure classes. The distinction matters because the actions are opposite:
+# a small parity shortfall is worth one retry, while a large one means the
+# articles are absent from EVERY configured provider and no amount of retrying
+# (or credit) will ever complete it — the release must be replaced, not retried.
+REPAIR_SMALL = 10       # <=10 blocks short: one retry is worth the data
+REPAIR_MEDIUM = 100     # 11-100: usually dead, but a second provider may fill it
+DEAD_SHORT_RE = re.compile(r"\((\d+)\s+short\)")
+
+
+def classify_failure(message: str) -> Dict[str, Any]:
+    """Bucket a SAB failure so callers do not retry hopeless jobs.
+
+    Learned the hard way (24 Oct 2026): 32 failed jobs were retried after a block
+    account was topped up and every one failed identically. Credit never fixes a
+    post whose articles are missing from the backbone.
+    """
+    msg = str(message or "")
+    m = DEAD_SHORT_RE.search(msg)
+    if m:
+        short = int(m.group(1))
+        if short <= REPAIR_SMALL:
+            kind = "retry"
+        elif short <= REPAIR_MEDIUM:
+            kind = "maybe"
+        else:
+            kind = "dead-post"
+        return {"kind": kind, "blocks_short": short, "retry_worthwhile": short <= REPAIR_SMALL}
+    low = msg.lower()
+    if "corrupt rar" in low or "bad archive" in low or "failed to verify" in low:
+        return {"kind": "damaged-post", "blocks_short": None, "retry_worthwhile": False}
+    if "not on your server" in low or "cannot be completed" in low:
+        return {"kind": "missing-from-provider", "blocks_short": None, "retry_worthwhile": False}
+    return {"kind": "other", "blocks_short": None, "retry_worthwhile": False}
