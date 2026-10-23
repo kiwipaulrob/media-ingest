@@ -141,6 +141,15 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
     once SAB reports all-supplied-passwords-tried, and abandon the post when
     no board carries it rather than re-downloading identical bytes.
 
+### A Usenet "replacement" usually fails the same way
+
+When a post's articles are missing from the provider, every other post from that provider
+is likely missing them too. A gated replacement run queued `Hansa.Studios.By.The.Wall
+720p` to Usenet and it failed with the same `not enough repair blocks` within minutes.
+For replacements, **prefer torrents with live seeders**; treat a Usenet candidate as a
+long shot, and check its fate rather than assuming `add_url()` returning True means it
+will download.
+
 ### Never queue a replacement without proving it is an upgrade
 
 Got this wrong on 24 Oct 2026: four replacement releases were queued for content already
