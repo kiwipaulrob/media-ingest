@@ -164,6 +164,34 @@ Tdarr's own state is worth checking every time, because "installed" is not
 
 ## DVD-folder recode (VIDEO_TS → single file)
 
+### Validate the chain BEFORE encoding — `scripts/vob_audit.py`
+
+Run `python3 scripts/vob_audit.py` (add `--deep` for the seek test) and do not encode
+anything it flags. Three silent failure modes, all found on this library on 24 Oct 2026:
+
+| Symptom | What it means | What to do |
+|---|---|---|
+| Effective bitrate > ~12 Mbps (size×8/duration) | **Stalled timestamps**: data is complete, PTS chain broken. Moog reported 55 s, Put More Blood 196 s | re-encode with `setpts=N/FRAME_RATE/TB`; a stream copy cannot fix it and `-reset_timestamps 1` does not help |
+| Seek to 600 s and 2400 s returns the SAME frame bytes | Confirms the timestamp stall | same |
+| Gap in `VTS_xx_N` numbering (e.g. 1, 2, 4) | **The chain has a hole** — a segment is missing | do NOT join around it; get a complete source |
+
+Worked example of the timestamp fix (Put More Blood VOB1, "196 s"):
+
+```
+ffmpeg -fflags +genpts -i VTS_01_1.VOB \
+  -vf "setpts=N/FRAME_RATE/TB,bwdif=mode=send_frame,scale=768:576:flags=lanczos,setsar=1" \
+  -af "aresample=async=1:first_pts=0" -c:v libx264 -preset veryfast -crf 20 -threads 4 \
+  -c:a aac -b:a 192k out.mkv
+```
+Result: **00:30:23.44**, h264 progressive, 768x576 SAR 1:1 DAR 4:3 — the full programme.
+Never conclude a VOB is "corrupt" from bitrate alone: check allocation (`stat` blocks),
+non-zero content at the tail, and whether frames decode. Damaged timestamps ≠ lost data.
+
+The hole check catches incompleteness that duration alone misses: Gil Scott-Heron has
+VOBs 1, 2, 4 = 3.0 GB ≈ 44.5 min against a 62 min film (IMDb 1h 2m). Encoding that
+chain would have produced a film silently missing ~17 minutes with a visible jump.
+
+
 Raw DVD folders play with no navigation and stall some clients — recode to
 one file per title (proven: three titles, same recipe).
 
