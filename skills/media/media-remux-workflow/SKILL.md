@@ -10,6 +10,41 @@ Converting aging containers (AVI/DivX-era) to MKV for fast playback start
 and seeking, plus H.264 re-encodes for sources too damaged to remux.
 Stream-copy changes no pixels — the win is index behavior, not space.
 
+## Changing the container breaks watch state — preserve it
+
+Tdarr's flow emits `.mkv`, so `X.avi` becomes `X.mkv`. Jellyfin treats that as a NEW
+file: new item id, new DateCreated, old row dropped (verified — `All The Yong Dudes`
+went `d2b55207…` -> `a0f9aaad…` at the moment of replacement). Realtime monitoring is on
+for Music Docos, so this happens within seconds. Played flags and resume positions die
+with the old item.
+
+Wrap every batch:
+
+```bash
+python3 scripts/tdarr_preserve_userdata.py snapshot   # BEFORE
+python3 scripts/tdarr_preserve_userdata.py restore    # AFTER (add --dry-run to check)
+```
+
+It keys on the path WITHOUT its extension — the one thing a container swap does not
+change — so `part1`/`part2` in a shared folder stay distinct. Restore only fills in
+state that is currently missing; it never re-marks or resets an item you have since
+watched. Measured on this library: 797 items, 177 carrying state worth keeping
+(28 played, 88 with resume points).
+
+**Do not derive "played" from PlayCount.** Jellyfin holds PlayCount>0 with
+Played=False for part-watched items, so `played or play_count > 0` silently marks
+every one of them played — it proposed 144 bogus writes on an untouched library.
+Trust the Played flag alone.
+
+Then check nothing was orphaned:
+
+```bash
+python3 scripts/jellyfin_dead_rows.py        # DEAD ROW = item whose path is gone
+```
+
+A folder-item (DVD/`VIDEO_TS`) has a DIRECTORY path, so a file-only listing reports
+every one as dead. Test existence (`[ -e ]`), never infer it from a `find` of files.
+
 ## STOP — recoding is Tdarr's job (standing order, Paul, 23 Oct 2026)
 
 **Never hand-roll an ffmpeg recode batch.** Tdarr is installed and is the only

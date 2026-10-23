@@ -332,3 +332,28 @@ def notify_media(paths: Iterable[str], update_type: str = "Created") -> int:
     body = {"Updates": [{"Path": p, "UpdateType": update_type} for p in paths]}
     _request("/Library/Media/Updated", method="POST", body=body)
     return 204
+
+
+def user_data(uid: str, item_id: str, *, key: Optional[str] = None) -> Dict[str, Any]:
+    """Current UserData for one item: Played, PlayCount, PlaybackPositionTicks."""
+    return get_json(f"/Users/{uid}/Items/{item_id}/UserData", key=key)
+
+
+def set_played(uid: str, item_id: str, played: bool = True, *,
+               key: Optional[str] = None) -> int:
+    """Mark an item played (POST) or unplayed (DELETE).
+
+    Played is a separate endpoint from UserData: posting UserData will NOT set it.
+    """
+    path = f"/Users/{uid}/PlayedItems/{item_id}"
+    _request(path, method="POST" if played else "DELETE",
+             body={} if played else None, key=key)
+    return 204
+
+
+def set_playback_position(uid: str, item_id: str, ticks: int, *,
+                          key: Optional[str] = None) -> int:
+    """Restore a resume point. 0 ticks clears it."""
+    _request(f"/Users/{uid}/Items/{item_id}/UserData", method="POST",
+             body={"PlaybackPositionTicks": int(ticks)}, key=key)
+    return 204
