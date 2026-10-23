@@ -134,3 +134,22 @@ def test_an_episode_cannot_stand_in_for_a_film():
     v = quality.verdict("Some Show S01E04 Cajun Country 1080p", 336,
                         wanted_title="Cajun Country")
     assert v["queue"] is False
+
+@pytest.mark.parametrize("cand_year,expect", [
+    (1998, True),   # exact
+    (1997, True),   # one year earlier
+    (1999, True),   # one year later
+    (1996, False),  # two years out
+    (2001, False),  # three years out
+])
+def test_year_tolerance_is_one_either_side(cand_year, expect):
+    """Production, broadcast and release years legitimately differ by a year."""
+    v = quality.verdict(f"Some Doc {cand_year} 1080p HDTV", 480,
+                        wanted_title="Some Doc", wanted_year=1998)
+    assert v["queue"] is expect
+
+
+def test_a_release_with_no_year_is_not_rejected_for_it():
+    v = quality.verdict("Bob Harris My Nashville 720p HDTV", 360,
+                        wanted_title="Bob Harris My Nashville", wanted_year=1977)
+    assert v["queue"] is True

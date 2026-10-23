@@ -45,6 +45,11 @@ MAX_EXTRA_WORDS = 2
 #: A candidate must be at least this many times taller to justify re-downloading.
 MIN_GAIN = 1.25
 
+#: Years either side of the library item's year that still count as the same programme.
+#: A film's production year, broadcast year and release year commonly differ, so an
+#: exact match is too strict — but a wide one lets a totally different programme through.
+YEAR_TOLERANCE = 1
+
 _EPISODE_RE = re.compile(r"\bs\d{1,2}\s*e\d{1,3}\b|\bs\d{2}\b|\bepisode\s*\d+\b")
 
 
@@ -129,12 +134,12 @@ def verdict(candidate_title: str, held_height: Optional[int],
                 "held_height": held_height, "verdict": "different-title", "queue": False,
                 "reason": "not clearly the same programme — not a replacement"}
 
-    if wanted_year and release_year(candidate_title) and \
-            abs(release_year(candidate_title) - int(wanted_year)) > 1:
+    cand_year = release_year(candidate_title)
+    if wanted_year and cand_year and abs(cand_year - int(wanted_year)) > YEAR_TOLERANCE:
         return {"candidate_height": release_height(candidate_title),
                 "held_height": held_height, "verdict": "different-title", "queue": False,
-                "reason": f"release is {release_year(candidate_title)}, not {wanted_year} "
-                          f"— wrong programme"}
+                "reason": f"release year {cand_year} is more than {YEAR_TOLERANCE} "
+                          f"away from {wanted_year} — wrong programme"}
 
     cand = release_height(candidate_title)
 
