@@ -350,6 +350,20 @@ prove field order and cadence: `references/interlaced-reencode.md`.
   completion line in the remote log as proof of liveness — then leave it
   alone until the final count.
 
+## Tdarr runbook (scripts in this repo)
+
+| Step | Script | Purpose |
+|---|---|---|
+| Start | `tdarr_kick.py --until-hour 23 --requeue-errors` | open schedule hours, requeue failures |
+| Force queue | `scan-files` per library, own folder, one at a time | rebuilds work queue |
+| Safety | `tdarr_prune_foreign.py [--apply]` | drop rows outside their library |
+| Wrap | `tdarr_preserve_userdata.py snapshot` / `restore` | keep played/resume state |
+| Verify | `jellyfin_dead_rows.py` | dead rows, generic names, mis-nesting |
+| Report | `tdarr_status.py` | progress, throughput, node load, scope check |
+
+Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0 and
+`dead_rows` shows 0 before declaring a batch done.
+
 ## Distributed transcoding (Tdarr cluster — the default tool)
 
 - This is the DEFAULT for all recoding, not just multi-host work (see the STOP

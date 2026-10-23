@@ -118,12 +118,29 @@ disabling the library.
 
 ## Scanning: never run two libraries at once
 
-Two concurrent `scan-files` calls cross-assign rows — a `musicdocos` scan and a
-`musicdocos-series` scan left Films/TV/filmnoir rows filed under BOTH
-libraries, and per-library totals of 2,260 / 2,665 that look plausible but are
-wrong (the real folders hold 670 and 265). Recovery: `remove-library-files`
-per library, then `scanFresh` with the explicit library path, one library at a
-time, and assert every row's `_id` starts with that library's folder.
+Two causes, both easy to commit, and they compound. This was violated AGAIN on
+23 Oct 2026 by firing both libraries' scans in one loop.
+
+1. **Two concurrent `scan-files` calls cross-assign rows** — a `musicdocos` scan
+   and a `musicdocos-series` scan left Films/TV/filmnoir rows filed under BOTH
+   libraries.
+2. **A parent `arrayOrPath` indexes everything beneath it into that library.**
+   Scanning with `/media/videos` instead of `/media/videos/musicdocos` queued
+   Films, TV, DocuSeries, `_replaced` and `_staging-*` for transcoding.
+
+Symptom in both cases: per-library totals of ~2,260 / 2,665 that look plausible
+but are wrong (the real folders hold 670 and 265) — 1,266 foreign rows on the
+23 Oct run.
+
+**Scan one library at a time, with its own folder.** Recovery, cheapest first:
+
+* `scripts/tdarr_prune_foreign.py --apply` — drops only the rows whose path sits
+  outside their library root, via `cruddb removeOne` (DB-only, media untouched;
+  the script checks `[ -e ]` before and after). Fast, keeps the good rows and
+  their history.
+* Only if rows are genuinely misfiled rather than merely outside the folder:
+  `remove-library-files` per library then `scanFresh` with the explicit library
+  path, one at a time, asserting every `_id` starts with that library's folder.
 
 ## Verify before trusting the instance
 
@@ -292,3 +309,25 @@ untouched by counting `[ -e ]` before and after (1,266/1,266 both times).
 
 After pruning, the file states return to their true size (663 / 264) and the workflow is
 safe again.
+
+## Reporting progress (overnight runs)
+
+`scripts/tdarr_status.py` prints one report covering everything that matters, and it exists
+because each item was learned the hard way:
+
+* done/queued per library from LIVE file state, with historical job errors separated out
+  (157 stale `Transcode error` job records sat next to 0 actually-errored files).
+* whether the window is open, read from the library SCHEDULE for the current hour block —
+  a hardcoded "23:00-05:00" rule reports "closed" while an opened block is transcoding.
+* node load (cpu / load / encodes / mem) sampled over 3s from `/proc/stat`.
+* a **foreign-record count** as a standing safety check, so the scope leak above can never
+  recur unnoticed.
+
+Schedule it and deliver the output, e.g. a one-shot cron at 07:30 (job `5d7052f11dde`).
+Note cron `script` paths must live under the profile `scripts/` dir and may not be
+symlinks into the repo — it rejects them as traversal. Have the prompt run the command via
+terminal instead.
+
+Verdicts to expect: three workers per 8-core node gives ~99% CPU on prox3 and ~75% on
+prox4 (which also serves CIFS at ~32 MB/s). Oversubscribing to four pushed prox3 load from
+26 to 43 with no throughput gain.
