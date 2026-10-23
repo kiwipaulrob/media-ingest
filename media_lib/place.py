@@ -40,7 +40,7 @@ import re
 import shlex
 from typing import Any, Dict, Optional
 
-from . import config, probe
+from . import completeness, config, probe
 
 DECODE_SPANS = (0.05, 0.50, 0.95)
 M_SRC = "@@SRC@@"
@@ -158,6 +158,19 @@ def place_new(
     src_d, dst_d = to_disk(src), to_disk(dest)
     if not dst_d.lower().endswith((".mkv", ".mp4", ".avi")):
         return {"ok": False, "stage": "BAD-DEST", "dest": dest}
+
+    # Completeness FIRST: every gate below inspects the copy, so a source that is
+    # missing parts would sail through all of them. A DVD chain with a hole, or one
+    # whose timestamps stall, is refused here rather than placed and discovered later.
+    problems = completeness.source_problems(src_d, expect_duration=expect_duration)
+    if problems:
+        return {
+            "ok": False,
+            "stage": "INCOMPLETE-SOURCE",
+            "detail": "; ".join(problems[:3]),
+            "problems": problems,
+            "dest": dest,
+        }
 
     try:
         stage = probe.on_media(_stage_script(src_d, dst_d), timeout=3600)

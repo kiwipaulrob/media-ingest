@@ -36,6 +36,9 @@ class FakeHost:
 
     def install(self, monkeypatch):
         monkeypatch.setattr(place.probe, 'on_media', self.on_media)
+        # These cases exercise the COPY gates. Completeness is a separate gate with
+        # its own tests; leaving it live here would refuse before staging ever runs.
+        monkeypatch.setattr(place.completeness, 'source_problems', lambda *a, **k: [])
 
     def on_media(self, inner, timeout=300):
         self.calls.append(inner)
@@ -129,3 +132,20 @@ def test_path_mapping_prefers_the_longest_prefix():
         'videos/musicdocos-series/X.mkv')
     assert place.to_disk('/downloads-zmedia/Y.mkv').endswith('downloads/Y.mkv')
     assert place.to_disk('/mnt/zmedia/keep/me.mkv') == '/mnt/zmedia/keep/me.mkv'
+
+
+def test_incomplete_source_is_refused_before_anything_is_staged(monkeypatch):
+    """A source missing parts must fail BEFORE the copy, not after it.
+
+    Every other gate inspects the copy, so an incomplete source passes them all.
+    """
+    host = FakeHost()
+    host.install(monkeypatch)
+    monkeypatch.setattr(place.completeness, 'source_problems',
+                        lambda *a, **k: ['VOB chain incomplete: missing [3]'])
+
+    res = place.place_new('/data/movies/X/X.mkv', '/data/movies/X/X.mkv')
+    assert res['ok'] is False
+    assert res['stage'] == 'INCOMPLETE-SOURCE'
+    assert 'missing [3]' in res['detail']
+    assert not host.calls, 'nothing should touch the media host when the source is refused'

@@ -164,6 +164,14 @@ Tdarr's own state is worth checking every time, because "installed" is not
 
 ## DVD-folder recode (VIDEO_TS → single file)
 
+### Completeness is a GATE in the ingest path, not a checklist item
+
+`media_lib/completeness.py` runs at the top of `place.place_new()` and refuses with
+`stage=INCOMPLETE-SOURCE` before anything touches the media host. It has to be first:
+every other gate (size, probe, decode) inspects the COPY, so a source that arrived
+missing parts passes all of them. `scripts/vob_audit.py` audits the existing library the
+same way; `tests/test_completeness.py` pins the parsing.
+
 ### Validate the chain BEFORE encoding — `scripts/vob_audit.py`
 
 Run `python3 scripts/vob_audit.py` (add `--deep` for the seek test) and do not encode
