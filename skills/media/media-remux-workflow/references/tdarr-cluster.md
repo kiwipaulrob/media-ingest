@@ -2,8 +2,39 @@
 
 Server + nodes to federate the re-encode backlog across hosts (validated:
 server on CT114, node on proxmox4 registered and scanning; trial library of
-734 files indexed monitor-only). Use for multi-host encode work; use the
-script drivers in this skill for single-host batches.
+734 files indexed monitor-only).
+
+**This is the default recoder (standing order, 23 Oct 2026).** Check its live
+state before every use; "installed" does not mean "working". Procedure: read the
+DBs below, then seed a key / add libraries / build the flow / link a node.
+
+## Instance as at 23 Oct 2026 — installed, but never configured
+
+Server CT114 on proxmox2, `http://192.168.214.23:8265` (8266 server API, 8267
+node), image `haveagitgat/tdarr:latest`, up 11 days. Media mounted
+`/mnt/zmedia -> /media` from `//192.168.214.132/zmedia` — the same CIFS share
+Jellyfin reads, and its view is current (verified: `Hung Up on a Dream` is
+1766567575 bytes with an identical mtime in CT105 and CT114). It sees
+`videos/musicdocos` (635 entries) and `videos/musicdocos-series` (30).
+
+Everything else was empty: `LibrarySettingsJSONDB`, `FlowsJSONDB`,
+`NodeJSONDB`, `FileJSONDB`, `JobsJSONDB`, `ApiKeysJSONDB` all 0 entries,
+`NODE_LINK` unset, only 8265/8266 published, and the log carried nothing but
+hourly plugin-sync with `Job report history size: 0 MiB`. So it had processed
+no files in 11 days — the reason a hand-rolled ffmpeg batch got written instead.
+
+Diagnostic one-liners (inside the CT):
+
+```bash
+for d in LibrarySettingsJSONDB FlowsJSONDB NodeJSONDB FileJSONDB JobsJSONDB ApiKeysJSONDB; do
+  echo "$d: $(ls /opt/tdarr/server/Tdarr/DB2/$d 2>/dev/null | wc -l) entries"; done
+docker inspect tdarr --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i node
+grep -c 'Transcode' /opt/tdarr/logs/Tdarr_Server_Log.txt
+```
+
+Also check `videos/` for `_staging-*` / `_replaced` / `_quarantine_hungffprobe`
+directories left by earlier replacement runs before pointing anything at a
+library.
 
 ## Deploy
 

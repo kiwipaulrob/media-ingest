@@ -10,6 +10,27 @@ Converting aging containers (AVI/DivX-era) to MKV for fast playback start
 and seeking, plus H.264 re-encodes for sources too damaged to remux.
 Stream-copy changes no pixels — the win is index behavior, not space.
 
+## STOP — recoding is Tdarr's job (standing order, Paul, 23 Oct 2026)
+
+**Never hand-roll an ffmpeg recode batch.** Tdarr is installed and is the only
+sanctioned transcoder: CT114 on proxmox2, `http://192.168.214.23:8265`, media
+mounted `/mnt/zmedia -> /media` (same CIFS share Jellyfin reads — verified
+identical bytes+mtime, not the stale view the older topology note warns about).
+Procedure, API and pitfalls: `references/tdarr-cluster.md`.
+
+Before any recode work, in this order: **load this skill and the Tdarr
+reference → check Tdarr's state → configure or queue there.** Hand-rolling a
+batch instead is a process failure even when the encode is correct: on 23 Oct
+2026 I wrote `recode.sh` for 14 files while the cluster had been sitting idle
+for 11 days, and was corrected. The scripts below (`reencode-sweep.py`,
+`reencode-batch.py`) are fallbacks for when Tdarr is genuinely unavailable —
+not the default, and never to race it on the same files.
+
+Tdarr's own state is worth checking every time, because "installed" is not
+"working": on 23 Oct every DB was empty (`LibrarySettings`, `Flows`, `Nodes`,
+`Files`, `Jobs`, `ApiKeys` all 0), `NODE_LINK` was unset and only ports
+8265/8266 were published — an install that had never processed a single file.
+
 ## Remux pass (mkvmerge first)
 
 - Prefer `mkvmerge -q -o <dest> <src>` over `ffmpeg -c copy` — sources
@@ -260,12 +281,14 @@ prove field order and cadence: `references/interlaced-reencode.md`.
   completion line in the remote log as proof of liveness — then leave it
   alone until the final count.
 
-## Distributed transcoding (Tdarr cluster)
+## Distributed transcoding (Tdarr cluster — the default tool)
 
-- For multi-host encode work, run a Tdarr server + nodes rather than
-  hand-sharding script batches: full procedure, API patterns, and pitfalls
-  in `references/tdarr-cluster.md`. Default posture is monitor-only
-  (scan + report, transcodes off) until the operator approves the flow.
+- This is the DEFAULT for all recoding, not just multi-host work (see the STOP
+  gate at the top). Full procedure, API patterns and pitfalls in
+  `references/tdarr-cluster.md`. A freshly-built flow stays monitor-only
+  (scan + report, transcodes off) until the operator approves the graph, and a
+  new flow is proven on ONE file before it is pointed at a library — it
+  replaces files in place, so a bad graph damages everything it touches.
 
 - `scripts/reencode-sweep.py --scan <libdir>` — read-only triage: walks the
   tree, ffprobes every video file (skips `*.reenc-tmp.mkv` / `*.remux-tmp.mkv`
