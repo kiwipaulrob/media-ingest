@@ -1,135 +1,166 @@
 # Tdarr distributed transcoding cluster
 
-Server + nodes to federate the re-encode backlog across hosts (validated:
-server on CT114, node on proxmox4 registered and scanning; trial library of
-734 files indexed monitor-only).
+Server + nodes to federate the re-encode backlog across hosts. **This is the
+default recoder (standing order, 23 Oct 2026).** Check its live state before
+every use; "installed" does not mean "working".
 
-**This is the default recoder (standing order, 23 Oct 2026).** Check its live
-state before every use; "installed" does not mean "working". Procedure: read the
-DBs below, then seed a key / add libraries / build the flow / link a node.
+## Live configuration (proven 23 Oct 2026)
 
-## Instance as at 23 Oct 2026 — installed, but never configured
+| Role | Host | Address |
+|---|---|---|
+| Server | CT114 on proxmox2 | `192.168.214.23` — 8265 web, 8266 API, 8267 node |
+| Node | proxmox4 (`.132`) | container `tdarr-node`, `--cpus 6`, `apparmor=unconfined`, `PUID/PGID=0`, `/mnt/zmedia -> /media`, `/tmp/tdarr-cache -> /temp` |
 
-Server CT114 on proxmox2, `http://192.168.214.23:8265` (8266 server API, 8267
-node), image `haveagitgat/tdarr:latest`, up 11 days. Media mounted
-`/mnt/zmedia -> /media` from `//192.168.214.132/zmedia` — the same CIFS share
-Jellyfin reads, and its view is current (verified: `Hung Up on a Dream` is
-1766567575 bytes with an identical mtime in CT105 and CT114). It sees
-`videos/musicdocos` (635 entries) and `videos/musicdocos-series` (30).
+Tdarr 3.00.00 (`haveagitgat/tdarr:latest`). Node registers as `prox4`, live id
+`rdH2eZP` (the `NodeJSONDB` doc `_id` is `prox4` — API calls like
+`update-node`/`alter-worker-limit` want the LIVE `rdH2eZP`). Node schedule is
+`scheduleEnabled:false` with `workerLimits` 2×transcodecpu + 1×healthcheckcpu;
+the night policy lives on each LIBRARY's schedule (23:00–05:00), not the node.
 
-Everything else was empty: `LibrarySettingsJSONDB`, `FlowsJSONDB`,
-`NodeJSONDB`, `FileJSONDB`, `JobsJSONDB`, `ApiKeysJSONDB` all 0 entries,
-`NODE_LINK` unset, only 8265/8266 published, and the log carried nothing but
-hourly plugin-sync with `Job report history size: 0 MiB`. So it had processed
-no files in 11 days — the reason a hand-rolled ffmpeg batch got written instead.
+| Library | id | folder | flow | transcodes |
+|---|---|---|---|---|
+| musicdocos | `d2mSD6V` | `/media/videos/musicdocos` | `b3VtKqt` | on, 23:00–05:00 |
+| musicdocos-series | `pbfcK4h` | `/media/videos/musicdocos-series` | `b3VtKqt` | on, 23:00–05:00 |
+| Documentaries | `QmFydFZ` | `/media/videos/Documentaries` | none | off (monitor only) |
 
-Diagnostic one-liners (inside the CT):
+Flow `b3VtKqt` "Legacy SD -> h264 CRF20 (software, house)":
+inputFile → checkStreamProperty(video, codec_name, legacy whitelist) →
+checkFileNameIncludes(`Sample,sample,SAMPLE, - original,Trailer,trailer`, skip
+on output 1) → ffmpegCommandStart → checkStreamProperty(video, field_order,
+`tt`) → [tt] ffmpegCommandCustomArguments `-vf bwdif=mode=send_frame:parity=tff`
+→ ffmpegCommandSetVideoEncoder (h264, preset fast, quality 20,
+hardwareEncoding false, forceEncoding false) → ffmpegCommandSetContainer(mkv)
+→ ffmpegCommandExecute → replaceOriginalFile. No scaling plugin = never
+upscales.
+
+Legacy whitelist = `mpeg4,mpeg4v2,mpeg4v3,msmpeg4,msmpeg4v2,msmpeg4v3,mpeg1video,
+mpeg2video,wmv1,wmv2,wmv3,vc1`. A whitelist (not a "skip h264" blacklist) is
+deliberate: VP9/AV1/H.265 files are untouched automatically, which is the
+standing policy for the 82 VP9/AV1 items.
+
+Command actually produced (verified in a job report):
+`-i in -map 0:0 -c:0 libx264 -crf 20 -preset fast -map 0:1 -c:1 copy [-vf bwdif=mode=send_frame:parity=tff] out.mkv`
+— audio/subs stream-copied, `-vf` only on the `tt` branch.
+
+## Diagnostics (inside CT114)
 
 ```bash
-for d in LibrarySettingsJSONDB FlowsJSONDB NodeJSONDB FileJSONDB JobsJSONDB ApiKeysJSONDB; do
-  echo "$d: $(ls /opt/tdarr/server/Tdarr/DB2/$d 2>/dev/null | wc -l) entries"; done
-docker inspect tdarr --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i node
-grep -c 'Transcode' /opt/tdarr/logs/Tdarr_Server_Log.txt
+# the real Tdarr 3 DB is SQLite, not per-collection directories
+docker exec tdarr python3 -c "import sqlite3;print(sqlite3.connect('/opt/tdarr/server/Tdarr/DB2/SQL/database.db').execute('select count(*) from filejsondb').fetchone())"
+docker inspect tdarr --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -iE 'node|key'
+tail -40 /opt/tdarr/logs/Tdarr_Server_Log.txt   # container TZ = Pacific/Auckland
+docker logs --tail 60 tdarr-node               # node lives on proxmox4, not CT114
 ```
 
-Also check `videos/` for `_staging-*` / `_replaced` / `_quarantine_hungffprobe`
-directories left by earlier replacement runs before pointing anything at a
-library.
+`ls /opt/tdarr/server/Tdarr/DB2/<Collection>` is a **trap**: Tdarr 3 keeps
+nothing there (only `SQL/database.db`), so every collection counts 0 and an
+"empty install" verdict can be wrong in both directions. Query the sqlite
+tables (`filejsondb`, `flowsjsondb`, `librarysettingsjsondb`, `nodejsondb`)
+instead.
 
-## Deploy
+## Media mount can go stale two ways (both seen)
 
-- Images are `haveagitgat/tdarr` (server) and `haveagitgat/tdarr_node`
-  (workers) — not the similarly-named lookalikes; a wrong name fails at
-  pull time with an auth-shaped error, so verify the name first.
-- Server: `-p 8265:8265 -p 8266:8266`, data in `/opt/tdarr/{server,configs,logs}`.
-- Node env: `serverIP`, `serverPort=8266`, `nodeName`, `apiKey` (the seeded
-  key, below). Cap CPUs with `--cpus` (leave headroom on shared hosts).
-- Mount media at the SAME container path on server and every node
-  (e.g. `/mnt/zmedia` → `/media` everywhere) — mismatched paths are the
-  commonest silent failure (jobs queue, workers idle, no error).
-- On Proxmox VE hosts, AppArmor blocks the s6 supervisor in these images
-  (`s6-ipcserver-socketbinder: Permission denied`, app never starts).
-  Fix: `--security-opt apparmor=unconfined` on the node container.
-- Run node containers with `PUID=0 PGID=0` when library files are
-  root/nobody-owned and mode-locked — a uid-1000 node reads fine but
-  fails the write half of replace-original.
-- Measured software pace (8-thread Ivy Bridge Xeon, SD mpeg4→x264 CRF20
-  fast): ~60–70 MB/min at ~700% CPU, output roughly parity with source.
-  Size overnight windows from that, not from optimism.
+1. The CIFS mount inside CT114 silently returns a partial view (only
+   `_quarantine_*` dirs) while the export is full. `systemctl restart
+   mnt-zmedia.mount` fixes it — the unit comes from `/proc/self/mountinfo`
+   (`No files found for mnt-zmedia.mount`, no fstab entry), so the restart
+   reports a failed unmount yet mounts cleanly. **Nothing persists across a CT
+   reboot** — re-check and remount, or add an fstab entry.
+2. After the remount the media is right on the CT host but `/media` in the
+   container is still EMPTY: docker bound whatever directory sat under the
+   mount point at container start. Always `docker restart tdarr` afterwards,
+   then verify `docker exec tdarr ls /media/videos`.
 
 ## Auth without the WebUI
 
-- Set `seededApiKey` env on the server container. It MUST start with
-  `tapi_` (anything else logs `Invalid seeded API key` and issues nothing).
-  On valid startup the server logs `Created seeded API key` and creates an
-  `admin` user with the key as password.
-- Nodes authenticate with `apiKey=<seeded key>` env. `401 Unauthorized`
-  from the node means key mismatch — recheck, don't rebuild.
-- API calls: `x-api-key` header, bodies wrapped as `{data:{...}}`.
-  Key endpoints: `cruddb` (collections include `LibrarySettingsJSONDB`,
-  `FlowsJSONDB`, `FileJSONDB`; modes getAll/getById/insert/update),
-  `scan-files` (`scanConfig` needs `dbID` + `mode` + `arrayOrPath`),
-  `get-filescanner-status`, `client/file` (needs `start` + `pageSize`).
-- Route discovery when docs fall short: the WebUI JS bundle
-  (`/static/js/main.*.js`) contains every `/api/v2/...` route — fetch it
-  and grep. The live OpenAPI doc is at `/api/v2/public/api-docs/json`.
+- `seededApiKey` env must start with `tapi_` (else `Invalid seeded API key`).
+  Valid startup logs `Created seeded API key` and creates user `admin`.
+- API: header `x-api-key`, bodies wrapped `{data:{...}}`. Endpoints used:
+  `cruddb`, `scan-files` (`scanConfig{dbID,mode,arrayOrPath}`),
+  `get-filescanner-status`, `client/file` (needs `filters`+`sorts`+`opts`),
+  `bulk-update-files` (`{fileIds, updatedObj}`), `alter-worker-limit`,
+  `poll-worker-limits`, `remove-library-files`.
+- Live OpenAPI at `/api/v2/public/api-docs/json`; every route also sits in
+  `/app/Tdarr_Server/public/static/js/main.*.js`.
+
+## Wiring a library to a flow — the traps that return 200 and do nothing
+
+1. **Node inputs live in `inputsDB`, not `inputs`.** A flow authored with an
+   `inputs` key runs every plugin on DEFAULTS and the job report shows
+   `Loaded plugin inputs: {}`; `checkStreamProperty` then defaults to
+   `valuesToMatch: aac`, so every file is "not required". Allowed keys per
+   flowPlugins entry: `id`, `version`, `pluginName`, `inputsDB`, `position`,
+   `sourceRepo`, `name`, `fpEnabled`.
+2. **The library links its flow via `flowId` AND
+   `decisionMaker.settingsFlows:true`.** `decisionMaker:{settingsFlows:false}`
+   (even with a valid `flowId`) makes the node abort every job with
+   `No library transcode settings selected` → file status `Transcode error`,
+   file untouched. Set the whole decisionMaker block explicitly, then RE-READ
+   it from the server.
+3. **`cruddb` update needs `docID` separate from `obj`.** Passing the whole
+   document (with `_id` inside) and no `docID` returns 200 and changes
+   nothing.
+4. **Library `cache` must be `/temp`** (the node's cache mount). Unset, the
+   node refuses every flow with `Transcode Cache is not set. Set it in the
+   library settings before running a flow.` — visible only in the node log on
+   proxmox4.
+5. **Worker/schedule limits can be zero at two levels.** `get-nodes` showing
+   `workers: {}` with files queued means either `workerLimits` is 0 or the
+   node's 24-hour schedule is all zeros. Fix with
+   `alter-worker-limit {nodeID, process:'increase', workerType:'transcodecpu'}`
+   and `scheduleEnabled:false` on the node.
+
+Requeue a file stuck at `Transcode error` / `Not required` with
+`bulk-update-files {updatedObj:{TranscodeDecisionMaker:'Queued', bumped:true,
+lastTranscodeDate:0, holdUntil:0}}`; `bumped` is what makes the queue builder
+pick it up promptly. `holdUntil` (epoch ms) parks individual files without
+disabling the library.
+
+## Scanning: never run two libraries at once
+
+Two concurrent `scan-files` calls cross-assign rows — a `musicdocos` scan and a
+`musicdocos-series` scan left Films/TV/filmnoir rows filed under BOTH
+libraries, and per-library totals of 2,260 / 2,665 that look plausible but are
+wrong (the real folders hold 670 and 265). Recovery: `remove-library-files`
+per library, then `scanFresh` with the explicit library path, one library at a
+time, and assert every row's `_id` starts with that library's folder.
+
+## Verify before trusting the instance
+
+- `docker restart tdarr` right after any mount change, then compare a known
+  file byte-for-byte with the Jellyfin host.
+- Per-file verdicts live in
+  `/opt/tdarr/server/Tdarr/DB2/JobReports/<footprintId>/*.txt` — read the
+  `spawnArgs` block for the real ffmpeg command and the `File routed to
+  output N` lines for branch decisions.
+- Proven paces (proxmox4 Xeon E3-1265L V2, software x264): 512x384 mpeg4 →
+  ~115 fps (~4x realtime); 720x576 mpeg2 `tt` with bwdif → ~30 fps (~1.2x).
+
+## Tdarr replaces files in place — park the originals first
+
+`replaceOriginalFile` renames the source to `<name>.partial.old`, moves the
+encoded file in, then removes the old one; it does NOT create the
+`<stem> - original<ext>` alternate the house convention wants. Before enabling
+transcodes on a library, copy the qualifying files to
+`videos/_replaced/tdarr-<YYYYMMDD>/<relative path>` (size-verified; spot
+`cmp`'d) so A/B and rollback survive. AVI sources come back as `.mkv` — new
+Jellyfin items, so a library refresh is required afterwards.
 
 ## Trial library (monitor-only first)
 
-- Insert into `LibrarySettingsJSONDB`, then update with the full template:
-  `folder` (server-side container path), `processLibrary:true`,
+- Insert `LibrarySettingsJSONDB` with `processLibrary:true`,
   `processTranscodes:false`, `processHealthChecks:false`, `scanOnStart:false`,
-  plus a night-only `schedule` array (`Day:HH-HH` ids, 11pm–5am).
-- Trigger `scan-files`/`scanFresh` manually and confirm file count against
-  the filesystem before attaching any flow. Transcodes stay off until the
-  operator approves the flow after reviewing it in the UI graph.
-
-## Flow (software-only house standard)
-
-- Clone the on-disk `basicVideo` community template structure; override
-  node inputs. A flow doc is `{name, description, tags, flowPlugins:[...],
-  flowEdges:[...]}` with per-node overrides in an `inputs:{...}` key on each
-  flowPlugins entry (names from the plugin `inputs:` block, e.g. check node
-  `codec:h264`, encoder `outputCodec:h264`,
-  `ffmpegPreset:fast`, `ffmpegQuality:20`, `hardwareEncoding:false`,
-  `forceEncoding:false` (the codec-check node already routes h264 away —
-  belt and braces against re-encoding compliant files).
-  Never attach an unreviewed hand-authored flow to a library — one bad
-  graph touches every file.
-- Read plugin input schemas from the plugin sources on disk
-  (`.../FlowPlugins/CommunityFlowPlugins/<area>/<plugin>/1.0.0/index.js`,
-  the `inputs:` block) rather than guessing names.
-
-## Three silent blockers that make Tdarr look "configured but dead"
-
-All three were live on 23 Oct 2026. Each one returns HTTP 200 and logs nothing
-alarming, so the cluster looks healthy while processing absolutely nothing.
-
-1. **The node schedule is all zeros.** `workerLimits` can say
-   `transcodecpu: 2` and the node still runs **no worker at all** if every
-   hour in `NodeJSONDB.schedule` has `transcodecpu: 0`. Fix:
-   `scheduleEnabled: false` so the node honours `workerLimits`; the night-only
-   policy then lives where it belongs, on each LIBRARY's schedule (23:00-05:00).
-   Check: `[h['_id'] for h in node['schedule'] if h['transcodecpu']]` — empty
-   means the node can never transcode.
-
-2. **`cruddb` update needs `docID`, separately from `obj`.** Passing the whole
-   document (with `_id` inside) and no `docID` returns 200 and changes
-   **nothing**. A script that prints "False -> True" from its own local
-   variable will happily lie to you. Always re-read with `getAll` and assert.
-
-3. **Library `cache` must be `/temp`.** Unset, the node refuses every flow with
-   `Error: Transcode Cache is not set. Set it in the library settings before
-   running a flow.` — visible only in `/opt/tdarr-node/logs/Tdarr_Node_Log.txt` on
-   node host proxmox4, nowhere near the server UI.
-
-Also: `update-node` takes the **live** node id from `get-nodes`
-(e.g. `rdH2eZP`), not the `NodeJSONDB` doc `_id` (e.g. `prox4`). Wrong id
-returns `OK` and does nothing.
-
-Right-sized scan: `scan-files` with `mode: scanFindNew` and the library's own
-folder. Per-library totals differ (musicdocos 2,260 files vs musicdocos-series
-2,665), which is how you confirm the scan stayed inside its library.
-
-Working implementation: `scripts/tdarr_attach_libraries.py` (idempotent,
-verifies by re-read) and `scripts/tdarr_enable.py` (node schedule + worker limits).
+  `cache:'/temp'`, a full `decisionMaker` block with `settingsFlows:true` +
+  `flowId`, and a `containerFilter` WITHOUT `vob,evo,iso,m2ts,ts` (VIDEO_TS
+  trees belong to the VOB-chain route, not Tdarr).
+- Prove the flow on copies in a throwaway folder (`videos/_tdarr-test`) at
+  24/7, including one `field_order=tt` sample, before pointing it at a real
+  library; delete the folder and its library afterwards.
+- Sample and `- original` files must be excluded by the flow
+  (`checkFileNameIncludes`); a library-wide run otherwise recodes the very
+  alternates the house convention preserves.
+- Two agents editing this instance at once is a real hazard (it happened on 23
+  Oct: a parallel run flipped `settingsFlows` back to false and mis-read a
+  contaminated scan as success). Re-read library/flow state immediately before
+  and after any change, and treat another worker's "verified" comment as
+  unverified until you check it yourself.

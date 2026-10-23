@@ -52,7 +52,30 @@ def main() -> int:
         lib["processTranscodes"] = True
         lib["cache"] = CACHE
         lib["flowId"] = FLOW_ID
-        lib["decisionMaker"] = {"settingsFlows": False}
+        # settingsFlows MUST be true, or the node aborts every job with
+        # "No library transcode settings selected" (Transcode error, file
+        # untouched). Merge instead of replacing the block.
+        dm = dict(lib.get("decisionMaker") or {})
+        dm.update(
+            {
+                "settingsFlows": True,
+                "settingsPlugin": False,
+                "settingsVideo": False,
+                "settingsAudio": False,
+            }
+        )
+        for key, val in (
+            ("videoExcludeSwitch", True),
+            ("video_codec_names_exclude", []),
+            ("video_size_range_include", {"min": 0, "max": 100000}),
+            ("video_height_range_include", {"min": 0, "max": 3000}),
+            ("video_width_range_include", {"min": 0, "max": 4000}),
+            ("audioExcludeSwitch", True),
+            ("audio_codec_names_exclude", []),
+            ("audio_size_range_include", {"min": 0, "max": 100000}),
+        ):
+            dm.setdefault(key, val)
+        lib["decisionMaker"] = dm
         crud("LibrarySettingsJSONDB", "update", obj=lib, doc_id=doc_id)
         print(f"  {lib.get('name'):<20} docID={doc_id}  {before} -> "
               f"({True}, {CACHE}, {FLOW_ID})")
@@ -65,11 +88,13 @@ def main() -> int:
         if lib.get("name") not in TARGETS:
             continue
         tc, cache, flow = lib.get("processTranscodes"), lib.get("cache"), lib.get("flowId")
-        good = tc is True and cache == CACHE and flow == FLOW_ID
+        flows_on = (lib.get("decisionMaker") or {}).get("settingsFlows") is True
+        good = tc is True and cache == CACHE and flow == FLOW_ID and flows_on
         ok = ok and good
         hours = len([h for h in (lib.get("schedule") or []) if h.get("checked")])
         print(f"  {'OK ' if good else 'FAIL'} {lib.get('name'):<20} "
-              f"transcodes={tc} cache={cache!r} flow={flow} scheduled_hours={hours}")
+              f"transcodes={tc} cache={cache!r} flow={flow} "
+              f"settingsFlows={flows_on} scheduled_hours={hours}")
     return 0 if ok else 1
 
 
