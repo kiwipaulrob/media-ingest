@@ -92,3 +92,45 @@ def test_decide_uses_the_held_copy(monkeypatch):
     monkeypatch.setattr(quality, "held_state_for",
                         lambda term: {"state": "held", "height": 1080, "matched": "Film"})
     assert quality.decide("Film 720p WEBRip", "Film")["queue"] is False
+
+@pytest.mark.parametrize("candidate,wanted", [
+    ("Cooks Country S18E18 Cajun Cooking 1080p WEB", "Cajun Country"),
+    ("Stranger Things S02E05 Chapter Five Dig Dug 2160p", "Dig!"),
+    ("The.Lone.Ranger.2013.MULTi.1080p.BluRay", "Urgh A Music War 1981"),
+])
+def test_unrelated_releases_do_not_match(candidate, wanted):
+    assert quality.title_matches(candidate, wanted) is False
+
+
+@pytest.mark.parametrize("candidate,wanted", [
+    ("BBC Bob Harris My Nashville 720p HDTV x264 AAC MVGroup.org", "Bob Harris: My Nashville"),
+    ("BBC Arena 1998 The Brian Epstein Story 1080p HDTV x264", "The Brian Epstein Story"),
+    ("Urgh A Music War 1981 720p WEBRip AVC AAC", "Urgh A Music War 1981"),
+])
+def test_real_releases_do_match(candidate, wanted):
+    assert quality.title_matches(candidate, wanted) is True
+
+
+def test_a_wrong_year_is_a_different_programme():
+    v = quality.verdict("c4 wrestling 2019 05 24 the filth and the fury 720p", 576,
+                        wanted_title="The Filth and the Fury", wanted_year=2000)
+    assert v["verdict"] == "different-title" and v["queue"] is False
+
+
+def test_matching_year_still_upgrades():
+    v = quality.verdict("BBC Arena 1998 The Brian Epstein Story 1080p", 480,
+                        wanted_title="The Brian Epstein Story", wanted_year=1998)
+    assert v["queue"] is True
+
+
+def test_a_trivial_height_gain_is_not_worth_downloading():
+    """468p -> 480p is 3%: all the cost, no visible benefit."""
+    v = quality.verdict("Charles Bradley Soul of America 2012 480p HDTV", 468,
+                        wanted_title="Charles Bradley: Soul of America")
+    assert v["verdict"] == "marginal" and v["queue"] is False
+
+
+def test_an_episode_cannot_stand_in_for_a_film():
+    v = quality.verdict("Some Show S01E04 Cajun Country 1080p", 336,
+                        wanted_title="Cajun Country")
+    assert v["queue"] is False

@@ -28,8 +28,24 @@ RES_HEIGHTS = {"2160p": 2160, "1440p": 1440, "1080p": 1080, "720p": 720, "576p":
                "480p": 480, "360p": 360}
 SD_LABELS = ("pdtv", "hdtv", "dvdrip", "dvdscr", "webrip", "tvrip", "vhsrip", "satrip")
 
-#: Fraction of the wanted title's words that must appear in a candidate.
-MATCH_THRESHOLD = 0.6
+#: Tokens that carry no title information: they are copied from release-name junk.
+RELEASE_JUNK = set("""
+2160p 1440p 1080p 720p 576p 480p 360p 4k uhd hdr web webrip webdl webdlrip hdtv pdtv
+dvdrip dvdscr dvd5 dvd9 bluray brrip bdrip remux x264 x265 h264 h265 hevc avc xvid divx
+aac ac3 dts dd5 ddp5 flac mp3 mkv mp4 avi ts m2ts 10bit 8bit proper repack extended
+internal limited complete season multi sub subs eng english french ger ita spa hardcoded
+""".split())
+
+#: Broadcasters that prefix a title in release names but are not part of it.
+NETWORKS = set("bbc c4 ch4 channel4 pbs hbo itv abc cbc sbs nfb arte zdf ard nhk".split())
+
+#: A candidate may introduce at most this many extra distinctive words.
+MAX_EXTRA_WORDS = 2
+
+#: A candidate must be at least this many times taller to justify re-downloading.
+MIN_GAIN = 1.25
+
+_EPISODE_RE = re.compile(r"\bs\d{1,2}\s*e\d{1,3}\b|\bs\d{2}\b|\bepisode\s*\d+\b")
 
 
 def release_height(title: str) -> Optional[int]:
@@ -49,26 +65,55 @@ def is_sd_release(title: str) -> bool:
         lbl in str(title or "").lower() for lbl in SD_LABELS)
 
 
-def _words(text: str) -> set:
-    return {w for w in re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).split()
-            if len(w) > 2}
+_YEAR_RE = re.compile(r"\b(19\d{2}|20[0-3]\d)\b")
+
+
+def release_year(title: str) -> Optional[int]:
+    """Year stated in a release name, if any."""
+    m = _YEAR_RE.search(str(title or ""))
+    return int(m.group(1)) if m else None
+
+
+def _normalise(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+
+
+def _title_words(text: str, *, strip_junk: bool) -> set:
+    """Significant words of a title, optionally dropping release-name noise."""
+    words = {w for w in _normalise(text).split() if len(w) > 2 and not w.isdigit()}
+    if strip_junk:
+        words -= RELEASE_JUNK
+        words -= NETWORKS
+    return words
 
 
 def title_matches(candidate: str, wanted: str) -> bool:
     """Is `candidate` plausibly the same programme as `wanted`?
 
-    Guards against an unrelated release ranking highly for a title the indexers lack —
-    a "The Lone Ranger (2013)" release was once queued as a replacement for a music
-    documentary because nothing checked the two were related.
+    Guards against an unrelated release ranking highly for a title the indexers lack.
+    Seen for real: "The Lone Ranger (2013)" offered for a music documentary, "Cooks
+    Country S18E18 Cajun Cooking" for "Cajun Country", "Stranger Things S02E05 ...
+    Dig Dug" for "Dig!", and a C4 wrestling upload for "The Filth and the Fury".
+
+    Loose word overlap is not enough — those all passed it. So: every wanted word must
+    appear, the candidate may add at most MAX_EXTRA_WORDS of its own, and an episodic
+    release cannot stand in for a standalone film (or the reverse).
     """
-    want = _words(wanted)
+    want = _title_words(wanted, strip_junk=False)
     if not want:
         return False
-    return len(want & _words(candidate)) / len(want) >= MATCH_THRESHOLD
+
+    cand = _title_words(candidate, strip_junk=True)
+    if not want <= cand:
+        return False
+    if _EPISODE_RE.search(_normalise(candidate)) and not _EPISODE_RE.search(_normalise(wanted)):
+        return False
+    return len(cand - want) <= MAX_EXTRA_WORDS
 
 
 def verdict(candidate_title: str, held_height: Optional[int],
-            held_state: str = "held", wanted_title: Optional[str] = None) -> Dict[str, object]:
+            held_state: str = "held", wanted_title: Optional[str] = None,
+            wanted_year: Optional[int] = None) -> Dict[str, object]:
     """Decide whether `candidate_title` is worth downloading.
 
     held_state is what held_state_for() found:
@@ -83,6 +128,13 @@ def verdict(candidate_title: str, held_height: Optional[int],
         return {"candidate_height": release_height(candidate_title),
                 "held_height": held_height, "verdict": "different-title", "queue": False,
                 "reason": "not clearly the same programme — not a replacement"}
+
+    if wanted_year and release_year(candidate_title) and \
+            abs(release_year(candidate_title) - int(wanted_year)) > 1:
+        return {"candidate_height": release_height(candidate_title),
+                "held_height": held_height, "verdict": "different-title", "queue": False,
+                "reason": f"release is {release_year(candidate_title)}, not {wanted_year} "
+                          f"— wrong programme"}
 
     cand = release_height(candidate_title)
 
@@ -108,9 +160,16 @@ def verdict(candidate_title: str, held_height: Optional[int],
                 "queue": False,
                 "reason": f"{why} — cannot prove it beats the {held}p we hold"}
 
-    if cand > held:
+    if cand >= held * MIN_GAIN:
         return {"candidate_height": cand, "held_height": held, "verdict": "upgrade",
                 "queue": True, "reason": f"{cand}p beats the {held}p we hold"}
+
+    if cand > held:
+        pct = round(100 * (cand / held - 1))
+        return {"candidate_height": cand, "held_height": held, "verdict": "marginal",
+                "queue": False,
+                "reason": f"{cand}p is only {pct}% taller than the {held}p we hold "
+                          f"— not worth re-downloading"}
 
     return {"candidate_height": cand, "held_height": held, "verdict": "same-or-worse",
             "queue": False, "reason": f"{cand}p is not better than the {held}p we hold"}
@@ -160,9 +219,10 @@ def held_height_for(term: str) -> Optional[int]:
     return int(height) if isinstance(height, int) else None
 
 
-def decide(candidate_title: str, term: str) -> Dict[str, object]:
+def decide(candidate_title: str, term: str,
+           wanted_year: Optional[int] = None) -> Dict[str, object]:
     """verdict() against whatever the library actually holds for `term`."""
     st = held_state_for(term)
     height = st.get("height")
     return verdict(candidate_title, int(height) if isinstance(height, int) else None,
-                   str(st.get("state")), wanted_title=term)
+                   str(st.get("state")), wanted_title=term, wanted_year=wanted_year)
