@@ -310,6 +310,17 @@ def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg
         return resp.status
 
 
+def delete_item(item_id: str) -> int:
+    """DELETE an item.
+
+    The server unlinks the item's file. For a FOLDER-shaped item it can take the
+    whole folder with it, so only call this for a single-file row whose path has
+    been verified.
+    """
+    _request(f"/Items/{item_id}", method="DELETE")
+    return 204
+
+
 def notify_media(paths: Iterable[str], update_type: str = "Created") -> int:
     """Tell the scanner that files appeared.
 
