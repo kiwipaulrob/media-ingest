@@ -395,6 +395,34 @@ hunt YouTube before giving up. yt-dlp is NOT installed on CT101 — run it via u
   nothing — encryption is CDN-level for anonymous and logged-in sessions
   alike. Treat NZOS titles as stream-only and keep hunting other sources.
 
+## Ingesting downloads into a library
+
+**Never repeat the series name after the episode tag.** Files copied in as
+`Later with Jools Holland (1992) S65E01 Later with Jools Holland.mp4` were indexed as
+episodes but arrived with `ParentIndexNumber: null` and `IndexNumber: null` — Jellyfin
+could not parse a season at all. Use the plain form (`... (1992) S65E01.mp4`), or put the
+real episode title there as the existing library files do.
+
+**A rename alone does not fix it.** The item keeps its cached (null) parse; a library scan
+leaves it null. `refresh_item(id, metadata="FullRefresh")` per item is what resolves it —
+all 18 then numbered correctly.
+
+**Verify by number, not by presence.** Query episodes with `ParentIndexNumber`/`IndexNumber`
+and assert the season you intended. Counting episode items without checking the numbers
+reported "67 episodes" while 18 of them had no season.
+
+**Deletion scripts must use absolute paths.** A `find` that prints `./dir/file` and an
+`rm` that runs without `cd` silently does nothing (`rc: 1`), and any `stat -c %h` hardlink
+check built the same way returns an empty result — a false "0 hardlinked". Prefix the share
+root explicitly (`/media/downloads/...`) and verify afterwards that the files are gone.
+
+**Checking downloads for duplicates:** a release name carries junk (`x264`, `MVGroup`,
+`1080p`) that a library title does not, so match **every word of the library title** against
+the release name with junk stripped, not the reverse. Drop stopwords (`the`, `and`, `of`) or
+"Metallica: The Black Album" scores 80% against a name containing all four real words, and
+keep 3-letter words — "Rio" and "Lou" are often the only distinguishing token. YouTube rips
+carry an ID instead of a title, so match those on verified duration.
+
 ## Queue health — check throughput before blaming swarms
 
 A torrent that stays at `0.0%` is not necessarily dead. Before concluding anything about
