@@ -182,11 +182,22 @@ def force_start(hashes: List[str], op=None) -> int:
     added without force sits in `queuedDL` and never begins — an add that looks
     successful and downloads nothing.
     """
+    return set_force(hashes, True, op)
+
+
+def set_force(hashes: List[str], value: bool, op=None) -> int:
+    """Explicitly force-start or un-force torrents.
+
+    Un-forcing is how dead weight is handed back to the queue: this install carries far
+    more forced torrents than `max_active_downloads`, and while they are all forced none
+    of them makes progress and nothing new can start.
+    """
     hashes = [h for h in hashes if h]
     if not hashes:
         return 0
     op = op or _opener()
-    body = urllib.parse.urlencode({"hashes": "|".join(hashes), "value": "true"}).encode()
+    body = urllib.parse.urlencode({
+        "hashes": "|".join(hashes), "value": "true" if value else "false"}).encode()
     req = urllib.request.Request(
         f"{_base()}/api/v2/torrents/setForceStart",
         data=body,
