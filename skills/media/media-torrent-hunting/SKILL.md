@@ -395,6 +395,44 @@ hunt YouTube before giving up. yt-dlp is NOT installed on CT101 — run it via u
   nothing — encryption is CDN-level for anonymous and logged-in sessions
   alike. Treat NZOS titles as stream-only and keep hunting other sources.
 
+## Rebuilding from DVD VOBs (and why they mangle)
+
+**VOBs are byte-splittable; concatenate them with `cat`, not ffmpeg's concat demuxer.**
+`-f concat -safe 0` silently read only the FIRST VOB here — the encode came back at 1555 s
+when two VOBs held 3106 s, and a video-only run reproduced it, proving it was the demuxer
+and not a `-shortest`/audio truncation. `cat VTS_01_1.VOB VTS_01_2.VOB > combined.mpg`
+gives a continuous PTS (1555.9 -> 1555.995 s) and encoded the full 77,665 frames.
+
+**Check where a programme actually starts before trusting the file order.** MPEG
+timestamps are 33-bit at 90 kHz, so they wrap every **95,443.7 s (26.51 h)**. A VOB whose
+PTS restarts, read as unsigned, lands near the top of that range — a 45-minute programme
+reports ~26.5 hours and seeking past the break returns the same frame forever. Measured
+on one disc: VOB1 0.235 s, VOB2 1555.995 s, then VOB3 **106.395 s** — a ~3000 s backwards
+jump, i.e. a second programme authored into the same titleset.
+
+**Stream copy cannot repair this.** `-c copy` preserves the timestamps verbatim (that is
+why the first remux "succeeded" and changed nothing). Only a re-encode with
+`setpts=N/FRAME_RATE/TB` rebuilds a monotonic timeline; add `bwdif` for interlaced PAL and
+`aresample=async=1:first_pts=0` for the audio.
+
+**Damage the audio, not the video, is the usual asymmetry.** Encode video first, then
+audio, then mux with `-shortest` — the other order lets a short/decayed audio stream
+truncate a perfectly good picture.
+
+### Before ingesting a "new" title, search the library for the SERIES too
+
+Two recovered programmes were ingested as standalone Movies while the library already held
+them inside a `Rock Family Trees` series. One was a straight duplicate (matched by frame
+count: 68,466 vs 68,470), and the other existed only in a DEFECTIVE form — 38,884 frames
+in a 3000 s container with seeks past 2000 s failing to decode. Search `IncludeItemTypes`
+for Movie **and** Episode **and** Series, and compare **frame counts**, not just runtimes:
+a corrupt file's runtime is exactly what cannot be trusted.
+
+**Never `rm -rf` a folder as "cleanup" before confirming the move into the library
+succeeded.** Doing so here deleted a finished 77,665-frame encode because the preceding
+`mv -n` had refused to overwrite; it was only recoverable because the intermediate video
+and audio encodes were still on disk. Move, verify, and only then remove.
+
 ## Ingesting downloads into a library
 
 **Never repeat the series name after the episode tag.** Files copied in as
