@@ -9,6 +9,57 @@ Moving series into the Series library, and removing duplicates between the two.
 
 
 
+
+## Library paths on disk, and why "duplicate" usually is not one
+
+Jellyfin's library roots are NOT the folder names on disk. Verified mapping (host
+`/mnt/zmedia/videos/`, which the Tdarr node sees as `/media/videos/`):
+
+| Jellyfin root | Folder on disk |
+|---|---|
+| `/data/musicdocos` | `musicdocos` |
+| `/data/musicdocos-series` | `musicdocos-series` |
+| `/data/documentaries` | `Documentaries` (capital D) |
+| `/data/docuseries` | `DocuSeries` |
+| `/data/filmdocos` | `FilmDocumentaries` |
+| `/data/filmnoir` | `filmnoir` |
+| `/data/movies` | `Films` (not "movies") |
+| `/data/tvshows` | **unresolved** — no folder of that name exists; resolve from CT105's `/data` mount before touching it |
+
+Never translate `/data/<lib>` by string substitution. Guessing produced 12 failed moves and
+several empty directories. Resolve the root first, or find the file by name.
+
+### Membership in several libraries is a HARDLINK, not a copy
+
+A title can legitimately appear in two libraries with **one** copy of the bytes. Check
+`%D` (device) + `%i` (inode) + `%n` (link count) before calling anything a duplicate:
+
+- same inode, `links >= 2` → hardlink: one copy, two names
+- same inode, `links == 1` → the same file reached through two mount paths (bind mount): still one copy
+- **different inodes, same size** → genuinely two copies
+
+`find -printf "%D %i %n %s %p"` answers this in one pass; a filename similarity check cannot.
+
+Worked example from a live audit (all on device 49):
+
+| Title | Verdict |
+|---|---|
+| Sunset Boulevard (1950) filmnoir + Films | hardlink, inode 880083, links 2 — one copy |
+| Chinatown (1974) filmnoir + Films | hardlink, inode 878925, links 2 — one copy |
+| The Harder They Come (1972) musicdocos + Films | same inode 1378884, links 1 — one copy |
+| The Making of Psycho (2005) Documentaries + FilmDocumentaries | **different inodes — two real copies** |
+| Pussy Riot: A Punk Prayer Documentaries + musicdocos | **different inodes — two real copies** |
+
+Consequences:
+
+- **Do not "de-duplicate" a hardlink.** Deleting one name removes only that library entry; the
+  bytes persist under the other name. Treating them as wasted space is wrong — they cost nothing.
+- **Jellyfin shows one item per library even for a single hardlinked file.** Two rows are not
+  evidence of two copies.
+- **Real duplicates (different inodes) are the only ones worth consolidating** — and then only
+  as alternate versions in one folder, named `<primary> - <label>.ext`, never by deleting.
+
+
 ## Never hand-build an ingest spec — the planner already decided
 
 The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`
