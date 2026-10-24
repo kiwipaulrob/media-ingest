@@ -27,12 +27,20 @@ from media_lib.jellyfin import env as _env  # noqa: E402
 # Never inline the key: this repo is PUBLIC. Read it from the shared .env
 # (TDARR_API_KEY) or the process environment. A previous version hardcoded a
 # `tapi_...` literal here, which put a live credential in public git history.
-KEY = _env("TDARR_API_KEY")
-if not KEY:
-    raise SystemExit(
-        "TDARR_API_KEY is not set. Add TDARR_API_KEY=<tapi_...> to /root/.hermes/.env "
-        "(the key itself must never be committed)."
-    )
+def _key() -> str:
+    """Read the key at CALL time.
+
+    This used to run at import, so any test that imported this module whose environment
+    lacked TDARR_API_KEY died with SystemExit during collection — which is exactly the CI
+    runner, where the .env does not exist.
+    """
+    key = _env("TDARR_API_KEY")
+    if not key:
+        raise SystemExit(
+            "TDARR_API_KEY is not set. Add TDARR_API_KEY=<tapi_...> to /root/.hermes/.env "
+            "(the key itself must never be committed)."
+        )
+    return key
 BASE = "http://192.168.214.23:8265/api/v2"
 LIBS = {"musicdocos": "d2mSD6V", "musicdocos-series": "pbfcK4h"}
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -42,7 +50,7 @@ def api(path: str, payload: dict | None = None):
     data = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(
         f"{BASE}/{path}", data=data,
-        headers={"x-api-key": KEY, "Content-Type": "application/json"},
+        headers={"x-api-key": _key(), "Content-Type": "application/json"},
         method="POST" if data else "GET")
     body = urllib.request.urlopen(req, timeout=120).read().decode()
     if not body.strip():

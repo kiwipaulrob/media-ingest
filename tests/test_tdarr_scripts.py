@@ -109,3 +109,27 @@ def test_key_keeps_parts_distinct():
     p1 = key_for("/data/musicdocos/Bar/Bar - part1.avi")
     p2 = key_for("/data/musicdocos/Bar/Bar - part2.avi")
     assert p1 != p2
+
+
+def test_importing_a_tdarr_script_needs_no_api_key(monkeypatch):
+    """CI has no /root/.hermes/.env and no TDARR_API_KEY.
+
+    The key was validated at module import, so pytest died during COLLECTION with
+    SystemExit — the whole suite, not one test. Deferring it to _key() means importing is
+    free and only a real API call requires the credential.
+    """
+    import importlib.util
+
+    from media_lib import jellyfin
+
+    monkeypatch.delenv("TDARR_API_KEY", raising=False)
+    # load_env_file's default argument is bound at definition time, so patching ENV_FILE
+    # would not change what it reads — patch the reader itself.
+    monkeypatch.setattr(jellyfin, "load_env_file", lambda *a, **k: {})
+    for name in ("tdarr_kick", "tdarr_enable", "tdarr_attach_libraries", "tdarr_node_enable"):
+        spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)          # must not raise SystemExit
+        assert callable(module._key)
+        with pytest.raises(SystemExit):
+            module._key()                        # the error is deferred to the call
