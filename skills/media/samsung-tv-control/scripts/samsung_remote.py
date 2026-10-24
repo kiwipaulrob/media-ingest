@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Samsung TV remote - send a key command"""
-import socket, base64, struct, os, ssl, json, sys, time
+import socket
+import base64
+import struct
+import os
+import ssl
+import json
+import sys
+import time
 
 TV_IP = "192.168.214.178"
 PORT = 8002
@@ -40,7 +47,7 @@ def send_key(key_name):
             print("Upgrade failed")
             sock.close()
             return False
-    except:
+    except Exception:
         print("No response")
         sock.close()
         return False
@@ -56,12 +63,12 @@ def send_key(key_name):
     }).encode()
 
     frame = bytearray([0x81])
-    l = len(cmd)
-    if l < 126:
-        frame.append(l)
+    length = len(cmd)
+    if length < 126:
+        frame.append(length)
     else:
         frame.append(126)
-        frame.extend(struct.pack(">H", l))
+        frame.extend(struct.pack(">H", length))
     frame.extend(cmd)
 
     sock.send(bytes(frame))

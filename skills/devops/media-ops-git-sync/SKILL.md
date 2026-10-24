@@ -37,6 +37,33 @@ So a merge takes effect on the next tool call, and a bad merge breaks ingest
 immediately. GitHub is the mirror: review surface, PRs, backup, Pages. A merge
 there changes nothing until it is pulled locally.
 
+## One repo, and it is PUBLIC
+
+`github.com/kiwipaulrob/media-ingest` is the only repository for this code, and it is
+**public**. Two things make that easy to get wrong:
+
+- **Never infer visibility from authentication.** `gh api` and `gh repo view` authenticate
+  on every call, so "it needed my auth" says nothing about who can read it. Ask directly:
+
+  ```bash
+  gh repo view kiwipaulrob/media-ingest --json visibility,isFork,createdAt
+  gh repo list kiwipaulrob --limit 100 --json name,visibility
+  ```
+
+- **The plugin and skills live INSIDE this repo and are symlinked into the profile.** The
+  same code appears under `media-ops/` and under the profile's `plugins/` and `skills/`.
+  That is one repo in two filesystem locations — not two repos.
+
+Because everything pushed here is world-readable:
+
+- Credentials never live in tracked files; they are read from the environment
+  (`media_lib/config.py`). Check before pushing:
+  `git grep -nIE "(api[_-]?key|token|secret|password)\s*[:=]"`.
+- History is public too. The Tdarr key sat in commits `a09e1cf`, `e0d8d0e`, `4fa8d24`;
+  deleting it from the working tree did not remove it from `git log -S`. **Rotate any secret
+  that was ever committed** — treat it as published, because it is.
+- To change visibility: `gh repo edit kiwipaulrob/media-ingest --visibility private`.
+
 ## Use the tool, not raw git
 
 ```bash

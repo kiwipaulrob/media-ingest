@@ -153,3 +153,24 @@ def test_a_release_with_no_year_is_not_rejected_for_it():
     v = quality.verdict("Bob Harris My Nashville 720p HDTV", 360,
                         wanted_title="Bob Harris My Nashville", wanted_year=1977)
     assert v["queue"] is True
+
+
+def test_add_release_prefers_magnet_over_download_url(monkeypatch):
+    """The 401 trap: a bare downloadUrl is accepted by qBittorrent and never downloads."""
+    from media_lib import qb
+    sent = {}
+
+    def fake_add_verified(url, title, category=""):
+        sent['url'] = url
+        return {'ok': True, 'http': 200, 'verified': True, 'hash': 'x', 'state': 'dl'}
+
+    monkeypatch.setattr(qb, 'add_verified', fake_add_verified)
+    qb.add_release({'title': 'Thing', 'magnetUrl': 'magnet:?xt=urn:btih:' + 'a' * 40,
+                    'downloadUrl': 'https://prowlarr/download/1'})
+    assert sent['url'].startswith('magnet:'), 'a magnet must win over downloadUrl'
+
+    qb.add_release({'title': 'Thing', 'downloadUrl': 'https://prowlarr/download/2'})
+    assert 'apikey=' in sent['url'], 'the fallback must carry the API key, or it 401s'
+
+    out = qb.add_release({'title': 'nothing'})
+    assert out['ok'] is False and out['state'] == 'no-url'

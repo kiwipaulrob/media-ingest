@@ -5,7 +5,9 @@ Plan JSON: list of {"name", "path"} where path is the CONTAINER path
 (e.g. /data/documentaries/...); src-root/dst-root map it to disk.
 Usage: filmdocs-move.py <plan.json> <src-root> <dst-root>
 """
-import json, os, sys
+import json
+import os
+import sys
 
 plan_path, SRC, DST = sys.argv[1], sys.argv[2], sys.argv[3]
 plan = json.load(open(plan_path))

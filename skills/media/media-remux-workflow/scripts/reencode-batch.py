@@ -25,7 +25,11 @@ Usage:
 
 Exit codes: 0 all passed (or dry-run), 1 one or more files failed the gate.
 """
-import argparse, os, shutil, subprocess, sys
+import argparse
+import os
+import shutil
+import subprocess
+import sys
 
 VID_EXTS = (".mkv", ".mp4", ".avi", ".ts", ".m4v", ".divx")
 SKIP_SUFFIXES = (".reenc-tmp.mkv", ".remux-tmp.mkv", ".remux.mkv")

@@ -5,7 +5,6 @@ skipped, and a write must touch only Overview/LockedFields.
 """
 import json
 
-import pytest
 
 from media_lib import enrich
 

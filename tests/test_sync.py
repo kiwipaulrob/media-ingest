@@ -90,7 +90,8 @@ def test_repo_slug_parses_both_remote_forms(monkeypatch):
 
 def test_plugin_must_be_a_symlink_into_the_repo(monkeypatch, tmp_path):
     """A real directory means the old copy drift is back: edits stop reaching GitHub."""
-    installed = tmp_path / "plugins" / "media-ingest"; installed.mkdir(parents=True)
+    installed = tmp_path / "plugins" / "media-ingest"
+    installed.mkdir(parents=True)
     (installed / "plugin.yaml").write_text("name: media-ingest\n")
     monkeypatch.setattr(sync, "INSTALLED_PLUGIN", installed)
     monkeypatch.setattr(sync, "REPO_PLUGIN", tmp_path / "repo" / "media-ingest")
@@ -99,8 +100,10 @@ def test_plugin_must_be_a_symlink_into_the_repo(monkeypatch, tmp_path):
 
 
 def test_plugin_symlink_must_point_at_the_repo(monkeypatch, tmp_path):
-    repo_plugin = tmp_path / "repo" / "media-ingest"; repo_plugin.mkdir(parents=True)
-    elsewhere = tmp_path / "elsewhere"; elsewhere.mkdir()
+    repo_plugin = tmp_path / "repo" / "media-ingest"
+    repo_plugin.mkdir(parents=True)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
     installed = tmp_path / "plugins" / "media-ingest"
     installed.parent.mkdir(parents=True)
     installed.symlink_to(elsewhere, target_is_directory=True)
@@ -117,7 +120,8 @@ def test_plugin_symlink_must_point_at_the_repo(monkeypatch, tmp_path):
 def test_broken_skill_link_is_reported(monkeypatch, tmp_path):
     skills = tmp_path / "skills" / "media"
     skills.mkdir(parents=True)
-    good_target = tmp_path / "repo" / "good"; good_target.mkdir(parents=True)
+    good_target = tmp_path / "repo" / "good"
+    good_target.mkdir(parents=True)
     (good_target / "SKILL.md").write_text("---\nname: good\n---\n")
     (skills / "good").symlink_to(good_target, target_is_directory=True)
     (skills / "broken").symlink_to(tmp_path / "gone", target_is_directory=True)
@@ -128,7 +132,8 @@ def test_broken_skill_link_is_reported(monkeypatch, tmp_path):
 
 def test_a_broken_workflow_yaml_is_caught_before_push(monkeypatch, tmp_path):
     """GitHub runs a malformed workflow with ZERO jobs, so CI stops silently."""
-    wf = tmp_path / ".github" / "workflows"; wf.mkdir(parents=True)
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
     (wf / "good.yml").write_text("on: push\njobs:\n  a:\n    steps: []\n")
     monkeypatch.setattr(sync, "REPO", tmp_path)
     assert sync.workflow_problems() == []

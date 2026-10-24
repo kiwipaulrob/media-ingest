@@ -75,7 +75,20 @@ def test_start_offset_shifts_audio_losslessly(monkeypatch):
     cmd = seen["cmds"][0]
     assert "-itsoffset -0.400" in cmd, "a late audio track must be pulled earlier"
     assert "-c copy" in cmd
+    # input 1 is the OFFSET copy; mapping 0:a:0 copies the unshifted audio and the repair
+    # reports success while changing nothing (measured on real media: still +400 ms).
+    assert "-map 1:a:0" in cmd and "-map 0:a:0" not in cmd
     assert out["ok"] is True
+
+
+def test_every_repair_can_overwrite_a_leftover_temp(monkeypatch):
+    """Without -y ffmpeg refuses an existing output, so a retry silently keeps the old file."""
+    for v_end, a_end in ((1000.0, 1004.0), (1000.0, 996.0)):
+        seen = _wire(monkeypatch, v_end, a_end, ["fail", "ok"])
+        avsync.resync("/x.mkv", "/y.mkv")
+        assert seen["cmds"], "expected a repair command"
+        assert " -y -v error" in seen["cmds"][0], (
+            f"repair command must force overwrite: {seen['cmds'][0][:80]}")
 
 
 def test_damaged_index_is_detected(monkeypatch):

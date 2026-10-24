@@ -353,3 +353,19 @@ def torrent_for_path(path: str, op=None) -> Optional[Dict[str, Any]]:
             if norm_name(f"{save}/{f.get('name')}") == target:
                 return t
     return None
+
+def add_release(result: Dict[str, Any], category: str = "") -> Dict[str, Any]:
+    """Queue one Prowlarr search result, resolving it to something qBittorrent accepts.
+
+    Prowlarr's ``downloadUrl`` needs the API key appended; without it qBittorrent answers
+    401 and the add looks accepted while nothing is created. Two scripts had each hand-rolled
+    this (curl the URL, read the Location header, else fall back to the bare URL — the 401
+    path). source.queue_url() already does it correctly, so this is the only entry point.
+    """
+    from . import source  # local import: source imports config, qb is imported widely
+
+    url = source.queue_url(result) or ""
+    if not url:
+        return {"ok": False, "http": None, "verified": False, "state": "no-url",
+                "hash": None}
+    return add_verified(url, str(result.get("title") or ""), category=category)

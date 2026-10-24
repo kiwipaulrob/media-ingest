@@ -1,7 +1,7 @@
 """Client, probe and TMDB unit tests — pure logic only, no network."""
 import pytest
 
-from media_lib import jellyfin, matcher, probe, tmdb
+from media_lib import jellyfin, probe, tmdb
 
 
 # --------------------------------------------------------------- jellyfin

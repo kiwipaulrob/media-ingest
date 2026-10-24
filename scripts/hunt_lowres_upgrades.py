@@ -140,13 +140,8 @@ def queue_torrent(result: Dict[str, Any]) -> bool:
     url = result.get("downloadUrl") or ""
     if not url:
         return False
-    hdr = subprocess.run(["curl", "-s", "-m", "60", "-D", "-", "-o", "/dev/null", url],
-                         capture_output=True, text=True, timeout=90).stdout
-    mag = next((ln.split(": ", 1)[1].strip() for ln in hdr.splitlines()
-                if ln.lower().startswith("location:")), "")
     try:
-        res = qb.add_verified(mag if mag.startswith("magnet:") else url,
-                              str(result.get("title", "")), category="musicdocos")
+        res = qb.add_release(result, category="musicdocos")
         return bool(res["ok"] and res["verified"])
     except Exception:
         return False

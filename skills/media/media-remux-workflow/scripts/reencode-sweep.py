@@ -3,7 +3,10 @@
 Read-only: probes streams, prints candidates, exits 0. No encodes, no writes.
 Usage: python3 reencode-sweep.py --scan <libdir>
 """
-import argparse, os, subprocess, sys
+import argparse
+import os
+import subprocess
+import sys
 
 VID_EXTS = (".mkv", ".mp4", ".avi", ".ts", ".m4v", ".divx")
 SKIP_SUFFIXES = (".reenc-tmp.mkv", ".remux-tmp.mkv", ".remux.mkv")

@@ -66,7 +66,6 @@ def prowlarr_search(term: str, limit: int = 40) -> List[Dict[str, Any]]:
 
 def _queue(result: Dict[str, Any]) -> bool:
     """Add one Prowlarr result to qBittorrent (magnet preferred) or SABnzbd."""
-    import subprocess
     from media_lib import qb
     url = result.get("downloadUrl") or ""
     if result.get("protocol") == "usenet":
@@ -77,13 +76,8 @@ def _queue(result: Dict[str, Any]) -> bool:
             return False
     if not url:
         return False
-    hdr = subprocess.run(["curl", "-s", "-m", "60", "-D", "-", "-o", "/dev/null", url],
-                         capture_output=True, text=True, timeout=90).stdout
-    mag = next((ln.split(": ", 1)[1].strip() for ln in hdr.splitlines()
-                if ln.lower().startswith("location:")), "")
     try:
-        res = qb.add_verified(mag if mag.startswith("magnet:") else url,
-                              str(result.get("title", "")), category="musicdocos")
+        res = qb.add_release(result, category="musicdocos")
         return bool(res["ok"] and res["verified"])
     except Exception:
         return False

@@ -272,18 +272,21 @@ def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
 
     if abs(start_ms) >= 250.0:
         shift = -start_ms / 1000.0
-        cmd = (f"{ff} -v error -i {quoted_in} -itsoffset {shift:.3f} -i {quoted_in} "
-               f"-map 0:v:0 -map 0:a:0 -c copy {quoted_out}")
+        # Two inputs of the same file: input 0 is the picture, input 1 is the audio with
+        # the offset applied. Mapping 0:a:0 would copy the UNSHIFTED audio and the repair
+        # would report success while changing nothing (measured: still +400 ms).
+        cmd = (f"{ff} -y -v error -i {quoted_in} -itsoffset {shift:.3f} -i {quoted_in} "
+               f"-map 0:v:0 -map 1:a:0 -c copy {quoted_out}")
         method = "itsoffset-copy"
     elif drift > 0.75:
         # Audio runs long. A plain trim does NOT fix broken timestamps (stream copy keeps
         # them), so this is tried first and audio-retime is the fallback below.
-        cmd = f"{ff} -v error -i {quoted_in} -map 0 -c copy -shortest {quoted_out}"
+        cmd = f"{ff} -y -v error -i {quoted_in} -map 0 -c copy -shortest {quoted_out}"
         method = "trim-copy"
     elif drift < -0.75:
         # Audio SHORT of the picture. Do NOT use -shortest here: that would cut the
         # picture down to the missing audio. Pad the audio instead so the video survives.
-        cmd = (f"{ff} -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
+        cmd = (f"{ff} -y -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
                f"-af \"asetpts=N/SR/TB,apad\" -c:a aac -b:a 192k -shortest {quoted_out}")
         method = "audio-pad-retime"
     else:
@@ -300,7 +303,7 @@ def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
     # A stream-copy trim cannot repair a broken audio timeline. If it did not verify,
     # retry once by regenerating the audio timestamps (video still stream-copied).
     if after.get("verdict") == "fail" and method == "trim-copy":
-        retry = (f"{ff} -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
+        retry = (f"{ff} -y -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
                  f"-af \"asetpts=N/SR/TB,apad\" -c:a aac -b:a 192k -shortest {quoted_out}")
         try:
             probe.on_media(retry, timeout=3600)
