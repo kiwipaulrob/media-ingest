@@ -263,15 +263,35 @@ def place_new(
                 drift = float(m.group(1))
         if drift > AV_SYNC_FAIL_MS or sync.get("start_delta_ms") and abs(
                 float(sync.get("start_delta_ms") or 0)) >= AV_SYNC_START_FAIL_MS:
-            _rm()
-            return {
-                "ok": False,
-                "stage": "AV-SYNC-FAIL",
-                "detail": "; ".join(sync.get("problems") or [])[:160],
-                "sync": sync,
-                "dest": dest,
-            }
-        sync_stage = "warn"
+            # Try to re-sync before giving up: an offset or a long audio track is fixable
+            # by stream-copying the picture, so the video is never re-encoded. Truncation
+            # is not fixable here and resync() says so.
+            repaired = dst_d + ".resync.mkv"
+            try:
+                fix = avsync.resync(dst_d, repaired)
+            except Exception as exc:  # noqa: BLE001
+                fix = {"ok": False, "reason": f"{type(exc).__name__}"}
+            if fix.get("ok"):
+                try:
+                    probe.on_media(
+                        f"mv -f {shlex.quote(repaired)} {shlex.quote(dst_d)}", timeout=300)
+                    sync_stage = "repaired"
+                except Exception:  # noqa: BLE001
+                    fix = {"ok": False, "reason": "replace-failed"}
+            if not fix.get("ok"):
+                probe.on_media(f"rm -f {shlex.quote(repaired)}", timeout=120)
+                _rm()
+                return {
+                    "ok": False,
+                    "stage": "AV-SYNC-FAIL",
+                    "detail": f"{'; '.join(sync.get('problems') or [])[:130]} "
+                              f"[repair: {fix.get('reason')}]"[:200],
+                    "sync": sync,
+                    "repair": fix,
+                    "dest": dest,
+                }
+        else:
+            sync_stage = "warn"
     elif sync.get("verdict") == "probe-failed":
         sync_stage = "unknown"
 

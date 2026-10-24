@@ -45,6 +45,9 @@ class FakeHost:
         if inner.strip().startswith('rm -f'):
             self.removed.append(inner)
             return ''
+        if inner.strip().startswith('mv -f'):
+            # only issued after a successful re-sync replaces the staged copy
+            return ''
         if 'DECODE=' in inner:                            # the decode-span script
             if not self.decode_ok:
                 return 'DECODE=0.05=OK\nDECODE=0.50=FAIL\nDECODE=0.95=OK'
@@ -77,16 +80,45 @@ def test_good_placement_passes_with_two_remote_calls(monkeypatch):
     assert h.removed == []
 
 
-def test_audio_running_past_the_picture_is_refused(monkeypatch):
-    """Duration, decode and height all pass on a file whose audio outruns the video."""
+def test_bad_sync_is_repaired_rather_than_rejected(monkeypatch):
+    """An offset or a long audio track is fixable by stream-copying the picture."""
+    h = FakeHost()
+    h.install(monkeypatch)
+
+    calls = {'n': 0}
+
+    def fake_check(path):
+        # out of sync until the repair has run, then clean
+        if '.resync' in str(path) or calls['n']:
+            return {'verdict': 'ok', 'problems': [], 'start_delta_ms': 0.0}
+        calls['n'] += 1
+        return {'verdict': 'fail',
+                'problems': ['audio #1 (aac) duration differs by +920 ms'],
+                'start_delta_ms': 0.0}
+
+    monkeypatch.setattr(place.avsync, 'check', fake_check)
+    monkeypatch.setattr(place.avsync, 'resync',
+                        lambda src, out: {'ok': True, 'method': 'audio-retime',
+                                          'reason': 'verified'})
+    out = place.place_new(SRC, DEST, min_height=700)
+    assert out['ok'] and out['stage'] == 'PLACED'
+    assert out['av_sync'] == 'repaired'
+    assert h.removed == [], 'a repairable file must NOT be deleted'
+
+
+def test_unrepairable_sync_is_rejected_and_removed(monkeypatch):
+    """Truncated picture cannot be re-synced — the file has to go."""
     h = FakeHost()
     h.install(monkeypatch)
     monkeypatch.setattr(place.avsync, 'check', lambda p: {
         'verdict': 'fail', 'problems': ['audio #1 (aac) duration differs by +1965 ms'],
         'start_delta_ms': 0.0})
+    monkeypatch.setattr(place.avsync, 'resync',
+                        lambda src, out: {'ok': False, 'reason': 'video-truncated'})
     out = place.place_new(SRC, DEST, min_height=700)
     assert not out['ok'] and out['stage'] == 'AV-SYNC-FAIL'
-    assert h.removed, 'a refused file must not be left in the library'
+    assert 'video-truncated' in out['detail']
+    assert h.removed, 'an unrepairable file must not be left in the library'
 
 
 def test_a_tail_gap_is_only_a_warning(monkeypatch):

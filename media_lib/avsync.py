@@ -34,6 +34,8 @@ START_FAIL_MS = 250
 # Streams legitimately differ by a frame or two at the tail; anything beyond this
 # is a drift that will be visible by the closing credits.
 DRIFT_WARN_MS = 500
+#: Beyond this the picture is missing, not merely out of step.
+AVSYNC_TRUNCATION_TOLERANCE_S = 5.0
 
 
 def _as_float(value: Any) -> Optional[float]:
@@ -162,6 +164,67 @@ def check(remote_path: str) -> Dict[str, Any]:
         "durations_derived": derived,
         "audio_tracks": len(audio),
     }
+
+
+def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
+    """Try to fix an A/V mismatch WITHOUT re-encoding the picture.
+
+    Three faults look identical in a duration check but need different treatment:
+
+    * **video truncated** — the picture simply stops early. Nothing to re-sync; the file
+      needs replacing. Reported, never "repaired" (the Sabbath case needed a full rebuild
+      from source; the John Lennon case needs a different copy).
+    * **audio starts late/early** — a constant offset. Fixed losslessly by shifting the
+      audio with ``-itsoffset`` and stream-copying both tracks.
+    * **audio timeline longer than the picture** — broken MPEG timestamps (the +920 ms
+      Sabbath drift). Fixed by regenerating ONLY the audio timeline (``asetpts``) and
+      re-encoding audio to AAC while the video is stream-copied: cheap, and the picture is
+      never degraded.
+
+    Returns {'ok', 'reason', 'method', 'before', 'after'}.
+    """
+    before = check(remote_path)
+    v_end = _derived_duration(remote_path, "v:0")
+    a_end = _derived_duration(remote_path, "a:0")
+    if v_end is None or a_end is None:
+        return {"ok": False, "reason": "unmeasurable", "before": before}
+    drift = round(a_end - v_end, 3)
+    start_ms = float(before.get("start_delta_ms") or 0.0)
+
+    # Picture ends far before the audio: the video is truncated, not desynced.
+    if drift > AVSYNC_TRUNCATION_TOLERANCE_S:
+        return {"ok": False, "reason": "video-truncated", "drift_s": drift,
+                "video_end": v_end, "audio_end": a_end, "before": before}
+
+    ff = probe.probe_wrap(probe.config.FFMPEG_ENTRY)
+    quoted_in, quoted_out = shlex.quote(remote_path), shlex.quote(out_path)
+
+    if abs(start_ms) >= 250.0:
+        shift = -start_ms / 1000.0
+        cmd = (f"{ff} -v error -i {quoted_in} -itsoffset {shift:.3f} -i {quoted_in} "
+               f"-map 0:v:0 -map 1:a:0 -c copy {quoted_out}")
+        method = "itsoffset-copy"
+    elif drift > 0.75:
+        cmd = f"{ff} -v error -i {quoted_in} -map 0 -c copy -shortest {quoted_out}"
+        method = "trim-copy"
+    elif drift < -0.75:
+        # Audio is short and/or its timeline is broken: rebuild the audio timestamps only.
+        cmd = (f"{ff} -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
+               f"-af asetpts=N/SR/TB -c:a aac -b:a 192k -shortest {quoted_out}")
+        method = "audio-retime"
+    else:
+        return {"ok": True, "reason": "already-in-sync", "method": "none", "before": before}
+
+    try:
+        probe.on_media(cmd, timeout=3600)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "reason": f"reencode-failed: {str(exc)[:120]}",
+                "method": method, "before": before}
+
+    after = check(out_path)
+    return {"ok": after.get("verdict") != "fail", "reason": "verified" if after.get("verdict")
+            != "fail" else "still-out-of-sync", "method": method,
+            "before": before, "after": after}
 
 
 def describe(result: Dict[str, Any]) -> str:

@@ -93,11 +93,24 @@ def main(apply: bool = True) -> int:
         # A/V SYNCH GATE: a DVD/VOB-sourced file can carry an audio timeline that runs
         # ~1 s longer than the picture (broken MPEG timestamps). The library copy is the
         # last chance to notice — once the payload is deleted there is nothing to re-mux.
-        sync = avsync.check(dest.replace("/media/", "/mnt/zmedia/", 1))
+        sync_path = dest.replace("/media/", "/mnt/zmedia/", 1)
+        sync = avsync.check(sync_path)
         if sync.get("verdict") == "fail":
-            print(f"    SYNC FAIL — keeping payload for repair: {sync.get('problems')}")
-            sync_problems.append((label, sync.get("problems")))
-            continue
+            # Try to fix it in place first. An offset or an over-long audio track is
+            # repairable by stream-copying the picture, so the video is never degraded
+            # and the payload can still be released.
+            fixed_to = sync_path + ".resync.mkv"
+            fix = avsync.resync(sync_path, fixed_to)
+            if fix.get("ok"):
+                run(f"mv -f {shlex.quote(fixed_to.replace('/mnt/zmedia/', '/media/', 1))} "
+                    f"{shlex.quote(dest)}")
+                print(f"    sync REPAIRED ({fix.get('method')}) — {sync.get('problems')}")
+                sync = avsync.check(sync_path)
+            if sync.get("verdict") == "fail":
+                print(f"    SYNC UNREPAIRABLE ({fix.get('reason')}) — keeping payload: "
+                      f"{sync.get('problems')}")
+                sync_problems.append((label, sync.get("problems")))
+                continue
         print(f"    sync: {sync.get('verdict')} "
               f"(video {sync.get('video_duration')}s, derived={sync.get('durations_derived')})")
         # leftover sidecars are a duplicate of data now in the library
