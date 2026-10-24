@@ -165,6 +165,13 @@ client for the first time.
   looks full-size and passes head-byte checks while still short (a ~1KB
   deficit is exactly what an unfinished tail looks like); never stage an
   upgrade file that is short, even when a second copy agrees with it.
+- **Use `qb.add_release()` as the only way to queue a Prowlarr result.** It resolves
+  the magnet/hash/downloadUrl and appends the API key, then verifies the add. Two
+  scripts hand-rolled this resolution and both fell back to a bare `downloadUrl`
+  — which qBittorrent answers with **401 while reporting the add accepted**, so the
+  batch vanishes with no error anywhere. The rule below is what the helper encodes;
+  call the helper rather than re-implementing it, because the third copy will get it
+  wrong too.
 - **No magnet? use `downloadUrl` plus apikey query param.** When a result has
   no usable magnet, pass its `downloadUrl` as the qBittorrent `urls=` value
   with `?apikey=<PROWLARR_KEY>` appended — Servarr APIs accept the key as a
