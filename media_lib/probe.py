@@ -141,12 +141,16 @@ def head_bytes(remote_path: str, n: int = 64) -> bytes:
     return bytes.fromhex("".join(out.split()))[:n]
 
 
-class ProbeResult(TypedDict, total=False):
+class ProbeResult(TypedDict):
     """The ONLY shape probe.probe() returns.
 
     Declared because a consumer read it as raw ffprobe JSON (info["format"]["duration"]) and
     every flat file was silently refused as "duration unreadable". With this type, that
     lookup is a static error instead of a production bug.
+
+    Every key is ALWAYS present; the VALUES are what may be unknown (a stream can report no
+    width or duration). total=False would have said the keys may be missing, which is not
+    what the function does and would let a caller skip the presence check it does not need.
     """
     w: Optional[int]
     h: Optional[int]
@@ -164,7 +168,10 @@ def probe(remote_path: str) -> ProbeResult:
     try:
         data = json.loads(on_media(ffprobe_cmd(remote_path), timeout=180) or "{}")
     except Exception:
-        return {}
+        # A failed probe returns the SHAPE with unknown values, not {} — an empty dict
+        # violates the declared contract and made "could not measure" indistinguishable
+        # from a type that was never meant to carry the key.
+        return {"w": None, "h": None, "codec": None, "dur": None, "size": 0, "title": None}
     streams = data.get("streams") or [{}]
     fmt = data.get("format") or {}
     s = streams[0] if streams else {}

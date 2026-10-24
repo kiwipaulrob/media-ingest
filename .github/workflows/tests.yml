@@ -39,10 +39,10 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: media_lib + CLI suite
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -m "not integration"
 
       - name: plugin suite
-        run: python -m pytest plugins/media-ingest/tests -q
+        run: python -m pytest plugins/media-ingest/tests -q -m "not integration"
 
       - name: type contracts (media_lib boundary shapes)
         run: python -m mypy

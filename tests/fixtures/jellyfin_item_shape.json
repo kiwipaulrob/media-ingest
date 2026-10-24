@@ -1,0 +1,32 @@
+{
+ "keys": [
+  "BackdropImageTags",
+  "ChannelId",
+  "CommunityRating",
+  "Container",
+  "Id",
+  "ImageBlurHashes",
+  "ImageTags",
+  "IsFolder",
+  "LocationType",
+  "MediaType",
+  "Name",
+  "OriginalLanguage",
+  "Path",
+  "PremiereDate",
+  "ProductionYear",
+  "RunTimeTicks",
+  "ServerId",
+  "Type",
+  "UserData",
+  "VideoType"
+ ],
+ "shape": {
+  "Id": "str",
+  "Name": "str",
+  "Path": "str",
+  "RunTimeTicks": "int",
+  "UserData": "dict",
+  "Type": "str"
+ }
+}
