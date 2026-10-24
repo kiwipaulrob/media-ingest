@@ -15,18 +15,22 @@ from pathlib import Path
 from media_lib import config, jellyfin, qb, safety, swap
 
 
-def _refresh(lib_ids, uid):
+def _refresh(lib_ids, item_ids=()):
+    """Re-probe swapped items, then refresh their libraries.
+
+    The swap replaced the bytes under an EXISTING row, and a library-scoped Refresh
+    re-resolves metadata for known rows — it does not re-read the media. Only a per-item
+    FullRefresh picks up the new streams. The old code also issued this as a GET
+    (jellyfin.get_json), while /Items/{id}/Refresh is POST-only, so it never ran at all.
+    """
+    for item_id in item_ids:
+        try:
+            jellyfin.refresh_item(item_id)
+        except Exception as exc:  # noqa: BLE001 - report, never abort
+            print(f"  refresh item {item_id} failed: {str(exc)[:100]}")
     for lib_id in lib_ids:
         try:
-            jellyfin.get_json(
-                f"/Items/{lib_id}/Refresh",
-                params={
-                    "Recursive": "true",
-                    "ReplaceAllMetadata": "false",
-                    "ReplaceAllImages": "false",
-                },
-                timeout=120,
-            )
+            jellyfin.refresh_library(lib_id)
         except Exception as exc:  # noqa: BLE001 - report, never abort
             print(f"  refresh {lib_id} failed: {str(exc)[:100]}")
 
@@ -118,7 +122,7 @@ def main(argv=None) -> int:
             print("  (JELLYFIN_USER_ID unset - skipping library refresh)")
         if uid and libs:
             ids = [i for i in (_lib_id(uid, n) for n in libs) if i]
-            _refresh(ids, uid)
+            _refresh(ids, [r["old_id"] for r in done if r.get("old_id")])
 
         if args.delete_source and done:
             hashes = [r["hash"] for r in done]
