@@ -102,10 +102,14 @@ def main(apply: bool = True) -> int:
 def report_orphans() -> None:
     """Flag episodes Jellyfin could not attach to a season.
 
-    A row can come back with ParentIndexNumber/IndexNumber null when the metadata provider
-    has no season for the number (season 66 currently does not). Those rows are playable but
-    ungrouped; Jellyfin REJECTS setting the numbers via POST /Items (HTTP 400), so the only
-    levers are a per-item FullRefresh and, failing that, leaving them as orphans.
+    A row can come back with ParentIndexNumber/IndexNumber null right after a file is added.
+    That is usually TRANSIENT: S66E03 sat unnumbered through several checks and then attached
+    itself as S66E03 once the scan/refresh settled. Do not conclude "the provider has no such
+    season" from a few minutes of nulls — verify against the server source first.
+
+    If it genuinely stays null, POST /Items/{itemId} DOES accept IndexNumber and
+    ParentIndexNumber (ItemUpdateController.UpdateItem assigns both; the endpoint requires
+    elevation). The web UI also exposes the field (#txtIndexNumber) for episodes.
     """
     uid = jellyfin.user_id()
     r = jellyfin.get_json(f"/Users/{uid}/Items", params={
