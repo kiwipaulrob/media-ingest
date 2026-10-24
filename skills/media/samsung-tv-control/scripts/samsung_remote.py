@@ -37,7 +37,7 @@ def send_key(key_name):
         "",
         ""
     ]
-    request = chr(13) + chr(10).join(req_lines)
+    request = (chr(13) + chr(10)).join(req_lines)
     sock.send(request.encode())
     time.sleep(0.5)
 
