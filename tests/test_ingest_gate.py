@@ -50,3 +50,25 @@ def test_an_unmeasurable_held_copy_is_reviewed_not_duplicated(tmp_path, monkeypa
     """'Could not measure' is not 'we hold nothing'."""
     assert _run(tmp_path, monkeypatch, "held-unknown") == []
     assert "REVIEW" in capsys.readouterr().out
+
+
+def test_a_placed_file_must_report_a_runtime(monkeypatch):
+    """A 0.0-minute row is a real failure mode, not cosmetic: it is how items looked
+    'invisible' before. ensure_row_runtime must refresh the item and return the runtime."""
+    from media_lib import jellyfin as jf
+
+    row = {"Id": "abc", "Path": "/x/film.mkv", "RunTimeTicks": 0}
+    calls = {"refresh": 0}
+
+    def fake_items(lib_id):
+        if calls["refresh"]:
+            row["RunTimeTicks"] = int(119.2 * 600_000_000)
+        return [row]
+
+    monkeypatch.setattr(jf, "list_items", fake_items)
+    monkeypatch.setattr(jf, "refresh_item",
+                        lambda i: calls.__setitem__("refresh", 1) or 204)
+    monkeypatch.setattr(jf.time, "sleep", lambda s: None)
+
+    assert jf.ensure_row_runtime("/x/film.mkv", "lib") == 119.2
+    assert calls["refresh"] == 1

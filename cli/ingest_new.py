@@ -202,6 +202,11 @@ def main(argv=None) -> int:
                       f"{'repaired' if args.fix_names else 'see the check list'}", flush=True)
     if placed and args.refresh_lib:
         jellyfin.refresh_library(args.refresh_lib)
+        # A new file lands as a 0.0-minute row until the item itself is re-read; a
+        # library-wide refresh does not do it. Confirm every placed file reports a runtime.
+        for r in placed:
+            mins = jellyfin.ensure_row_runtime(place.to_jf(r["dest"]), args.refresh_lib)
+            print(f"  row {str(mins):>6} min  {r['dest'].rsplit('/', 1)[-1][:50]}", flush=True)
         print(f"refreshed library {args.refresh_lib}", flush=True)
 
     print(f"\nplaced: {len(placed)}  failed: {len(results) - len(placed)}", flush=True)

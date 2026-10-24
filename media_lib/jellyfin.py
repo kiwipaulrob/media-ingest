@@ -264,6 +264,26 @@ def refresh_library(lib_id: str) -> int:
     return 204
 
 
+def ensure_row_runtime(path: str, lib_id: str, *, wait: int = 6) -> Optional[float]:
+    """A freshly placed file lands as a 0.0-minute row until metadata is re-read.
+
+    Seen on both placements in one session: notify_media + refresh_library is not enough, the
+    item's RunTimeTicks stays 0 and the library shows an empty-duration entry (the same
+    symptom that made items look invisible before). Requesting a FullRefresh on the item
+    itself fixes it. Returns the runtime in minutes, or None if the row is not found.
+    """
+    for attempt in range(max(1, wait)):
+        items = list_items(lib_id) or []
+        row = next((i for i in items if str(i.get("Path", "")) == path), None)
+        if row is not None:
+            ticks = row.get("RunTimeTicks") or 0
+            if ticks:
+                return round(ticks / 600_000_000, 1)
+            refresh_item(row["Id"])
+        time.sleep(12 if attempt == 0 else 15)
+    return None
+
+
 def refresh_item(item_id: str, *, metadata: str = "FullRefresh",
                  images: str = "FullRefresh",
                  replace_all_metadata: bool = False,
