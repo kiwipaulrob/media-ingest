@@ -64,7 +64,7 @@ def probe_wrap(binary: str) -> str:
 def ffprobe_cmd(path: str) -> str:
     return (
         f"{probe_wrap(config.FFPROBE_ENTRY)} -v error -select_streams v:0 "
-        f"-show_entries stream=width,height,codec_name:format=duration:format_tags=title "
+        f"-show_entries stream=width,height,codec_name:format=duration,size:format_tags=title "
         f"-of json {shlex.quote(path)}"
     )
 
@@ -125,11 +125,16 @@ def probe(remote_path: str) -> Dict[str, Any]:
         dur = float(dur) if dur not in (None, "", "N/A") else None
     except (TypeError, ValueError):
         dur = None
+    try:
+        size = int(fmt.get("size") or 0)
+    except (TypeError, ValueError):
+        size = 0
     return {
         "w": s.get("width"),
         "h": s.get("height"),
         "codec": s.get("codec_name"),
         "dur": dur,
+        "size": size,
         "title": (fmt.get("tags") or {}).get("title"),
     }
 

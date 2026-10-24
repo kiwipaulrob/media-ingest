@@ -89,13 +89,23 @@ def probe_ffprobe_entry() -> str:
 def source_problems(path: str, *, max_duration_delta: float | None = None,
                     expect_duration: float | None = None) -> List[str]:
     """Completeness problems for a source, whether a DVD folder or a flat file."""
-    listing = _remote(f'ls -1 {shlex.quote(path)} 2>/dev/null | head -5')
-    is_dir = not listing.strip() or any(
-        line.strip() in ("VIDEO_TS", "video_ts") for line in listing.splitlines())
+    # An empty `ls` used to be read as "this is a directory", so a MISSING source was routed
+    # into the DVD-chain check and came back clean. Ask the host what it actually is.
+    qpath = shlex.quote(path)
+    kind = _remote(
+        f"if [ -d {qpath} ]; then echo DIR; "
+        f"elif [ -f {qpath} ]; then echo FILE; "
+        f"else echo MISSING; fi"
+    ).strip()
+    if kind == "MISSING":
+        return ["source path missing on media host"]
+    is_dir = kind == "DIR"
 
     if is_dir:
         vts = f"{path.rstrip('/')}/VIDEO_TS"
-        if not _remote(f'[ -d {shlex.quote(vts)} ] && echo yes').strip().endswith("yes"):
+        # `[ -d X ] && echo yes` exits 1 when absent, and on_media raises on a non-zero
+        # exit — so a normal path crashed the gate instead of falling through.
+        if not _remote(f'if [ -d {shlex.quote(vts)} ]; then echo yes; fi').strip().endswith("yes"):
             vts = path.rstrip("/")
         problems = vob_chain_problems(vts)
         if expect_duration:
@@ -103,10 +113,18 @@ def source_problems(path: str, *, max_duration_delta: float | None = None,
         return problems
 
     # Flat file: a stalled-timestamp container shows the same impossible bitrate.
-    info = probe.probe(path)
-    fmt = (info or {}).get("format") or {}
-    dur = float(fmt.get("duration") or 0)
-    size = int(fmt.get("size") or 0)
+    # probe.probe() returns a FLAT dict ({'dur', 'size'}); reading info["format"] (raw
+    # ffprobe shape) always yielded nothing, so every flat file was refused as
+    # "duration unreadable" — the gate rejected media it had measured correctly.
+    info = probe.probe(path) or {}
+    try:
+        dur = float(info.get("dur") or 0)
+    except (TypeError, ValueError):
+        dur = 0.0
+    try:
+        size = int(info.get("size") or 0)
+    except (TypeError, ValueError):
+        size = 0
     problems: List[str] = []
     if dur <= 0:
         problems.append("duration unreadable — cannot confirm the file is complete")
