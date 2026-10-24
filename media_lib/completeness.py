@@ -27,7 +27,12 @@ _VOB_RE = re.compile(r"VTS_(\d+)_(\d+)\.VOB", re.IGNORECASE)
 
 
 def _remote(script: str, timeout: int = 900) -> str:
-    return probe.on_media(script, timeout=timeout)
+    # 1 means "no" to a question (`[ -d X ]`, `grep -c`) and is a normal answer; anything
+    # else is a genuine failure and must stay loud.
+    rc, out = probe.query(script, timeout=timeout)
+    if rc not in (0, 1):
+        raise RuntimeError(f"media query failed ({rc})")
+    return out
 
 
 def vob_chain_problems(video_ts_dir: str) -> List[str]:

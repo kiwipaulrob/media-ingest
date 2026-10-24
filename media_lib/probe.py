@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
-from typing import Optional, TypedDict
+from typing import Optional, Tuple, TypedDict
 
 from . import config
 
@@ -51,6 +51,39 @@ def on_media(inner: str, timeout: int = 300) -> str:
             f"{(proc.stderr or proc.stdout).strip()[:300]}"
         )
     return proc.stdout
+
+
+def query(inner: str, timeout: int = 300) -> Tuple[int, str]:
+    """Run a QUESTION inside CT105 and return (exit_code, stdout).
+
+    on_media() raises on a non-zero exit, which is correct for an ACTION (a failed copy or
+    move must not pass silently) and wrong for a QUESTION: `[ -d X ]` and `grep -c` return 1
+    to mean "no", and a missing file makes `ls` exit 2. Using the action call for those
+    turned a normal answer into a crash — `[ -d X ] && echo yes` aborted the completeness
+    gate on a path that simply was not a DVD folder.
+
+    Never raises: a timeout or an unreachable host comes back as (-1, "").
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=15",
+                config.MEDIA_HOST,
+                media_cmd(inner),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return -1, ""
+    except OSError:
+        return -1, ""
+    return proc.returncode, proc.stdout
 
 
 def probe_wrap(binary: str) -> str:

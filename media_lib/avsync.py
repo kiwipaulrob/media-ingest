@@ -74,10 +74,8 @@ def _derived_duration(remote_path: str, selector: str) -> Optional[float]:
         f"-show_entries packet=pts_time,duration_time -of csv=p=0 {shlex.quote(remote_path)} "
         f"| tail -1"
     )
-    try:
-        raw = (probe.on_media(cmd, timeout=300) or "").strip()
-    except Exception:  # noqa: BLE001
-        return None
+    _rc, raw = probe.query(cmd, timeout=300)
+    raw = (raw or "").strip()
     if not raw:
         return None
     parts = [p.strip() for p in raw.split(",")]
@@ -194,10 +192,8 @@ def index_health(remote_path: str, at: str = "50%", window: int = 2) -> Dict[str
     ff = probe.probe_wrap(probe.config.FFPROBE_ENTRY)
     cmd = (f"{ff} -v error -select_streams v:0 -show_entries packet=pts_time -of csv=p=0 "
            f"-read_intervals '{at}+{window}' {shlex.quote(remote_path)} 2>/dev/null")
-    try:
-        raw = probe.on_media(cmd, timeout=300) or ""
-    except Exception:  # noqa: BLE001
-        return {"verdict": "unknown", "sampled": 0, "untimed": 0, "ratio": None}
+    _rc, raw = probe.query(cmd, timeout=300)
+    raw = raw or ""
     rows = [r.strip() for r in raw.splitlines() if r.strip()]
     if not rows:
         return {"verdict": "unknown", "sampled": 0, "untimed": 0, "ratio": None}
