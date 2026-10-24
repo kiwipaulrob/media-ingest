@@ -211,6 +211,35 @@ def set_force(hashes: List[str], value: bool, op=None) -> int:
         return exc.code
 
 
+def add_file(content: bytes, filename: str = "release.torrent",
+             category: str = "") -> int:
+    """Add a .torrent by uploading its BYTES.
+
+    Needed because an indexer's download URL is usually protected by the indexer's own API
+    key: handing that URL to qBittorrent makes qB fetch it unauthenticated, get 401, and
+    report nothing — the add returns 200 while no torrent is ever created (12 episodes went
+    missing that way). Fetch the .torrent ourselves, then upload the file.
+    """
+    boundary = "----hermesqb" + str(len(content))
+    parts = []
+    if category:
+        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"category\""
+                     f"\r\n\r\n{category}\r\n".encode())
+    parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"torrents\"; "
+                 f"filename=\"{filename}\"\r\nContent-Type: application/x-bittorrent"
+                 f"\r\n\r\n".encode() + content + b"\r\n")
+    parts.append(f"--{boundary}--\r\n".encode())
+    body = b"".join(parts)
+    req = urllib.request.Request(
+        f"{_base()}/api/v2/torrents/add", data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        with _opener().open(req, timeout=120) as r:
+            return r.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
 def add_verified(url: str, title: str, category: str = "", settle: int = 8) -> Dict[str, Any]:
     """Add a release, force-start it, and confirm it is really in the queue.
 
