@@ -51,7 +51,7 @@ def gh(*args: str) -> Tuple[int, str]:
 
 def tests() -> Tuple[bool, str]:
     """The gate. Nothing mutating proceeds on a red suite."""
-    rc, out = run([sys.executable, "-m", "pytest", "tests/", "-q"])
+    rc, out = run([sys.executable, "-m", "pytest", "tests/", "plugins/media-ingest/tests", "-q"])
     return rc == 0, out.strip().splitlines()[-1] if out.strip() else "no output"
 
 

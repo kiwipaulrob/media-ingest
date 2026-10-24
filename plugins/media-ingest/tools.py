@@ -53,8 +53,13 @@ def _run(module: str, args: List[str], timeout: int = 1800) -> Dict[str, Any]:
     }
 
 
+def _state_dir() -> str:
+    home = os.environ.get('MEDIA_OPS_HOME') or '/root/.hermes/profiles/media-maintainer'
+    return os.path.join(home, 'state')
+
+
 def _artifact(name: str) -> Any:
-    path = os.path.join('/root/.hermes/profiles/media-maintainer/state', name)
+    path = os.path.join(_state_dir(), name)
     try:
         with open(path) as fh:
             return json.load(fh)
@@ -241,7 +246,8 @@ def _handle_source_plan(args: dict, **kw) -> str:
     targets = args.get('targets') or []
     if not targets:
         return _error('targets is required: [{"artist":..., "album":...}]')
-    tpath = os.path.join(os.environ.get('MEDIA_STATE_DIR', '/tmp'), 'source-targets.json')
+    os.makedirs(_state_dir(), exist_ok=True)
+    tpath = os.path.join(_state_dir(), 'source-targets.json')
     with open(tpath, 'w') as fh:
         json.dump(targets, fh)
     cmd = ['plan', '--targets', tpath]
