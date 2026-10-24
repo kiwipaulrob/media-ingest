@@ -31,14 +31,27 @@ several empty directories. Resolve the root first, or find the file by name.
 
 ### Membership in several libraries is a HARDLINK, not a copy
 
-A title can legitimately appear in two libraries with **one** copy of the bytes. Check
-`%D` (device) + `%i` (inode) + `%n` (link count) before calling anything a duplicate:
+A title can legitimately appear in two libraries with **one** copy of the bytes.
 
-- same inode, `links >= 2` → hardlink: one copy, two names
-- same inode, `links == 1` → the same file reached through two mount paths (bind mount): still one copy
-- **different inodes, same size** → genuinely two copies
+**Judge by LINK COUNT (%h), never by inode.** This share is CIFS (`//192.168.214.132/zmedia`)
+and the client assigns a DIFFERENT synthetic inode to every path, even for a genuine hardlink —
+a controlled test with two names on one inode reported `inode=A links=2` and `inode=B links=2`
+for the same bytes. Comparing `%i` therefore concludes "different files" when they are one.
+Comparing `%i` also concluded the reverse earlier in the same session. Both were wrong.
 
-`find -printf "%D %i %n %s %p"` answers this in one pass; a filename similarity check cannot.
+The reliable test:
+
+```
+stat -c "%h links  %s  %n" path-a path-b
+```
+
+- both report `links >= 2` → hardlink, one copy, two names
+- one reports `links == 1` → not linked to the other yet
+
+Creating one works: `ln src dst`, and `ln -f src dst` over an existing file both succeed on
+this mount (verified: a fresh pair went from links=1 to links=2, and an `ln -f` target went to
+links=3 with three names on one copy). After linking, check that BOTH paths show `links >= 2`.
+
 
 Worked example from a live audit (all on device 49):
 
@@ -47,8 +60,8 @@ Worked example from a live audit (all on device 49):
 | Sunset Boulevard (1950) filmnoir + Films | hardlink, inode 880083, links 2 — one copy |
 | Chinatown (1974) filmnoir + Films | hardlink, inode 878925, links 2 — one copy |
 | The Harder They Come (1972) musicdocos + Films | same inode 1378884, links 1 — one copy |
-| The Making of Psycho (2005) Documentaries + FilmDocumentaries | **different inodes — two real copies** |
-| Pussy Riot: A Punk Prayer Documentaries + musicdocos | **different inodes — two real copies** |
+| The Making of Psycho (2005) Documentaries + FilmDocumentaries | were two copies (links=1/2); now hardlinked, links=2 both |
+| Pussy Riot: A Punk Prayer Documentaries + musicdocos | were two copies (links=2/1); now hardlinked, links=2 both |
 
 Consequences:
 
