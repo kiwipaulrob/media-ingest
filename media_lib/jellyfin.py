@@ -333,13 +333,14 @@ def set_name(item_id: str, name: str, *, lock: bool = True) -> Dict[str, Any]:
         _request(f"/Users/{uid}/Items/{item_id}?Fields=Name,Overview,LockedFields") or "{}")
 
 
-def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg") -> int:
-    """Upload an item's Primary image.
+def set_image(item_id: str, data: bytes, image_type: str = "Primary",
+              index: int = 0, content_type: str = "image/jpeg") -> int:
+    """Upload an item image of any type (Primary, Thumb, Backdrop, Banner, Logo).
 
-    The controller reads the request body through a Base64 CryptoStream, so RAW
-    BYTES 500 with a ``FormatException`` from ``FromBase64Transform`` — the body
-    must be the base64 TEXT of the image. That failure reads as a broken endpoint
-    when it is only an encoding mistake, so it is encoded here, once.
+    The controller reads the request body through a Base64 CryptoStream, so RAW BYTES
+    500 with a ``FormatException`` from ``FromBase64Transform`` — the body must be the
+    base64 TEXT of the image. That failure reads as a broken endpoint when it is only an
+    encoding mistake, so it is encoded here, once.
     """
     import base64 as _b64
 
@@ -347,11 +348,16 @@ def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg
     headers = dict(auth_header())
     headers["Content-Type"] = content_type
     req = urllib.request.Request(
-        base_url() + f"/Items/{item_id}/Images/Primary",
+        base_url() + f"/Items/{item_id}/Images/{image_type}/{index}",
         data=body, headers=headers, method="POST",
     )
     with urllib.request.urlopen(req, timeout=120) as resp:
         return resp.status
+
+
+def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg") -> int:
+    """Upload an item's Primary image (see set_image for the encoding trap)."""
+    return set_image(item_id, data, "Primary", 0, content_type)
 
 
 def delete_item(item_id: str) -> int:
