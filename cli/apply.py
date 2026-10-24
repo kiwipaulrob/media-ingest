@@ -73,6 +73,16 @@ def main(argv=None) -> int:
         print(f"refusing: ids not in plan: {missing}", file=sys.stderr)
         return 2
     rows = [by_id[i] for i in wanted]
+    # A row missing a field makes the summary line raise KeyError mid-run, after work may
+    # already have happened. Check the shape up front and refuse the whole batch instead.
+    REQUIRED = ("id", "src", "dest_disk", "old_disk")
+    malformed = [(r.get("id"), [k for k in REQUIRED if k not in r]) for r in rows]
+    malformed = [(i, m) for i, m in malformed if m]
+    if malformed:
+        for i, m in malformed:
+            print(f"  row {i}: missing {m}", file=sys.stderr)
+        print(f"refusing: {len(malformed)} malformed row(s) in {args.plan}", file=sys.stderr)
+        return 2
     bad = [r["id"] for r in rows if r.get("recommend") != "REPLACE"]
     if bad:
         print(f"refusing: not REPLACE rows: {bad}", file=sys.stderr)
@@ -89,7 +99,8 @@ def main(argv=None) -> int:
         done, failed = [], []
         for r in rows:
             print(
-                f"[{r['id']}] {r['old_res']} -> {r['new_res']}  {r['title'][:50]}",
+                f"[{r['id']}] {r['old_res']} -> {r['new_res']}  "
+            f"{(r.get('title') or r.get('old_name') or '?')[:50]}",
                 flush=True,
             )
             try:
