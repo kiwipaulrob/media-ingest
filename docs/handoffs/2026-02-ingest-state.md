@@ -78,3 +78,25 @@ release-junk folder names. The superiority gate added to `ingest_new` treats the
 using the planner treats the cause.
 
 Rule: when a held copy cannot be measured, stop. Unmeasurable is not worse, and not absent.
+
+## UPDATE — later session state
+Done and verified (each read back from disk, not trusted from a return code):
+- White Riot duplicate resolved (kept 1920x1036, deleted 544x576, row 80.4min)
+- Urgh upgraded 464x336 -> 1280x720 (verified decode/sync/index)
+- Elvis Thats the Way It Is upgraded 534p -> 1920x800 (5698.7s, byte-identical to source)
+- The Killers 1080p placed as third item (1920x1080, row 119.2min)
+- 20 torrents removed with per-item evidence (~19.5GB payload + ~26GB empty packs)
+- S56 torrent deleted - it actually contained S65 (already ingested, 6 eps in library), 0 video files left
+- 4 code/skill fixes committed and CI-green: 718f471, 6b1c010, 9396d53, 9306911
+
+### Open
+- **S56** — genuinely missing - the S56-labelled torrent delivered S65. Needs fresh download.
+- **Grateful_Dead_DVD** — /mnt/zmedia/downloads/Grateful Dead - Anthem To Beauty (Classic Albums)/VIDEO_TS - VOB chain then Tdarr, one trial first
+- **Def_Leppard_DVD** — /mnt/zmedia/downloads/Def Leppard - Classic Albums. Hysteria/VIDEO_TS - 8 VOBs, kept deliberately
+- **Lennon** — source deleted by error (dot-vs-space guard); library copy intact at 576; needs redownload for 576->720 upgrade
+- **Urgh_source** — 1525MB still in downloads; new copy is 120.9min vs old 124.9min - awaiting decision
+
+### Do not delete
+- musicdocos/*part* multi-part programmes, not orphans
+
+Partials: 476GB in qBittorrent left alone per instruction
