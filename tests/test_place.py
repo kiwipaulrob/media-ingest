@@ -237,3 +237,22 @@ def test_to_disk_needs_a_path_boundary_not_a_string_prefix():
     assert place.to_disk("/data/movies-extra/x.mkv") == "/data/movies-extra/x.mkv"
     assert place.to_jf("/mnt/zmedia/videos/musicdocos-old/x.mkv") == \
         "/mnt/zmedia/videos/musicdocos-old/x.mkv"
+
+
+def test_a_sync_check_that_crashes_refuses_the_file(monkeypatch):
+    """A gate that cannot run is not a gate that passed.
+
+    The old code recorded verdict 'probe-failed' and then set sync_stage = 'ok'
+    unconditionally, so a crashed check placed the copy as though it had been verified.
+    """
+    h = FakeHost()
+    h.install(monkeypatch)
+
+    def boom(path):
+        raise RuntimeError("probe host unreachable")
+
+    monkeypatch.setattr(place.avsync, 'check', boom)
+    out = place.place_new(SRC, DEST, min_height=700)
+    assert out['ok'] is False
+    assert out['stage'] == 'AV-SYNC-UNVERIFIED'
+    assert h.removed, 'an unverifiable copy must not be left in the library'

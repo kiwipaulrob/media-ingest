@@ -269,7 +269,17 @@ def place_new(
     try:
         sync = avsync.check(dst_d)
     except Exception as exc:  # noqa: BLE001
-        sync = {"verdict": "probe-failed", "problems": [f"{type(exc).__name__}"]}
+        # A gate that CANNOT RUN is not a gate that PASSED. The previous version recorded
+        # "probe-failed" and then set sync_stage = "ok" unconditionally, so a crashed check
+        # placed the file as if it had been verified — the same shape as the missing-id bug
+        # that silently skipped this gate entirely. Fail closed: refuse and remove the copy.
+        _rm()
+        return {
+            "ok": False,
+            "stage": "AV-SYNC-UNVERIFIED",
+            "detail": f"sync check could not run: {type(exc).__name__}",
+            "dest": dest,
+        }
     sync_stage = "ok"
     if sync.get("verdict") == "fail":
         drift = 0.0

@@ -105,6 +105,10 @@ def main(argv=None) -> int:
                 min_height=int(p.get("min_height") or 0),
                 expect_duration=p.get("expect_duration"),
             )
+            # place_new() sets dest, but this loop KNOWS the intended destination — carry
+            # it explicitly so every result row is self-describing. Its absence was a
+            # KeyError hidden by the broad excepts in the sync and notify blocks.
+            res.setdefault("dest", dest)
             res["src"] = src
             res["at"] = int(time.time())
             with journal.open("a") as fh:
@@ -124,6 +128,7 @@ def main(argv=None) -> int:
             print(f"{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}", flush=True)
 
     placed = [r for r in results if r.get("ok")]
+    unverified = 0
     if placed:
         # A/V sync is checked on EVERY placement, not on request. A desynced file
         # still plays, so no later gate catches it — the viewer does, and by then
@@ -134,8 +139,14 @@ def main(argv=None) -> int:
         for r in placed:
             try:
                 verdict = avsync.check(place.to_disk(r["dest"]))
-            except Exception as exc:  # noqa: BLE001 - a check that crashes must not block placement
-                print(f"  SYNC-CHECK-FAIL {type(exc).__name__}: {exc}", flush=True)
+            except Exception as exc:  # noqa: BLE001 - the file is already placed
+                # The copy is on disk, so refusing is no longer possible — but recording
+                # "unverified" in the journal and returning non-zero is. Swallowing this
+                # into a printed line is how a skipped sync check looks identical to a pass.
+                r["sync"] = "unverified"
+                r["sync_error"] = f"{type(exc).__name__}: {str(exc)[:120]}"
+                unverified += 1
+                print(f"  SYNC-UNVERIFIED {type(exc).__name__}: {str(exc)[:80]}", flush=True)
                 continue
             r["sync"] = verdict.get("verdict")
             if verdict.get("verdict") != "ok":
@@ -185,6 +196,10 @@ def main(argv=None) -> int:
     # The exit code reflects PLACEMENTS. Row discovery is informational: a row
     # that has not appeared yet must never make a successful placement look
     # failed to a caller or a monitor.
+    if unverified:
+        print(f"{unverified} placement(s) could not be sync-checked — see sync_error "
+              f"in the journal", flush=True)
+        return 2
     return 0 if len(placed) == len(results) else 1
 
 
