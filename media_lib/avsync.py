@@ -228,16 +228,19 @@ def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
     if abs(start_ms) >= 250.0:
         shift = -start_ms / 1000.0
         cmd = (f"{ff} -v error -i {quoted_in} -itsoffset {shift:.3f} -i {quoted_in} "
-               f"-map 0:v:0 -map 1:a:0 -c copy {quoted_out}")
+               f"-map 0:v:0 -map 0:a:0 -c copy {quoted_out}")
         method = "itsoffset-copy"
     elif drift > 0.75:
+        # Audio runs long. A plain trim does NOT fix broken timestamps (stream copy keeps
+        # them), so this is tried first and audio-retime is the fallback below.
         cmd = f"{ff} -v error -i {quoted_in} -map 0 -c copy -shortest {quoted_out}"
         method = "trim-copy"
     elif drift < -0.75:
-        # Audio is short and/or its timeline is broken: rebuild the audio timestamps only.
+        # Audio SHORT of the picture. Do NOT use -shortest here: that would cut the
+        # picture down to the missing audio. Pad the audio instead so the video survives.
         cmd = (f"{ff} -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
-               f"-af asetpts=N/SR/TB -c:a aac -b:a 192k -shortest {quoted_out}")
-        method = "audio-retime"
+               f"-af \"asetpts=N/SR/TB,apad\" -c:a aac -b:a 192k -shortest {quoted_out}")
+        method = "audio-pad-retime"
     else:
         return {"ok": True, "reason": "already-in-sync", "method": "none", "before": before}
 
@@ -248,6 +251,18 @@ def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
                 "method": method, "before": before}
 
     after = check(out_path)
+
+    # A stream-copy trim cannot repair a broken audio timeline. If it did not verify,
+    # retry once by regenerating the audio timestamps (video still stream-copied).
+    if after.get("verdict") == "fail" and method == "trim-copy":
+        retry = (f"{ff} -v error -i {quoted_in} -map 0:v:0 -map 0:a:0 -c:v copy "
+                 f"-af \"asetpts=N/SR/TB,apad\" -c:a aac -b:a 192k -shortest {quoted_out}")
+        try:
+            probe.on_media(retry, timeout=3600)
+            method = "trim-then-retime"
+            after = check(out_path)
+        except Exception:  # noqa: BLE001
+            pass
     return {"ok": after.get("verdict") != "fail", "reason": "verified" if after.get("verdict")
             != "fail" else "still-out-of-sync", "method": method,
             "before": before, "after": after}
