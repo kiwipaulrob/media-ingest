@@ -76,3 +76,25 @@ def test_start_offset_shifts_audio_losslessly(monkeypatch):
     assert "-itsoffset -0.400" in cmd, "a late audio track must be pulled earlier"
     assert "-c copy" in cmd
     assert out["ok"] is True
+
+
+def test_damaged_index_is_detected(monkeypatch):
+    """Goldwyn: durations agree, frames complete, yet most packets carry no timestamp."""
+    monkeypatch.setattr(avsync.probe, "on_media",
+                        lambda inner, timeout=300: "N/A\n" * 53 + "12.5\n" * 7)
+    out = avsync.index_health("/x.avi")
+    assert out["verdict"] == "unreliable"
+    assert out["sampled"] == 60 and out["untimed"] == 53
+
+
+def test_healthy_index_passes(monkeypatch):
+    monkeypatch.setattr(avsync.probe, "on_media",
+                        lambda inner, timeout=300: "\n".join(str(i * 0.033) for i in range(49)))
+    out = avsync.index_health("/x.mkv")
+    assert out["verdict"] == "ok" and out["ratio"] == 0.0
+
+
+def test_unreadable_sample_is_unknown_not_ok(monkeypatch):
+    """A probe that returns nothing must not be read as a clean bill of health."""
+    monkeypatch.setattr(avsync.probe, "on_media", lambda inner, timeout=300: "")
+    assert avsync.index_health("/x.mkv")["verdict"] == "unknown"

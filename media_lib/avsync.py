@@ -153,10 +153,23 @@ def check(remote_path: str) -> Dict[str, Any]:
     if len(starts) > 1 and (max(starts) - min(starts)) * 1000.0 >= START_FAIL_MS:
         problems.append(f"audio tracks disagree by {(max(starts)-min(starts))*1000:.0f} ms")
 
+    # Container integrity: timestamps can agree while the index is damaged, and a player
+    # then estimates times — drifting more the longer it runs. Goldwyn's fault exactly:
+    # both streams measured within 0.8 s of each other, yet the picture drifted in playback.
+    try:
+        health = index_health(remote_path)
+    except Exception:  # noqa: BLE001
+        health = {"verdict": "unknown"}
+    if health.get("verdict") == "unreliable":
+        warnings.append(
+            f"container index damaged ({health.get('untimed')}/{health.get('sampled')} "
+            "packets untimed) — timestamps unreliable, rebuild recommended")
+
     verdict = "fail" if problems else ("warn" if warnings else "ok")
     return {
         "ok": not problems,
         "verdict": verdict,
+        "index_health": health,
         "problems": problems,
         "warnings": warnings,
         "start_delta_ms": worst_start_ms,
@@ -164,6 +177,38 @@ def check(remote_path: str) -> Dict[str, Any]:
         "durations_derived": derived,
         "audio_tracks": len(audio),
     }
+
+
+def index_health(remote_path: str, at: str = "50%", window: int = 2) -> Dict[str, Any]:
+    """Are the stream's packet timestamps readable, or is the index damaged?
+
+    A file can have matching durations and a full frame count yet still play out of sync,
+    because the container's timestamps are missing and the player falls back to estimating
+    them — an estimate that degrades the longer it runs. Sampling a couple of seconds is
+    enough to tell: a healthy MKV reports a timestamp on every packet.
+
+    Measured: damaged AVI at the midpoint 53/60 packets untimed, healthy MKV 0/49.
+    """
+    ff = probe.probe_wrap(probe.config.FFPROBE_ENTRY)
+    cmd = (f"{ff} -v error -select_streams v:0 -show_entries packet=pts_time -of csv=p=0 "
+           f"-read_intervals '{at}+{window}' {shlex.quote(remote_path)} 2>/dev/null")
+    try:
+        raw = probe.on_media(cmd, timeout=300) or ""
+    except Exception:  # noqa: BLE001
+        return {"verdict": "unknown", "sampled": 0, "untimed": 0, "ratio": None}
+    rows = [r.strip() for r in raw.splitlines() if r.strip()]
+    if not rows:
+        return {"verdict": "unknown", "sampled": 0, "untimed": 0, "ratio": None}
+    untimed = sum(1 for r in rows if "N/A" in r)
+    ratio = untimed / len(rows)
+    if ratio >= 0.10:
+        verdict = "unreliable"
+    elif ratio > 0.0:
+        verdict = "partial"
+    else:
+        verdict = "ok"
+    return {"verdict": verdict, "sampled": len(rows), "untimed": untimed,
+            "ratio": round(ratio, 3), "at": at}
 
 
 def video_present_at_tail(remote_path: str, tail_seconds: int = 10) -> Optional[bool]:

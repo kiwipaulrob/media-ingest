@@ -306,4 +306,6 @@ def place_new(
         "size_gb": round(size_dst / 1e9, 2),
         "copied": copied,
         "av_sync": sync_stage,
+        "index_health": (sync.get("index_health") or {}).get("verdict"),
+        "needs_rebuild": (sync.get("index_health") or {}).get("verdict") == "unreliable",
     }
