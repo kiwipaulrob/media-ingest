@@ -8,6 +8,36 @@ description: "Use when maintaining the Music Docos library."
 Moving series into the Series library, and removing duplicates between the two.
 
 
+
+## Never hand-build an ingest spec — the planner already decided
+
+The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`
+classifies every item (NEW / REPLACE / review) and runs the quality comparison against what
+is held. Treat a hand-assembled spec as a defect, not a shortcut.
+
+Building a spec directly from `scan.json`'s `all_videos` produced all three failure modes in
+a single pass:
+
+- **A duplicate.** The planner had already classed The Killers and White Riot as REPLACE; the
+  hand-built spec placed them as NEW, so the library held two copies of the same film under
+  two folder names.
+- **Seven phantom placements.** Paths listed by the scan no longer existed on disk (an entire
+  S65 folder that was never downloaded). The scan is a snapshot, not a guarantee.
+- **Release-junk folder names** (`White.Riot.2019.NORDIC.1080p.WEBRip...`) because the spec
+  derived titles from filenames instead of the planner's resolved names.
+
+Rules that follow:
+
+- **Build the spec from `plan.json`, never from `scan.json`.**
+- **Existence-check every source before it enters a spec** — `[-f "$path"]`. This one filter
+  prevents every phantom row, and it belongs before the spec is written, not inside the gate.
+- **REPLACE belongs to `cli.apply`.** `ingest_new` is for titles the library does not hold; a
+  replacement must target the existing path or it becomes a second item.
+- **When the held copy cannot be measured, stop.** "Unmeasurable" is not "worse" and not
+  "absent" — that conflation is what produced the partials deletion and the near-miss on a
+  correct duplicate.
+
+
 ## Ingest only what is BETTER than what is held
 
 A finished download is not a reason to ingest. Placing every completed torrent creates a
