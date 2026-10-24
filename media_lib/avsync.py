@@ -149,7 +149,9 @@ def check(remote_path: str) -> Dict[str, Any]:
 
     # Several audio tracks that disagree with each other are a mux fault even when
     # each one is individually close to video.
-    starts = [(_as_float(a.get("start_time")) or 0.0) for a in audio]
+    # An unreported start_time is UNKNOWN, not 0.0 — coercing it made a track at +0.3s
+    # look like it disagreed with a track whose time simply could not be read.
+    starts = [s for s in (_as_float(a.get("start_time")) for a in audio) if s is not None]
     if len(starts) > 1 and (max(starts) - min(starts)) * 1000.0 >= START_FAIL_MS:
         problems.append(f"audio tracks disagree by {(max(starts)-min(starts))*1000:.0f} ms")
 

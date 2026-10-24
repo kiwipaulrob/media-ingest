@@ -94,3 +94,21 @@ def test_missing_start_time_is_unknown_not_aligned(monkeypatch):
     r = avsync.check("/x/y.mkv")
     assert r["verdict"] == "warn", "an unknown offset must not report as ok"
     assert any("unknown" in w for w in (r.get("warnings") or []))
+
+
+def test_missing_start_time_on_one_track_does_not_false_alarm(monkeypatch):
+    """An unreported start_time is unknown, not 0.0.
+
+    Track 1 at +0.3s and track 2 with no start_time compared as 0.3 vs 0.0 and reported
+    "audio tracks disagree by 300 ms" on a perfectly good multi-audio file.
+    """
+    streams = [
+        {"index": 0, "codec_type": "video", "codec_name": "h264",
+         "start_time": "0.3", "duration": "100"},
+        {"index": 1, "codec_type": "audio", "codec_name": "aac",
+         "start_time": "0.3", "duration": "100"},
+        {"index": 2, "codec_type": "audio", "codec_name": "ac3", "duration": "100"},
+    ]
+    monkeypatch.setattr(avsync, "streams", lambda p: streams)
+    r = avsync.check("/x/y.mkv")
+    assert not any("disagree" in p for p in (r.get("problems") or []))
