@@ -36,3 +36,21 @@ def test_unreachable_host_is_unknown(monkeypatch):
 
     monkeypatch.setattr(probe.subprocess, "run", boom)
     assert probe.query("ls") == (-1, "")
+
+
+def test_benign_h264_warnings_do_not_fail_the_decode_check(monkeypatch):
+    """A 1080i HDTV capture warns 'mmco: unref short failure' on seek and decodes fine.
+
+    The old check treated ANY output as failure, so a perfectly playable file was marked
+    corrupt — and would have been refused at ingest.
+    """
+    monkeypatch.setattr(probe, "query",
+                        lambda *a, **k: (0, "[h264] mmco: unref short failure\n"
+                                            "    Last message repeated 1 times\n"))
+    assert probe.decode_check("/x/y.mkv") is True
+
+
+def test_a_real_decoder_error_still_fails(monkeypatch):
+    monkeypatch.setattr(probe, "query",
+                        lambda *a, **k: (0, "[h264] error while decoding MB 12 34, bytestream -7"))
+    assert probe.decode_check("/x/y.mkv") is False

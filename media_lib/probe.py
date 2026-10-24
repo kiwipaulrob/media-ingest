@@ -200,8 +200,17 @@ def decode_check(remote_path: str, seconds: int = 8) -> bool:
         ffmpeg_cmd("-ss 60 -t %d -f null -" % int(seconds), remote_path)
         + " 2>&1 | head -5"
     )
-    try:
-        out = on_media(cmd, timeout=600)
-    except Exception:
+    # A decode PROBE, so a non-zero exit is expected: ffmpeg exits non-zero after printing
+    # elevated warnings it recovered from. Using on_media() here turned those into "corrupt".
+    _rc, out = query(cmd, timeout=600)
+    if _rc == -1:
         return False
-    return not out.strip()
+    # Some broadcast h264 streams emit "mmco: unref short failure" on every seek — a
+    # reference-frame warning from the encoder, not damage. It arrived at -v error level, so
+    # the old `not out.strip()` test marked a perfectly decodable 1080i HDTV capture as
+    # corrupt. Judge on what is left after removing known-benign decoder chatter.
+    benign = ("mmco:", "unref short", "last message repeated", "concealing ",
+              "reference picture missing", "missing reference picture")
+    remaining = [ln for ln in out.splitlines()
+                 if not any(b in ln.lower() for b in benign)]
+    return not "".join(remaining).strip()
