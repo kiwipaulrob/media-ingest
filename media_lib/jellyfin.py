@@ -312,6 +312,27 @@ def set_overview(item_id: str, overview: str, *, lock: bool = True) -> Dict[str,
         _request(f"/Users/{uid}/Items/{item_id}?Fields=Overview,LockedFields") or "{}")
 
 
+def set_name(item_id: str, name: str, *, lock: bool = True) -> Dict[str, Any]:
+    """Surgically set an item's Name (and lock it). Same DTO-safety rule as set_overview.
+
+    Needed when Jellyfin cannot resolve episode metadata and falls back to the series name:
+    the row is correctly numbered but reads 'Rock Family Trees' instead of the episode title.
+    """
+    uid = user_id()
+    dto = json.loads(_request(f"/Users/{uid}/Items/{item_id}") or "{}")
+    if not dto:
+        raise JellyfinError(f"item {item_id} not found")
+    dto["Name"] = name
+    if lock:
+        locked = list(dto.get("LockedFields") or [])
+        if "Name" not in locked:
+            locked.append("Name")
+        dto["LockedFields"] = locked
+    _request(f"/Items/{item_id}", method="POST", body=dto)
+    return json.loads(
+        _request(f"/Users/{uid}/Items/{item_id}?Fields=Name,Overview,LockedFields") or "{}")
+
+
 def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg") -> int:
     """Upload an item's Primary image.
 
