@@ -100,3 +100,10 @@ Done and verified (each read back from disk, not trusted from a return code):
 - musicdocos/*part* multi-part programmes, not orphans
 
 Partials: 476GB in qBittorrent left alone per instruction
+
+### Decision recorded
+
+- **Lennon**: re-download CANCELLED. The held copy stays as is (Classic Albums S09E02 John
+  Lennon - Plastic Ono Band, ~576p). Verified no Lennon torrent in qBittorrent and no SAB job
+  queued, so nothing was ever in flight. The 576->720 upgrade is dropped deliberately, not
+  pending.
