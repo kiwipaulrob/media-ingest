@@ -65,11 +65,50 @@ SRC = '/downloads-zmedia/X.mkv'
 def test_good_placement_passes_with_two_remote_calls(monkeypatch):
     h = FakeHost()
     h.install(monkeypatch)
+    # the sync gate probes on its own; stub it so this test keeps asserting the two
+    # remote calls the copy itself needs
+    monkeypatch.setattr(place.avsync, 'check',
+                        lambda p: {'verdict': 'ok', 'problems': [], 'start_delta_ms': 0.0})
     out = place.place_new(SRC, DEST, min_height=700)
     assert out['ok'] and out['stage'] == 'PLACED'
     assert out['res'] == '1920x1080 h264'
+    assert out['av_sync'] == 'ok'
     assert len(h.calls) == 2, f'expected 2 remote calls, got {len(h.calls)}'
     assert h.removed == []
+
+
+def test_audio_running_past_the_picture_is_refused(monkeypatch):
+    """Duration, decode and height all pass on a file whose audio outruns the video."""
+    h = FakeHost()
+    h.install(monkeypatch)
+    monkeypatch.setattr(place.avsync, 'check', lambda p: {
+        'verdict': 'fail', 'problems': ['audio #1 (aac) duration differs by +1965 ms'],
+        'start_delta_ms': 0.0})
+    out = place.place_new(SRC, DEST, min_height=700)
+    assert not out['ok'] and out['stage'] == 'AV-SYNC-FAIL'
+    assert h.removed, 'a refused file must not be left in the library'
+
+
+def test_a_tail_gap_is_only_a_warning(monkeypatch):
+    """Credits with no sound leave audio a couple of seconds short — not a defect."""
+    h = FakeHost()
+    h.install(monkeypatch)
+    monkeypatch.setattr(place.avsync, 'check', lambda p: {
+        'verdict': 'fail', 'problems': ['audio #1 (ac3) duration differs by -2600 ms'],
+        'start_delta_ms': 0.0})
+    out = place.place_new(SRC, DEST, min_height=700)
+    assert out['ok'] and out['stage'] == 'PLACED'
+    assert out['av_sync'] == 'warn'
+
+
+def test_a_real_start_offset_is_refused(monkeypatch):
+    h = FakeHost()
+    h.install(monkeypatch)
+    monkeypatch.setattr(place.avsync, 'check', lambda p: {
+        'verdict': 'fail', 'problems': ['audio #1 starts +400 ms from video'],
+        'start_delta_ms': 400.0})
+    out = place.place_new(SRC, DEST, min_height=700)
+    assert not out['ok'] and out['stage'] == 'AV-SYNC-FAIL'
 
 
 def test_size_mismatch_is_rejected(monkeypatch):

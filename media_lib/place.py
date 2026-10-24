@@ -40,7 +40,7 @@ import re
 import shlex
 from typing import Any, Dict, Optional
 
-from . import completeness, config, probe
+from . import avsync, completeness, config, probe
 
 DECODE_SPANS = (0.05, 0.50, 0.95)
 M_SRC = "@@SRC@@"
@@ -146,6 +146,12 @@ def _decode_script(dst_d: str, duration: float) -> str:
     return "\n".join(lines)
 
 
+#: Audio running past the picture by more than this is drift, not a benign tail gap.
+AV_SYNC_FAIL_MS = 750.0
+#: A start offset this large is audible from the first line of dialogue.
+AV_SYNC_START_FAIL_MS = 250.0
+
+
 def place_new(
     src: str,
     dest: str,
@@ -239,6 +245,36 @@ def place_new(
             "dest": dest,
         }
 
+    # A/V SYNC GATE. A stream copy or a DVD chain can leave the audio timeline longer
+    # than the picture (broken MPEG timestamps), which is audible and survives every gate
+    # above: duration matches, the file decodes, the height is right. Sign matters —
+    # audio running PAST the picture is drift; audio ending a second or two early is just
+    # trailing credits with no sound, so that is a warning, not a refusal.
+    try:
+        sync = avsync.check(dst_d)
+    except Exception as exc:  # noqa: BLE001
+        sync = {"verdict": "probe-failed", "problems": [f"{type(exc).__name__}"]}
+    sync_stage = "ok"
+    if sync.get("verdict") == "fail":
+        drift = 0.0
+        for prob in sync.get("problems") or []:
+            m = re.search(r"differs by ([+-]?\d+)", str(prob))
+            if m:
+                drift = float(m.group(1))
+        if drift > AV_SYNC_FAIL_MS or sync.get("start_delta_ms") and abs(
+                float(sync.get("start_delta_ms") or 0)) >= AV_SYNC_START_FAIL_MS:
+            _rm()
+            return {
+                "ok": False,
+                "stage": "AV-SYNC-FAIL",
+                "detail": "; ".join(sync.get("problems") or [])[:160],
+                "sync": sync,
+                "dest": dest,
+            }
+        sync_stage = "warn"
+    elif sync.get("verdict") == "probe-failed":
+        sync_stage = "unknown"
+
     copied_match = re.search(r"COPIED=(\w+)", stage)
     copied = copied_match.group(1) if copied_match else "unknown"
     return {
@@ -249,4 +285,5 @@ def place_new(
         "duration": round(dst_s["duration"], 1),
         "size_gb": round(size_dst / 1e9, 2),
         "copied": copied,
+        "av_sync": sync_stage,
     }
