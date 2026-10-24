@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Optional, TypedDict
 
 from . import config
 
@@ -108,7 +108,22 @@ def head_bytes(remote_path: str, n: int = 64) -> bytes:
     return bytes.fromhex("".join(out.split()))[:n]
 
 
-def probe(remote_path: str) -> Dict[str, Any]:
+class ProbeResult(TypedDict, total=False):
+    """The ONLY shape probe.probe() returns.
+
+    Declared because a consumer read it as raw ffprobe JSON (info["format"]["duration"]) and
+    every flat file was silently refused as "duration unreadable". With this type, that
+    lookup is a static error instead of a production bug.
+    """
+    w: Optional[int]
+    h: Optional[int]
+    codec: Optional[str]
+    dur: Optional[float]
+    size: int
+    title: Optional[str]
+
+
+def probe(remote_path: str) -> ProbeResult:
     """ffprobe one file via the media host. Returns {} on failure.
 
     A missing 'h' must be treated as PROBE-FAIL by callers — never guessed.

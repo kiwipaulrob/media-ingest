@@ -216,8 +216,9 @@ def held_state_for(term: str) -> Dict[str, object]:
             info = probe.probe(place.to_disk(item["Path"])) or {}
         except Exception:
             continue
-        if info.get("h"):
-            return {"state": "held", "height": int(info["h"]), "matched": item.get("Name")}
+        height = info.get("h")
+        if height:
+            return {"state": "held", "height": int(height), "matched": item.get("Name")}
     return {"state": "unprobeable", "height": None, "matched": items[0].get("Name")}
 
 

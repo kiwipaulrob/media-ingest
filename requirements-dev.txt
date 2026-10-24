@@ -4,3 +4,6 @@ pytest>=8.0
 # Used by cli/sync.py to validate .github/workflows/*.yml before a push. Its
 # absence made the guard silently pass on CI while failing locally.
 pyyaml>=6.0
+# Type contracts for the remote boundary (probe/qb/jellyfin return shapes).
+# media_lib/probe.py's ProbeResult is what makes info["format"] a static error.
+mypy>=1.10

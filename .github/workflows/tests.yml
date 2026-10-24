@@ -44,6 +44,9 @@ jobs:
       - name: plugin suite
         run: python -m pytest plugins/media-ingest/tests -q
 
+      - name: type contracts (media_lib boundary shapes)
+        run: python -m mypy
+
       - name: import every module (catches a syntax/import break no test touches)
         run: |
           set -e

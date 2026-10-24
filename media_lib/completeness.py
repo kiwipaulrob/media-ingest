@@ -107,10 +107,10 @@ def source_problems(path: str, *, max_duration_delta: float | None = None,
         # exit — so a normal path crashed the gate instead of falling through.
         if not _remote(f'if [ -d {shlex.quote(vts)} ]; then echo yes; fi').strip().endswith("yes"):
             vts = path.rstrip("/")
-        problems = vob_chain_problems(vts)
+        chain = vob_chain_problems(vts)
         if expect_duration:
-            problems += _duration_gap(problems, vts, expect_duration)
-        return problems
+            chain += _duration_gap(chain, vts, expect_duration)
+        return chain
 
     # Flat file: a stalled-timestamp container shows the same impossible bitrate.
     # probe.probe() returns a FLAT dict ({'dur', 'size'}); reading info["format"] (raw

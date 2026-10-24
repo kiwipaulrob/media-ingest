@@ -94,7 +94,8 @@ def _split_plausible(records):
     historical figure. Younger candidates win; pre-1900 records are only used
     when nothing else exists, and then flagged for human review.
     """
-    plausible, suspect = [], []
+    plausible: List[Dict[str, Any]] = []
+    suspect: List[Dict[str, Any]] = []
     for r in records:
         y = _birth_year(r)
         (suspect if (y is not None and y < 1900) else plausible).append(r)

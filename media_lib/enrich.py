@@ -146,7 +146,7 @@ def build_plan(
         # musician-only provider answering a crew credit returns a different human.
         # Both were being scored `ready` and handed to a future sweep.
         seen_types = credit_types.get(name) or {}
-        primary_type = max(seen_types, key=seen_types.get) if seen_types else ""
+        primary_type = max(seen_types, key=lambda k: seen_types.get(k, 0)) if seen_types else ""
         suspect = chain.collision_reason(
             str(res["fields"].get("biography") or ""),
             credit_type=primary_type,

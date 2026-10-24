@@ -50,9 +50,20 @@ def gh(*args: str) -> Tuple[int, str]:
 
 
 def tests() -> Tuple[bool, str]:
-    """The gate. Nothing mutating proceeds on a red suite."""
+    """The gate. Nothing mutating proceeds on a red suite.
+
+    Runs what CI runs, in the same order: both pytest suites and the type contracts.
+    A local gate that checks less than CI is how a red build gets pushed — the plugin
+    suite found a real invariant violation the first time it was wired in here.
+    """
     rc, out = run([sys.executable, "-m", "pytest", "tests/", "plugins/media-ingest/tests", "-q"])
-    return rc == 0, out.strip().splitlines()[-1] if out.strip() else "no output"
+    if rc != 0:
+        return False, out.strip().splitlines()[-1] if out.strip() else "no output"
+    rc, out = run([sys.executable, "-m", "mypy"])
+    if rc != 0:
+        first = next((ln for ln in out.splitlines() if ": error:" in ln), "mypy failed")
+        return False, f"type contracts: {first.strip()[:120]}"
+    return True, "pytest + mypy green"
 
 
 def workflow_problems() -> List[str]:
