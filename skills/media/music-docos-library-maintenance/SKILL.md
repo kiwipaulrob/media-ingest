@@ -7,6 +7,37 @@ description: "Use when maintaining the Music Docos library."
 
 Moving series into the Series library, and removing duplicates between the two.
 
+
+## Ingest only what is BETTER than what is held
+
+A finished download is not a reason to ingest. Placing every completed torrent creates a
+second library entry for a title that is already on the shelf, which then has to be cleaned
+up by hand and leaves a dead row behind in Jellyfin (that cleanup has been done twice).
+
+Before placing, ask `quality.decide(source_name, destination_label)`:
+
+| verdict | action |
+|---|---|
+| `no-local-copy` | ingest — nothing comparable is held |
+| `upgrade` | ingest (or `cli.apply` to swap in place) — measurably better |
+| `same-or-worse`, `marginal`, `different-title` | **skip** — the held copy is equal or better |
+| `held-unknown`, `unknown`, check failed | **review** — do not ingest |
+
+`cli/ingest_new.py` enforces this itself now, printing `HELD-BETTER` or `REVIEW` per row, so a
+hand-built spec cannot bypass it.
+
+Two traps this closes:
+
+- **A better encode under a different folder name is still a duplicate.** The Killers film is
+  held as `The.Killers.Live.From.The.Royal.Albert.Hall...`; a TMDB-derived destination
+  (`The Killers: Live from the Royal Albert Hall (2009)`) is a *second* item, not a
+  replacement. Compare the title against what is held before choosing a path, and use
+  `cli.apply` to replace in place.
+- **"Could not measure the held copy" is not "we hold nothing".** That conflation produced a
+  dozen needless downloads before; the same rule applies at ingest, where the cost is a
+  duplicate instead of wasted bandwidth.
+
+
 ## The two libraries
 
 | Library | Type | Root |

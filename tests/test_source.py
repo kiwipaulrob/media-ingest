@@ -232,7 +232,12 @@ def test_retryable_failures_only_accept_a_small_shortfall(monkeypatch):
 def test_ingest_new_records_the_ledger_on_success(tmp_path, monkeypatch):
     """Without this, media_scan re-offers an already-ingested release."""
     from cli import ingest_new as cli_ingest
-    from media_lib import jellyfin as jf, place as placemod, qb as qbmod, safety as safetymod
+    from media_lib import jellyfin as jf, place as placemod, qb as qbmod
+    from media_lib import quality as qualitymod, safety as safetymod
+    # the ingest gate now asks whether the download beats what is held; this test is
+    # about the ledger, so answer 'nothing comparable held'
+    monkeypatch.setattr(qualitymod, 'decide',
+                        lambda cand, term, **k: {'verdict': 'no-local-copy'})
 
     spec = tmp_path / 'spec.json'
     spec.write_text(json.dumps([{'src': '/downloads-zmedia/X.mkv',

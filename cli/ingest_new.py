@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from media_lib import (awaiting, avsync, config, jellyfin, place, qb, rowcheck,
+from media_lib import (awaiting, avsync, config, jellyfin, place, qb, quality, rowcheck,
                        safety, tmdb)
 
 
@@ -99,6 +99,24 @@ def main(argv=None) -> int:
                     torrent = None
                 if torrent:
                     src = qb.resolve_media_path(src, torrent["hash"]) or src
+            # IS THE DOWNLOAD EVEN BETTER? A title already on the shelf must not gain a
+            # second copy just because a torrent finished. Place only when the library
+            # holds nothing comparable, or when this copy measurably beats it; a
+            # replacement is cli.apply's job, and an unmeasurable held copy is a review,
+            # never a silent duplicate (uncertainty must not resolve to "ingest").
+            label = Path(dest).parent.name
+            try:
+                verdict = quality.decide(Path(src).name, label)
+                v = str(verdict.get("verdict"))
+            except Exception as exc:  # noqa: BLE001
+                v = f"check-failed:{type(exc).__name__}"
+            if v in ("same-or-worse", "marginal", "different-title"):
+                print(f"HELD-BETTER {Path(dest).name[:52]:<53} {v}", flush=True)
+                continue
+            if v.startswith("check-failed") or v in ("unknown", "held-unknown"):
+                print(f"REVIEW       {Path(dest).name[:52]:<53} {v} (not ingested)", flush=True)
+                continue
+
             res = place.place_new(
                 src,
                 dest,

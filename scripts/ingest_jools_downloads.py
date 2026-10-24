@@ -120,7 +120,26 @@ def main(apply: bool = True) -> int:
                     break
                 print(f"    remux short ({got_dur:.0f}s of {dur:.0f}s){' retrying with genpts' if not extra else ''}")
             if got_dur < dur * 0.95:
-                print(f"    remux failed both ways: {(mv.stdout or '').strip()[-160:]}")
+                # ffmpeg's matroska muxer REFUSES packets with no PTS ("Can't write packet
+                # with unknown timestamp") and aborts at the first one. On these NX broadcast
+                # TS rips ~7 video packets/s from ~3.6 s onward carry N/A timestamps, so
+                # both `-c copy` attempts above "finish" with a 4-second file. mkvmerge
+                # derives timestamps from the track and carried a full 3656 s programme in
+                # 88 s, video+audio, verified decodable at 30:00 — so it is the fallback,
+                # not a re-encode.
+                print("    ffmpeg copy aborted on unstamped packets — retrying with mkvmerge")
+                run(f"rm -f {shlex.quote(tmp)}")
+                mv = run(f"mkvmerge -o {shlex.quote(tmp)} -s 0 --no-chapters "
+                         f"--disable-track-statistics-tags {shlex.quote(src)} 2>&1 | tail -5",
+                         timeout=3600)
+                got = run(f"ffprobe -v error -show_entries format=duration -of csv=p=0 "
+                          f"{shlex.quote(tmp)} 2>/dev/null")
+                try:
+                    got_dur = float((got.stdout or "0").strip() or 0)
+                except ValueError:
+                    got_dur = 0
+            if got_dur < dur * 0.95:
+                print(f"    remux failed all ways: {(mv.stdout or '').strip()[-160:]}")
                 run(f"rm -f {shlex.quote(tmp)}")
                 print("    keeping payload — NOT deleting, retry next run")
                 continue
