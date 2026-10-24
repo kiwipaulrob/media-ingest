@@ -33,12 +33,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-REMOTE = os.environ.get("VOB_HOST", "root@192.168.214.131")
+from media_lib import config  # noqa: E402
+
+REMOTE = os.environ.get("VOB_HOST", config.NODE)
 CONTAINER = os.environ.get("VOB_CONTAINER", "tdarr-node")
-HOST_ROOT = "/mnt/zmedia"
-CONT_ROOT = "/media"
+HOST_ROOT = config.MEDIA_VOLUME
+CONT_ROOT = config.NODE_MEDIA_ROOT
 DVD_MAX_MBPS = 12.0          # spec ceiling is 10.08; leave margin
 MIN_REPORT_BYTES = 300_000_000
 
@@ -123,8 +125,7 @@ def audit_dir(d: str, deep: bool) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--deep", action="store_true", help="also run the seek test")
-    ap.add_argument("--roots", nargs="*", default=["/mnt/zmedia/videos/musicdocos",
-                                                   "/mnt/zmedia/videos/musicdocos-series"])
+    ap.add_argument("--roots", nargs="*", default=list(config.DOCOS_LIBS))
     args = ap.parse_args()
 
     dirs: list[str] = []

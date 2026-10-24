@@ -20,10 +20,15 @@ from __future__ import annotations
 import argparse
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
-NODE = "root@192.168.214.131"
-LIBS = ("/media/videos/musicdocos", "/media/videos/musicdocos-series")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from media_lib import config  # noqa: E402
+
+NODE = config.NODE
+LIBS = config.DOCOS_LIBS
 SCRATCH = Path("/root/.hermes/profiles/media-maintainer/cache/scratch")
 
 FAST_WORKER = r'''#!/bin/sh
@@ -63,7 +68,7 @@ def push(name: str, content: str) -> None:
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(content)
     remote = f"/tmp/{name}"
-    subprocess.run(["scp", "-q", str(local), f"root@192.168.214.131:{remote}"], check=False)
+    subprocess.run(["scp", "-q", str(local), f"{NODE}:{remote}"], check=False)
     subprocess.run(["ssh", "-o", "ConnectTimeout=12", NODE,
                     f"docker cp {remote} tdarr-node:{remote}"],
                    capture_output=True, timeout=120)

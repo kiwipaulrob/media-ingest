@@ -14,18 +14,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, ".")
-from media_lib import jellyfin  # noqa: E402
+from media_lib import config, jellyfin  # noqa: E402
 
-MOUNTS = {
-    "/data/musicdocos-series": "/mnt/zmedia/videos/musicdocos-series",
-    "/data/musicdocos": "/mnt/zmedia/videos/musicdocos",
-    "/data/docuseries": "/mnt/zmedia/videos/DocuSeries",
-    "/data/filmdocos": "/mnt/zmedia/videos/FilmDocumentaries",
-    "/data/documentaries": "/mnt/zmedia/videos/Documentaries",
-    "/data/tvshows": "/mnt/zmedia/videos/TV",
-    "/data/movies": "/mnt/zmedia/videos/Films",
-    "/data/filmnoir": "/mnt/zmedia/videos/filmnoir",
-}
+MOUNTS = config.JF_TO_DISK   # single source of truth
 
 
 def ssh(cmd: str, timeout: int = 240) -> str:

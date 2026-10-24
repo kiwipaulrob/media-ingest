@@ -41,6 +41,17 @@ MEDIA_VOLUME = "/mnt/zmedia"
 #: Image tag used for ffprobe/ffmpeg. Must match the compose pin; override with
 #: MEDIA_IMAGE if the server is upgraded.
 DEFAULT_MEDIA_IMAGE = "jellyfin/jellyfin:12.2"
+#: Host running the Tdarr node, which also sees the media share directly (proxmox3).
+#: Several scripts shell into it; declaring it once keeps a host move to one edit.
+NODE = os.environ.get("MEDIA_NODE", "root@192.168.214.131")
+#: Where the share appears INSIDE containers on that node (host paths are in JF_TO_DISK).
+NODE_PROX4 = os.environ.get("MEDIA_NODE_PROX4", "root@192.168.214.132")
+NODE_MEDIA_ROOT = "/media"
+VIDEOS = f"{NODE_MEDIA_ROOT}/videos"
+DOWNLOADS = f"{MEDIA_VOLUME}/downloads"
+#: The two libraries the docos maintenance scripts operate on (node/container paths).
+DOCOS_LIBS = (f"{VIDEOS}/musicdocos", f"{VIDEOS}/musicdocos-series")
+
 FFPROBE_ENTRY = "/usr/lib/jellyfin-ffmpeg/ffprobe"
 FFMPEG_ENTRY = "/usr/lib/jellyfin-ffmpeg/ffmpeg"
 

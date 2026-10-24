@@ -23,11 +23,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, for media_lib
+sys.path.insert(0, str(Path(__file__).resolve().parent))            # siblings, for tdarr_*
+
+from media_lib import config  # noqa: E402
 
 from tdarr_kick import LIBS, crud  # noqa: E402
 
-NODES = {"prox3": "root@192.168.214.131", "prox4": "root@192.168.214.132"}
+NODES = {"prox3": config.NODE, "prox4": config.NODE_PROX4}
 LOAD_SCRIPT = r'''
 read -r _ a b c d e f g _ < /proc/stat; t1=$((a+b+c+d+e+f+g))
 sleep 3

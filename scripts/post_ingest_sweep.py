@@ -27,7 +27,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from media_lib import config, jellyfin, qb
+from media_lib import config, jellyfin, qb, place
 
 CT = config.MEDIA_HOST
 LIB_DIR = "/mnt/zmedia/videos/musicdocos/Hung Up on a Dream - The Zombies Documentary (2023)"
@@ -61,7 +61,7 @@ def main() -> int:
         print("Hung Up 1080p torrent not in queue — skipping upgrade")
     else:
         src = qb.resolve_media_path(tor[0].get("content_path") or "", tor[0]["hash"])
-        src = src.replace("/downloads-zmedia", "/mnt/zmedia/downloads", 1)
+        src = place.to_disk(src)
         links = nlink(src)
         print(f"upgrade source nlink={links}")
         if links != 1:
@@ -81,7 +81,7 @@ def main() -> int:
                     size = run(f'stat -c %s "{SHELF_720}"').strip()
                     print(f"  upgraded: {before} -> {size} bytes")
                     run(f'rm -f "{SHELF_720}.720p-old"')
-                    jellyfin.notify_media([SHELF_720.replace("/mnt/zmedia/videos", "/data")],
+                    jellyfin.notify_media([place.to_jf(SHELF_720)],
                                           update_type="Modified")
                     print("  notified scanner (Modified)")
 
@@ -93,7 +93,7 @@ def main() -> int:
             print(f"  {h}: already gone")
             continue
         path = qb.resolve_media_path(t.get("content_path") or "", t["hash"])
-        disk = path.replace("/downloads-zmedia", "/mnt/zmedia/downloads", 1)
+        disk = place.to_disk(path)
         exists = "yes" if run(f'test -e "{disk}" && echo yes').strip().endswith("yes") else "no"
         if exists == "yes":
             print(f"  {h}: SKIP — payload still on disk ({disk[-40:]}); not deleting")
@@ -112,7 +112,7 @@ def main() -> int:
     else:
         sizes = {}
         for i in files:
-            p = i["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
+            p = place.to_disk(i["Path"])
             sizes[i["Id"]] = run(f'stat -c %s "{p}"').strip()
         print(f"  sizes: {list(sizes.values())}")
         # Require real numbers: a failed stat yields an error string or "", and two
@@ -122,7 +122,7 @@ def main() -> int:
             print("  could not read both sizes — NOT deleting anything")
         elif len(set(sizes.values())) == 1:
             drop = files[1]
-            dp = drop["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
+            dp = place.to_disk(drop["Path"])
             links = nlink(dp)
             if links != 1:
                 print(f"  REFUSING: {links} links on the copy to drop")

@@ -17,7 +17,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, ".")
-from media_lib import jellyfin  # noqa: E402
+from media_lib import config, jellyfin  # noqa: E402
 
 VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov")
 
@@ -34,16 +34,7 @@ def ssh(cmd: str, timeout: int = 240) -> str:
 #: The container sees `/data/...`; the CT shell sees the bind source. Verified with
 #: `docker inspect jellyfin --format '{{range .Mounts}}...'` — composing the host
 #: path from memory returns zero files and reads as "nothing on disk".
-MOUNTS = {
-    "/data/musicdocos-series": "/mnt/zmedia/videos/musicdocos-series",
-    "/data/musicdocos": "/mnt/zmedia/videos/musicdocos",
-    "/data/docuseries": "/mnt/zmedia/videos/DocuSeries",
-    "/data/filmdocos": "/mnt/zmedia/videos/FilmDocumentaries",
-    "/data/documentaries": "/mnt/zmedia/videos/Documentaries",
-    "/data/tvshows": "/mnt/zmedia/videos/TV",
-    "/data/movies": "/mnt/zmedia/videos/Films",
-    "/data/filmnoir": "/mnt/zmedia/videos/filmnoir",
-}
+MOUNTS = config.JF_TO_DISK   # single source of truth
 
 
 def library_root(sample_path: str) -> str:

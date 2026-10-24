@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from media_lib import config, jellyfin, qb
+from media_lib import config, jellyfin, qb, place
 
 CT = config.MEDIA_HOST
 FFPROBE = ("docker run --rm -v /mnt/zmedia:/mnt/zmedia --entrypoint "
@@ -51,7 +51,7 @@ def main() -> int:
     else:
         info = []
         for i in files:
-            p = i["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
+            p = place.to_disk(i["Path"])
             info.append((i, p, run(f'stat -c %s "{p}"').strip()))
         sizes = {s for _, _, s in info}
         print(f"  sizes: {sorted(sizes)}")
@@ -77,7 +77,7 @@ def main() -> int:
     if not held:
         print("  no library copy found — REFUSING to delete the payload")
         return 1
-    shelf = held[0]["Path"].replace("/data/", "/mnt/zmedia/videos/", 1)
+    shelf = place.to_disk(held[0]["Path"])
     probe = run(f'{FFPROBE} -v error -select_streams v:0 -show_entries stream=codec_name,width,height '
                 f'-show_entries format=duration -of default=noprint_wrappers=1 "{shelf}"')
     kv = dict(line.split("=", 1) for line in probe.strip().splitlines() if "=" in line)
@@ -93,7 +93,7 @@ def main() -> int:
         print("  REFUSING: not a complete payload — partials are never deleted")
         return 1
     path = qb.resolve_media_path(t.get("content_path") or "", t["hash"])
-    disk = path.replace("/downloads-zmedia", "/mnt/zmedia/downloads", 1)
+    disk = place.to_disk(path)
     links = nlink(disk)
     print(f"  payload nlink={links}")
     if links != 1:

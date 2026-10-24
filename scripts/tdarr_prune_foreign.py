@@ -23,11 +23,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, for media_lib
+sys.path.insert(0, str(Path(__file__).resolve().parent))            # siblings, for tdarr_*
+
+from media_lib import config  # noqa: E402
 
 from tdarr_kick import LIBS, crud  # noqa: E402
 
-PROBE_HOST = "root@192.168.214.131"
+PROBE_HOST = config.NODE
 
 
 def foreign(libs: dict[str, str]) -> list[dict]:

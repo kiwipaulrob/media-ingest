@@ -27,13 +27,13 @@ from typing import Dict, List, Set
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from media_lib import jellyfin  # noqa: E402
+from media_lib import config, jellyfin  # noqa: E402
 
 PARENTS = {
     "musicdocos": ("5f95760bae4c07e31d840d70c3a46111", "Movie"),
     "musicdocos-series": ("18ce65a0ab9d7a771d5ac55e6024fe2a", "Episode"),
 }
-REMOTE_ROOT = "/mnt/zmedia/videos"
+REMOTE_ROOT = f"{config.MEDIA_VOLUME}/videos"
 JF_ROOT = "/data"
 VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov", ".webm", ".mpg", ".wmv")
 # Names Jellyfin falls back to when it cannot parse a title. They hide an item from

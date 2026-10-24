@@ -15,13 +15,13 @@ import json
 import subprocess
 import sys
 
-sys.path.insert(0, ".")
-from media_lib import jellyfin  # noqa: E402
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent))
+from media_lib import config, jellyfin, place  # noqa: E402
 
-CT = "root@192.168.214.109"
-FFMPEG = ("docker run --rm -v /mnt/zmedia:/mnt/zmedia "
+CT = config.MEDIA_HOST
+FFMPEG = (f"docker run --rm -v {config.MEDIA_VOLUME}:{config.MEDIA_VOLUME} "
           "--entrypoint /usr/lib/jellyfin-ffmpeg/ffmpeg jellyfin/jellyfin:12.2")
-FFPROBE = ("docker run --rm -v /mnt/zmedia:/mnt/zmedia "
+FFPROBE = (f"docker run --rm -v {config.MEDIA_VOLUME}:{config.MEDIA_VOLUME} "
            "--entrypoint /usr/lib/jellyfin-ffmpeg/ffprobe jellyfin/jellyfin:12.2")
 
 SRC = ("/mnt/zmedia/downloads/sabnzbd/complete/Rock Family Trees - Deep Purple &amp; "
@@ -112,11 +112,19 @@ def main() -> int:
             continue
 
         ct(f'mkdir -p "{LIB}/Season {season:02d}" && mv -f "{staging}" "{final}"')
-        jellyfin.notify_media([final.replace("/mnt/zmedia/videos", "/data")])
+        jellyfin.notify_media([place.to_jf(final)])
         print(f"   PLACED {final.rsplit('/', 1)[-1]}", flush=True)
 
     return 0
 
 
 if __name__ == "__main__":
+    # This is a one-off rebuild of specific discs, so it takes no arguments — which also
+    # means `--help` is ignored and RUNNING IT STARTS ENCODING. That happened: an
+    # invocation intended to check the script kicked off a two-hour ffmpeg job. Require an
+    # explicit confirmation so no accidental run can begin work.
+    if "--yes" not in sys.argv:
+        print("This re-encodes specific DVD sources and places the results.\n"
+              "Re-run with --yes when you actually mean it.", file=sys.stderr)
+        sys.exit(2)
     sys.exit(main())

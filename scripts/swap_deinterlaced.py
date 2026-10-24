@@ -25,13 +25,13 @@ import subprocess
 import sys
 import time
 
-sys.path.insert(0, ".")
-from media_lib import jellyfin  # noqa: E402
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent))
+from media_lib import config, jellyfin  # noqa: E402
 
-CT = "root@192.168.214.109"
-PROBE = ("docker run --rm -v /mnt/zmedia:/mnt/zmedia "
+CT = config.MEDIA_HOST
+PROBE = (f"docker run --rm -v {config.MEDIA_VOLUME}:{config.MEDIA_VOLUME} "
          "--entrypoint /usr/lib/jellyfin-ffmpeg/ffprobe jellyfin/jellyfin:12.2")
-DECODE = ("docker run --rm -v /mnt/zmedia:/mnt/zmedia "
+DECODE = (f"docker run --rm -v {config.MEDIA_VOLUME}:{config.MEDIA_VOLUME} "
           "--entrypoint /usr/lib/jellyfin-ffmpeg/ffmpeg jellyfin/jellyfin:12.2")
 
 

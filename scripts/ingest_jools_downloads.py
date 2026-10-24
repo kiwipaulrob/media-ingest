@@ -18,9 +18,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from media_lib import config  # noqa: E402
+
 from media_lib import avsync, jellyfin, qb  # noqa: E402
 
-NODE = "root@192.168.214.131"
+NODE = config.NODE
 SERIES = "/media/videos/musicdocos-series/Later with Jools Holland (1992) [tmdbid-10959]"
 TITLE = "Later with Jools Holland (1992)"
 SEASONS = {49, 50, 66, 67, 68, 69}
