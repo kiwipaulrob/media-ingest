@@ -166,6 +166,25 @@ def check(remote_path: str) -> Dict[str, Any]:
     }
 
 
+def video_present_at_tail(remote_path: str, tail_seconds: int = 10) -> Optional[bool]:
+    """Does the VIDEO stream decode anything in the last few seconds?
+
+    ~1-3 s, versus a full packet scan. False means the picture stops early, which is
+    terminal (no re-sync can invent missing frames), so resync() checks this first.
+    None means the probe could not tell.
+    """
+    ff = probe.probe_wrap(probe.config.FFMPEG_ENTRY)
+    cmd = (f"{ff} -v error -stats -sseof -{tail_seconds} -i {shlex.quote(remote_path)} "
+           f"-map 0:v:0 -frames:v 1 -f null - 2>&1 | tr '\r' '\n' "
+           f"| grep -o 'frame=[ ]*[0-9]*' | tail -1")
+    try:
+        raw = (probe.on_media(cmd, timeout=300) or "").strip()
+    except Exception:  # noqa: BLE001
+        return None
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return (int(digits) > 0) if digits else None
+
+
 def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
     """Try to fix an A/V mismatch WITHOUT re-encoding the picture.
 
@@ -183,6 +202,13 @@ def resync(remote_path: str, out_path: str) -> Dict[str, Any]:
 
     Returns {'ok', 'reason', 'method', 'before', 'after'}.
     """
+    # Cheap terminal check first: missing frames cannot be repaired, and this costs
+    # seconds where the packet scans below cost a minute and a half.
+    if video_present_at_tail(remote_path) is False:
+        # deliberately no full check() here: it re-scans both streams for diagnostics
+        # that nobody acts on, and turned a 3-second refusal into a minute.
+        return {"ok": False, "reason": "video-truncated", "fast_path": True}
+
     before = check(remote_path)
     v_end = _derived_duration(remote_path, "v:0")
     a_end = _derived_duration(remote_path, "a:0")
