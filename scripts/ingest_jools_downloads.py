@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from media_lib import jellyfin, qb  # noqa: E402
+from media_lib import avsync, jellyfin, qb  # noqa: E402
 
 NODE = "root@192.168.214.131"
 SERIES = "/media/videos/musicdocos-series/Later with Jools Holland (1992) [tmdbid-10959]"
@@ -49,6 +49,7 @@ def main(apply: bool = True) -> int:
 
     print(f"{len(done)} complete episode torrent(s) in scope")
     ingested = 0
+    sync_problems = []
     for season, ep, t in sorted(done):
         label = f"S{season:02d}E{ep:02d}"
         dest_dir = f"{SERIES}/Season {season:02d}"
@@ -88,6 +89,17 @@ def main(apply: bool = True) -> int:
             print(f"    move failed: {(mv.stderr or '').strip()[:80]}")
             continue
         ingested += 1
+
+        # A/V SYNCH GATE: a DVD/VOB-sourced file can carry an audio timeline that runs
+        # ~1 s longer than the picture (broken MPEG timestamps). The library copy is the
+        # last chance to notice — once the payload is deleted there is nothing to re-mux.
+        sync = avsync.check(dest.replace("/media/", "/mnt/zmedia/", 1))
+        if sync.get("verdict") == "fail":
+            print(f"    SYNC FAIL — keeping payload for repair: {sync.get('problems')}")
+            sync_problems.append((label, sync.get("problems")))
+            continue
+        print(f"    sync: {sync.get('verdict')} "
+              f"(video {sync.get('video_duration')}s, derived={sync.get('durations_derived')})")
         # leftover sidecars are a duplicate of data now in the library
         qb.delete([t["hash"]], delete_files=True)
 
@@ -96,6 +108,11 @@ def main(apply: bool = True) -> int:
         jellyfin.refresh_library("18ce65a0ab9d7a771d5ac55e6024fe2a")
         time.sleep(30)
         report_orphans()
+    if sync_problems:
+        print(f"\nWARNING {len(sync_problems)} episode(s) failed the A/V sync gate and kept "
+              f"their payload:")
+        for label, probs in sync_problems:
+            print(f"  {label}: {'; '.join(probs)}")
     return 0
 
 

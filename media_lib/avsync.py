@@ -59,6 +59,39 @@ def streams(remote_path: str) -> List[Dict[str, Any]]:
     return data.get("streams") or []
 
 
+def _derived_duration(remote_path: str, selector: str) -> Optional[float]:
+    """Stream duration from its LAST packet timestamp when the container says N/A.
+
+    MKV usually carries no per-stream duration, which silently disabled drift detection:
+    ``v_dur and a_dur`` was always false, so a 900 ms audio/video mismatch read as "ok".
+    Reading the final packet works for video and audio alike (audio has no frame rate, so
+    counting packets and dividing cannot be used there).
+    """
+    cmd = (
+        f"{probe.probe_wrap(probe.config.FFPROBE_ENTRY)} -v error -select_streams {selector} "
+        f"-show_entries packet=pts_time,duration_time -of csv=p=0 {shlex.quote(remote_path)} "
+        f"| tail -1"
+    )
+    try:
+        raw = (probe.on_media(cmd, timeout=300) or "").strip()
+    except Exception:  # noqa: BLE001
+        return None
+    if not raw:
+        return None
+    parts = [p.strip() for p in raw.split(",")]
+    try:
+        pts = float(parts[0])
+    except (TypeError, ValueError, IndexError):
+        return None
+    dur = 0.0
+    if len(parts) > 1:
+        try:
+            dur = float(parts[1])
+        except (TypeError, ValueError):
+            dur = 0.0
+    return round(pts + dur, 3)
+
+
 def check(remote_path: str) -> Dict[str, Any]:
     """Compare the audio and video timelines. Never raises; returns a verdict."""
     rows = streams(remote_path)
@@ -77,13 +110,23 @@ def check(remote_path: str) -> Dict[str, Any]:
 
     v_start = _as_float(video[0].get("start_time"))
     v_dur = _as_float(video[0].get("duration"))
+    derived = False
+    if v_dur is None:
+        v_dur = _derived_duration(remote_path, "v:0")
+        derived = v_dur is not None
 
     problems: List[str] = []
     warnings: List[str] = []
     worst_start_ms = 0.0
-    for a in audio:
+    for a_pos, a in enumerate(audio):
         a_start = _as_float(a.get("start_time"))
         a_dur = _as_float(a.get("duration"))
+        if a_dur is None:
+            # ffprobe selectors use the AUDIO ORDINAL, not the global stream index:
+            # a one-audio file is a:0, so a:1 selected nothing and the drift check
+            # silently passed. That is the exact failure this check exists to catch.
+            a_dur = _derived_duration(remote_path, f"a:{a_pos}")
+            derived = derived or a_dur is not None
         delta_ms = round(((a_start or 0.0) - (v_start or 0.0)) * 1000.0, 1)
         if abs(delta_ms) > abs(worst_start_ms):
             worst_start_ms = delta_ms
@@ -116,6 +159,7 @@ def check(remote_path: str) -> Dict[str, Any]:
         "warnings": warnings,
         "start_delta_ms": worst_start_ms,
         "video_duration": v_dur,
+        "durations_derived": derived,
         "audio_tracks": len(audio),
     }
 
