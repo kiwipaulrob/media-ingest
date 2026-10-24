@@ -334,9 +334,8 @@ RECODE_SCAN_SCHEMA = {
         'type': 'object',
         'properties': {
             'library': {'type': 'string', 'enum': ['musicdocos', 'musicdocos-series'],
-                        'description': 'Library to scan. Omit and set all=true for both.'},
-            'all': {'type': 'boolean',
-                    'description': 'Scan every library, one at a time.'},
+                        'description': 'Library to scan (omit to scan every library, '
+                                       'one at a time).'},
             'verify': {'type': 'boolean',
                        'description': 'Also report rows that fall outside their folder.'},
         },
@@ -347,12 +346,9 @@ RECODE_SCAN_SCHEMA = {
 
 def _handle_recode_scan(args: dict, **kw) -> str:
     cmd: List[str] = []
-    if args.get('all'):
-        cmd.append('--all')
-    elif args.get('library'):
-        cmd.append(str(args['library']))
-    else:
-        return _error("give library=<name> or all=true")
+    # No 'all' switch: the plugin forbids do-everything flags. Omitting the library is
+    # how you ask for every library, and the script still scans them one at a time.
+    cmd.append(str(args['library']) if args.get('library') else '--all')
     if args.get('verify'):
         cmd.append('--verify')
     res = _script('tdarr_scan.py', cmd, timeout=5400)
