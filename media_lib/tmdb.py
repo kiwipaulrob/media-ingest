@@ -62,11 +62,15 @@ def search(
     Retries with the other British/American spelling when the first pass is
     empty — zero hits on one spelling is not evidence of absence.
     """
+    # Swap the British/American SUFFIX only. Substituting every s/z turned
+    # "The Stories of Us" into "The Ztoriez of Uz" and poisoned the search.
     variants = [title]
-    if "z" in title.lower():
-        variants.append(re.sub(r"z", "s", title, flags=re.I))
-    if "s" in title.lower():
-        variants.append(re.sub(r"s", "z", title, flags=re.I))
+    uk = re.sub(r"([a-z]{2,})z(e[ds]?|ing|ation|er|ers)\b", r"\1s\2", title, flags=re.I)
+    if uk != title:
+        variants.append(uk)
+    us = re.sub(r"([a-z]{2,})s(e[ds]?|ing|ation|er|ers)\b", r"\1z\2", title, flags=re.I)
+    if us != title and us not in variants:
+        variants.append(us)
 
     for q in variants:
         params: Dict[str, Any] = {"query": q}

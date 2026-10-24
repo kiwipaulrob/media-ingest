@@ -151,7 +151,8 @@ def main() -> int:
                 # NEVER queue a replacement on seeds alone: it must beat what we hold.
                 v = quality.decide(str(r.get("title", "")), title)
                 flag = {"upgrade": "QUEUE", "no-local-copy": "QUEUE(GAP)",
-                        "same-or-worse": "skip", "unknown": "skip"}[v["verdict"]]
+                        "same-or-worse": "skip", "unknown": "skip"}.get(
+                            str(v["verdict"]), "skip")
                 print(f"      [{flag:<9}] {r.get('protocol','?'):<7} {size:5.2f}GB "
                       f"seeds={str(r.get('seeders','-')):<4} {str(r.get('title'))[:50]}")
                 print(f"                  {v['reason']}")
