@@ -435,6 +435,19 @@ and audio encodes were still on disk. Move, verify, and only then remove.
 
 ## Ingesting downloads into a library
 
+**A `.ts` (MPEG-TS) broadcast rip is a video file — an `.mkv/.mp4/.avi` filter reports it as
+"no video file" and leaves a complete 1080i episode queued forever.** Include `.ts`/`.m2ts`
+(plus the DivX-era set above) before concluding a torrent is audio-only.
+
+**Remuxing a TS: verify the OUTPUT duration against the source before accepting or deleting
+the payload.** `ffmpeg -i in.ts -c copy -f matroska out.mkv` with `-fflags +genpts
+-avoid_negative_ts make_zero` stopped after 3.98 s of a 3929 s episode (PTS discontinuity);
+the old presence-only check (`test -f`) accepted the 1.9 MB fragment as success and the
+script then deleted the 3.2 GB source — a complete episode lost and left to be re-downloaded
+at 30 KB/s. Plain `-c copy` (no genpts flags) is the first attempt; a short output must abort
+the ingest and keep the payload, never fall through to the delete.
+
+
 **Never repeat the series name after the episode tag.** Files copied in as
 `Later with Jools Holland (1992) S65E01 Later with Jools Holland.mp4` were indexed as
 episodes but arrived with `ParentIndexNumber: null` and `IndexNumber: null` — Jellyfin

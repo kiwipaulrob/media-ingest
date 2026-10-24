@@ -25,7 +25,9 @@ SERIES = "/media/videos/musicdocos-series/Later with Jools Holland (1992) [tmdbi
 TITLE = "Later with Jools Holland (1992)"
 SEASONS = {49, 50, 66, 67, 68, 69}
 SE = re.compile(r"[Ss](\d{1,2})\s*[Ee](\d{1,3})")
-VIDEO_EXT = (".mkv", ".mp4", ".avi")
+VIDEO_EXT = (".mkv", ".mp4", ".avi", ".ts", ".m2ts", ".divx", ".ogm", ".rmvb", ".vob")
+# Broadcast rips arrive as MPEG-TS; a .mkv/.mp4-only filter reports them as
+# "no video file" and leaves a complete episode queued forever.
 
 
 def run(inner, timeout=600):
@@ -83,7 +85,44 @@ def main(apply: bool = True) -> int:
         if not apply:
             continue
         run(f"mkdir -p {shlex.quote(dest_dir)}")
-        mv = run(f"mv -n {shlex.quote(src)} {shlex.quote(dest)}")
+        if src.lower().endswith(".mkv"):
+            mv = run(f"mv -n {shlex.quote(src)} {shlex.quote(dest)}")
+        else:
+            # Stream-copy into matroska: a .ts renamed to .mkv is a container lie, and a
+            # broadcast TS carries teletext we do not want in the library.
+            # ffmpeg can stop early on a broadcast TS (dead air / discontinuity), and a
+            # truncated remux looks like a successful move — so the OUTPUT DURATION is
+            # verified against the source below before anything is accepted or deleted.
+            tmp = dest + ".part.mkv"
+            # PLAIN copy first: +genpts/avoid_negative_ts on a broadcast TS with a PTS
+            # discontinuity makes ffmpeg stop a few seconds in, which once produced a
+            # 4-second "episode" that the old presence-only check accepted.
+            attempts = [
+                "",
+                "-fflags +genpts -avoid_negative_ts make_zero ",
+            ]
+            got_dur = 0
+            mv = None
+            for extra in attempts:
+                run(f"rm -f {shlex.quote(tmp)}")
+                mv = run(f"ffmpeg -v error -y {extra}-i {shlex.quote(src)} "
+                         f"-map 0:v:0 -map 0:a? -c copy -f matroska "
+                         f"{shlex.quote(tmp)} 2>&1 | tail -5", timeout=3600)
+                got = run(f"ffprobe -v error -show_entries format=duration -of csv=p=0 "
+                          f"{shlex.quote(tmp)} 2>/dev/null")
+                try:
+                    got_dur = float((got.stdout or "0").strip() or 0)
+                except ValueError:
+                    got_dur = 0
+                if got_dur >= dur * 0.95:
+                    break
+                print(f"    remux short ({got_dur:.0f}s of {dur:.0f}s){' retrying with genpts' if not extra else ''}")
+            if got_dur < dur * 0.95:
+                print(f"    remux failed both ways: {(mv.stdout or '').strip()[-160:]}")
+                run(f"rm -f {shlex.quote(tmp)}")
+                print("    keeping payload — NOT deleting, retry next run")
+                continue
+            mv = run(f"mv -f {shlex.quote(tmp)} {shlex.quote(dest)}")
         present = run(f"test -f {shlex.quote(dest)} && echo PRESENT || echo MISSING")
         if "PRESENT" not in (present.stdout or ""):
             print(f"    move failed: {(mv.stderr or '').strip()[:80]}")

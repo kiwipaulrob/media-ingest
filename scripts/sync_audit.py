@@ -42,7 +42,12 @@ v=$(ffprobe -v error -select_streams v:0 -show_entries packet=pts_time,duration_
     -of csv=p=0 "$f" 2>/dev/null | tail -1)
 a=$(ffprobe -v error -select_streams a:0 -show_entries packet=pts_time,duration_time \
     -of csv=p=0 "$f" 2>/dev/null | tail -1)
-printf '%s\t%s\t%s\n' "$f" "$v" "$a" >> "$OUT"
+dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null)
+# Posters, .nfo sidecars and 30-second promo samples decode as a 1-frame "video" and used
+# to land in the report as UNMEASURABLE, inflating the count. Anything under a minute is
+# not a programme: record it as short and leave it out of the verdicts.
+short=$(awk -v d="${dur:-0}" 'BEGIN{print (d+0 < 60) ? "1" : "0"}')
+printf '%s\t%s\t%s\t%s\t%s\n' "$f" "$v" "$a" "${dur:-0}" "$short" >> "$OUT"
 '''
 
 
@@ -63,6 +68,46 @@ def push(name: str, content: str) -> None:
                     f"docker cp {remote} tdarr-node:{remote}"],
                    capture_output=True, timeout=120)
 
+
+
+def classify(tail_seconds: float = 60.0) -> int:
+    """Label every flagged row: is the picture cut short, or is the sound?
+
+    A shortfall alone cannot tell the two apart. The distinguishing evidence is what the
+    picture shows during the gap: if it is black there, the audio simply stopped at the
+    credits (benign); if there is picture, the audio track was truncated (a real fault).
+    """
+    raw = run("cat /media/sync-audit-full.tsv").stdout or ""
+    rows = [r.split("\t") for r in raw.splitlines() if r.strip()]
+    print(f"{'drift':>10}  {'verdict':<20} file")
+    counts = {}
+    for p in rows:
+        if len(p) < 3 or (len(p) > 4 and p[4] == "1"):
+            continue
+        try:
+            v = float(p[1].split(",")[0]) + float(p[1].split(",")[1] or 0)
+            a = float(p[2].split(",")[0]) + float(p[2].split(",")[1] or 0)
+        except Exception:
+            continue
+        d = a - v
+        if abs(d) < 0.75:
+            continue
+        name = p[0].split("/")[-1][:52]
+        if d > 60:
+            verdict = "video-truncated"
+        elif d < -60:
+            window = int(min(abs(d) + 30, 600))
+            probe_cmd = (f"ffmpeg -v info -sseof -{window} -i {shlex.quote(p[0])} "
+                         f"-map 0:v:0 -vf blackdetect=d=1:pix_th=0.10 -an -f null - "
+                         f"2>&1 | grep -o 'black_start:[0-9.]*' | wc -l")
+            blacks = run(probe_cmd).stdout.strip()
+            verdict = "credits-no-audio" if blacks and blacks != "0" else "audio-truncated"
+        else:
+            verdict = "minor-offset"
+        counts[verdict] = counts.get(verdict, 0) + 1
+        print(f"{d:+10.1f}s  {verdict:<20} {name}")
+    print("\nsummary:", counts)
+    return 0
 
 def launch(mode: str, days: int, parallel: int) -> int:
     worker = FAST_WORKER if mode == "fast" else FULL_WORKER
@@ -131,12 +176,16 @@ def main() -> int:
     ap.add_argument("--full", action="store_true")
     ap.add_argument("--days", type=int, default=3650)
     ap.add_argument("--parallel", type=int, default=6)
+    ap.add_argument("--classify", action="store_true",
+                    help="label flagged rows: video-truncated / audio-truncated / credits")
     ap.add_argument("--report", action="store_true")
     args = ap.parse_args()
+    if args.classify:
+        return classify()
     if args.report:
         return report()
     if args.fast == args.full:
-        ap.error("choose exactly one of --fast / --full (or --report)")
+        ap.error("choose one of --fast / --full / --report / --classify")
     return launch("fast" if args.fast else "full", args.days, args.parallel)
 
 
