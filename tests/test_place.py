@@ -10,7 +10,7 @@ they regress:
 """
 import json
 
-from media_lib import place
+from media_lib import config, place
 
 
 def _probe_json(w, h, codec, duration, title=''):
@@ -220,3 +220,20 @@ def test_incomplete_source_is_refused_before_anything_is_staged(monkeypatch):
     assert res['stage'] == 'INCOMPLETE-SOURCE'
     assert 'missing [3]' in res['detail']
     assert not host.calls, 'nothing should touch the media host when the source is refused'
+
+
+def test_to_jf_round_trips_every_library_mapping():
+    """Jellyfin sees /data/..., the host sees /mnt/zmedia/videos/.... notify_media() and
+    await_rows() must be handed the container form or Jellyfin ignores the path."""
+    for jf_prefix, disk_prefix in config.JF_TO_DISK.items():
+        disk = disk_prefix + "/Show/Season 01/ep.mkv"
+        jf = place.to_jf(disk)
+        assert jf == jf_prefix + "/Show/Season 01/ep.mkv", jf
+        assert place.to_disk(jf) == disk
+
+
+def test_to_disk_needs_a_path_boundary_not_a_string_prefix():
+    """'/data/movies-extra' must not be rewritten by the '/data/movies' mapping."""
+    assert place.to_disk("/data/movies-extra/x.mkv") == "/data/movies-extra/x.mkv"
+    assert place.to_jf("/mnt/zmedia/videos/musicdocos-old/x.mkv") == \
+        "/mnt/zmedia/videos/musicdocos-old/x.mkv"

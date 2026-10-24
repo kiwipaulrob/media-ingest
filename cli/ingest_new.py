@@ -69,50 +69,59 @@ def main(argv=None) -> int:
                 done.add(rec.get("dest"))
 
     results = []
-    for p in placements:
-        dest = p["dest"]
-        if dest in done:
-            print(f"SKIP   (already placed) {Path(dest).name}"[:110], flush=True)
-            continue
-        if args.dry_run:
+    if args.dry_run:
+        for p in placements:
+            dest = p["dest"]
+            if dest in done:
+                print(f"SKIP   (already placed) {Path(dest).name}"[:110], flush=True)
+                continue
             print(f'WOULD  {p["src"][-58:]}  ->  {Path(dest).name}', flush=True)
-            continue
-        src = p["src"]
-        torrent = None
-        if p.get("hash"):
-            src = qb.resolve_media_path(src, p["hash"]) or src
-        else:
-            # Look the torrent up by path: without a hash the ledger entry below
-            # has no key, and `media_scan` re-offers an already-ingested release.
-            try:
-                torrent = qb.torrent_for_path(src)
-            except Exception:  # noqa: BLE001
-                torrent = None
-            if torrent:
-                src = qb.resolve_media_path(src, torrent["hash"]) or src
-        res = place.place_new(
-            src,
-            dest,
-            min_height=int(p.get("min_height") or 0),
-            expect_duration=p.get("expect_duration"),
-        )
-        res["src"] = src
-        res["at"] = int(time.time())
-        with journal.open("a") as fh:
-            fh.write(json.dumps(res) + "\n")
-        results.append(res)
-        if res["ok"]:
-            # Journal AND ledger immediately: a killed run must not forget a
-            # placement, and `scan` keys its exclusions off this ledger.
-            rec_hash = p.get("hash") or (torrent or {}).get("hash")
-            if rec_hash:
+        return 0
+
+    # Serialise with cli/apply.py and cli/meta.py: a second run acting on a plan built
+    # before the first changed the library is how files get placed twice or lost.
+    with safety.acquire(config.STATE_DIR / "intake.lock"):
+        for p in placements:
+            dest = p["dest"]
+            if dest in done:
+                print(f"SKIP   (already placed) {Path(dest).name}"[:110], flush=True)
+                continue
+            src = p["src"]
+            torrent = None
+            if p.get("hash"):
+                src = qb.resolve_media_path(src, p["hash"]) or src
+            else:
+                # Look the torrent up by path: without a hash the ledger entry below
+                # has no key, and `media_scan` re-offers an already-ingested release.
                 try:
-                    safety.record(hash=rec_hash, action="place", dest=dest, src=src)
-                except Exception as exc:  # noqa: BLE001
-                    print(f"  LEDGER-WARN {type(exc).__name__}", flush=True)
-        flag = "PLACED" if res["ok"] else "FAILED"
-        extra = res.get("res") or res.get("detail") or res.get("stage")
-        print(f"{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}", flush=True)
+                    torrent = qb.torrent_for_path(src)
+                except Exception:  # noqa: BLE001
+                    torrent = None
+                if torrent:
+                    src = qb.resolve_media_path(src, torrent["hash"]) or src
+            res = place.place_new(
+                src,
+                dest,
+                min_height=int(p.get("min_height") or 0),
+                expect_duration=p.get("expect_duration"),
+            )
+            res["src"] = src
+            res["at"] = int(time.time())
+            with journal.open("a") as fh:
+                fh.write(json.dumps(res) + "\n")
+            results.append(res)
+            if res["ok"]:
+                # Journal AND ledger immediately: a killed run must not forget a
+                # placement, and `scan` keys its exclusions off this ledger.
+                rec_hash = p.get("hash") or (torrent or {}).get("hash")
+                if rec_hash:
+                    try:
+                        safety.record(hash=rec_hash, action="place", dest=dest, src=src)
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"  LEDGER-WARN {type(exc).__name__}", flush=True)
+            flag = "PLACED" if res["ok"] else "FAILED"
+            extra = res.get("res") or res.get("detail") or res.get("stage")
+            print(f"{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}", flush=True)
 
     placed = [r for r in results if r.get("ok")]
     if placed:
@@ -124,7 +133,7 @@ def main(argv=None) -> int:
         # pass must not be read as "the dialogue looks right" (see media_lib.avsync).
         for r in placed:
             try:
-                verdict = avsync.check(config.to_disk(r["dest"]))
+                verdict = avsync.check(place.to_disk(r["dest"]))
             except Exception as exc:  # noqa: BLE001 - a check that crashes must not block placement
                 print(f"  SYNC-CHECK-FAIL {type(exc).__name__}: {exc}", flush=True)
                 continue
@@ -135,7 +144,7 @@ def main(argv=None) -> int:
         # files. Without this call a placement stays invisible until the next
         # full discovery — proven the hard way on two episodes.
         try:
-            jellyfin.notify_media([r["dest"] for r in placed])
+            jellyfin.notify_media([place.to_jf(r["dest"]) for r in placed])
             print(f"notified scanner of {len(placed)} new file(s)", flush=True)
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY-FAIL {type(exc).__name__}: {exc}", flush=True)
@@ -265,7 +274,7 @@ def check_row_names(rows: List[Dict], *, journal: Path, fix: bool = False,
         try:
             existing = json.loads(config.CHECK_LIST.read_text()) if config.CHECK_LIST.exists() else []
             existing.extend(problems)
-            config.CHECK_LIST.write_text(json.dumps(existing, indent=1))
+            safety.write_check_list(existing, config.CHECK_LIST)
         except Exception as exc:  # noqa: BLE001
             print(f"  could not write the check list: {exc}", flush=True)
     return problems

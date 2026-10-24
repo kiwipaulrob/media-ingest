@@ -23,7 +23,7 @@ from __future__ import annotations
 import time
 from typing import Dict, Iterable, List, Optional
 
-from . import jellyfin
+from . import jellyfin, place
 
 #: Item types a placed file can legitimately become.
 ROW_TYPES = 'Episode,Movie,Video'
@@ -38,13 +38,14 @@ def find_row_by_path(path: str, *, uid: Optional[str] = None,
     real state.
     """
     uid = uid or jellyfin.user_id()
-    stem = path.rsplit('/', 1)[-1][:36]
+    jf_path = place.to_jf(path)
+    stem = jf_path.rsplit('/', 1)[-1][:36]
     data = jellyfin.get_json(f'/Users/{uid}/Items',
                              params={'Recursive': 'true', 'SearchTerm': stem,
                                      'IncludeItemTypes': types,
                                      'Fields': 'Path', 'limit': limit})
     for it in data.get('Items') or []:
-        if (it.get('Path') or '') == path:
+        if (it.get('Path') or '') in (path, jf_path):
             return it.get('Id') or ''
     return ''
 
@@ -77,7 +78,7 @@ def await_rows(specs: Iterable[Dict], *, budget: int = 600, interval: int = 20,
         # number of times rather than trusting one 204.
         if notifies < notify_each:
             try:
-                jellyfin.notify_media([s['dest'] for s in specs])
+                jellyfin.notify_media([place.to_jf(s['dest']) for s in specs])
             except Exception:                              # noqa: BLE001
                 pass
             notifies += 1

@@ -52,8 +52,24 @@ def to_disk(path: str) -> str:
     """Map a Jellyfin/container path onto the media host's disk path."""
     mapping = {**config.JF_TO_DISK, **config.SAVE_TO_REMOTE}
     for jf_prefix, disk_prefix in sorted(mapping.items(), key=lambda kv: -len(kv[0])):
-        if path.startswith(jf_prefix):
+        # Boundary-aware: a bare startswith let "/data/movies2" match "/data/movies".
+        if path == jf_prefix or path.startswith(jf_prefix + "/"):
             return disk_prefix + path[len(jf_prefix):]
+    return path
+
+
+def to_jf(path: str) -> str:
+    """Map a media-host disk path back to the container path Jellyfin sees.
+
+    Jellyfin runs in a container where the library is /data/...; the host sees the same
+    tree as /mnt/zmedia/videos/.... Sending a host path to /Library/Media/Updated makes
+    Jellyfin ignore it (no such path inside the container).
+    """
+    for jf_prefix, disk_prefix in sorted(
+        config.JF_TO_DISK.items(), key=lambda kv: -len(kv[1])
+    ):
+        if path == disk_prefix or path.startswith(disk_prefix + "/"):
+            return jf_prefix + path[len(disk_prefix):]
     return path
 
 
