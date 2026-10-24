@@ -64,6 +64,27 @@ Because everything pushed here is world-readable:
   that was ever committed** — treat it as published, because it is.
 - To change visibility: `gh repo edit kiwipaulrob/media-ingest --visibility private`.
 
+## A matching SHA is not a passing build
+
+`git ls-remote` confirming the remote matches your local HEAD proves the push landed. It says
+nothing about whether CI accepted it. Five commits were pushed in one session with the remote
+verified each time and **every one of them failed CI** — the suite aborted during collection
+because `scripts/tdarr_kick.py` raised `SystemExit` at import when `TDARR_API_KEY` was absent,
+and the runner has no `/root/.hermes/.env`. Local runs passed because the local `.env` has the
+key, which is exactly the difference CI exists to catch.
+
+After every push, read the result rather than the timestamp:
+
+```bash
+gh run list --limit 1 --workflow tests --json status,conclusion,headSha \
+  --jq '.[0] | "\(.status)|\(.conclusion // "-")|\(.headSha[0:7])"'
+gh run view <run-id> --log-failed          # only the failing job, not the whole log
+```
+
+A workflow whose YAML does not parse creates a run with **zero jobs**, and a suite that dies
+during collection reports one collection error, not N failures. Both look green-ish if you
+only glance at "completed".
+
 ## Use the tool, not raw git
 
 ```bash
