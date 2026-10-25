@@ -71,8 +71,30 @@ def _norm(t):
     return str(t or "").lower().replace(" ", "").replace(".", "").replace("-", "").replace(":", "")
 
 
-tid = next((x.get("id") for x in (s.get("results") or [])
-            if _norm(KEY) in _norm(x.get("name"))), None)
+# YEAR must disambiguate: 'Pandora's Box' matches a 2021 series (12 eps) before the 1992 one (6 eps),
+# and taking the first name match silently bound the wrong show.
+_matches = [x for x in (s.get("results") or []) if _norm(KEY) in _norm(x.get("name"))]
+if YEAR and _matches:
+    def _year_of(x):
+        try:
+            return int(str(x.get("first_air_date") or "")[:4])
+        except ValueError:
+            return 0
+
+    _exact = [x for x in _matches if _year_of(x) == YEAR]
+    _near = [x for x in _matches if _year_of(x) and abs(_year_of(x) - YEAR) <= 2]
+    if _exact:
+        _matches = _exact
+    elif _near:
+        print("NOTE: no exact year match for {} — using nearest ({})"
+              .format(YEAR, [_year_of(x) for x in _near]))
+        _matches = _near
+    else:
+        print("WARN: no year match for {} — falling back to name only".format(YEAR))
+
+tid = _matches[0].get("id") if _matches else None
+if _matches:
+    print("provider candidates:", [(_year_of(x), x.get("name")) for x in _matches[:4]])
 print("tmdb:", tid)
 if not tid:
     print("ABORT: no provider match — leaving files untouched")
@@ -107,9 +129,15 @@ if prov and all(prov):
     bad = [round(x, 2) for x in ratios if x < 0.75 or x > 1.33]
     print("duration ratio vs provider:", [round(x, 2) for x in ratios])
     if bad:
-        print("ABORT: file durations disagree with provider episode runtimes ({}) — the parts are "
-              "not the episodes; holding for a human".format(bad))
-        sys.exit(0)
+        within_tolerance = abs(sum(durs) / 60 - sum(prov[:len(todo)])) <= 0.05 * max(1, sum(prov[:len(todo)]))
+        total_note = "totals {} vs {} min".format(round(sum(durs) / 60), sum(prov[:len(todo)]))
+        if os.environ.get("ALLOW_RUNTIME_MISMATCH") == "1" and within_tolerance:
+            print("WARN: per-file split disagrees ({}) but {} — set is complete, converting by order"
+                  .format(bad, total_note))
+        else:
+            print("ABORT: file durations disagree with provider episode runtimes ({}) — {}. Holding for a "
+                  "human.".format(bad, total_note))
+            sys.exit(0)
 else:
     print("NOTE: provider has no per-episode runtimes — duration guard cannot run")
 
