@@ -106,6 +106,28 @@ against the API:
 carries credits.
 
 
+
+
+### Identify is automatable — one route, one body shape
+
+```
+jellyfin.remote_search(item_id, name, year, provider_ids)   -> candidate list (read-only)
+jellyfin.apply_identification(item_id, result, replace_images=False)   -> what the UI button does
+```
+
+Rules learned by failing at it first: the route is the MEDIA TYPE one, `POST /Items/RemoteSearch/Movie`.
+Sending the bare search info returns **500**; provider-named routes (`/RemoteSearch/Tmdb`,
+`/RemoteSearch/TheMovieDb`, `/RemoteSearch/Imdb`) return **404**. The body is
+`{"SearchInfo": {...}, "ItemId": ...}`.
+
+And the 401 that looked like an auth wall was self-inflicted: a hand-rolled `X-Emby-Token` header
+fails, while `jellyfin._request()` (which uses `auth_header()`) succeeds on the same route. Use the
+module's request helper — never build the auth header by hand.
+
+Identify also fixes what a credit write cannot: on a generic Video item in a music library, POSTing
+`People` and `ProviderIds` returns **204 and silently discards both**. Identifying the item attaches
+the credits properly (nine people plus Tmdb/Imdb/Tvdb ids on this entry).
+
 ## Never hand-build an ingest spec — the planner already decided
 
 The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`

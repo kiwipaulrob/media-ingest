@@ -247,6 +247,44 @@ def list_items(
     return out
 
 
+def remote_search(
+    item_id: str, name: str, year: Optional[int] = None,
+    provider_ids: Optional[Dict[str, str]] = None, *, movie: bool = True,
+) -> List[Dict[str, Any]]:
+    """Candidate identifications for an item. Read-only.
+
+    The body shape matters: Jellyfin wants {"SearchInfo": {...}, "ItemId": ...} on
+    /Items/RemoteSearch/Movie. Sending the bare search info returns 500, and provider-named
+    routes (/RemoteSearch/Tmdb, /TheMovieDb) 404 — only the MEDIA TYPE route exists.
+    """
+    info: Dict[str, Any] = {"Name": name, "IsMovie": movie}
+    if year:
+        info["Year"] = int(year)
+    if provider_ids:
+        info["ProviderIds"] = dict(provider_ids)
+    txt = _request(
+        "/Items/RemoteSearch/Movie",
+        method="POST",
+        body={"SearchInfo": info, "ItemId": item_id},
+        timeout=90,
+    )
+    try:
+        return json.loads(txt or "[]")
+    except ValueError:
+        return []
+
+
+def apply_identification(
+    item_id: str, result: Dict[str, Any], *, replace_images: bool = False
+) -> int:
+    """Bind one remote-search result to an item — this is what the Identify button does."""
+    import urllib.parse as _up
+
+    q = _up.urlencode({"ReplaceAllImages": "true" if replace_images else "false"})
+    _request(f"/Items/RemoteSearch/Apply/{item_id}?{q}", method="POST", body=result, timeout=90)
+    return 204
+
+
 def refresh_library(lib_id: str) -> int:
     """Library-scoped Refresh — the ONLY sanctioned rescan form.
 

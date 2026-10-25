@@ -54,3 +54,26 @@ def test_a_real_decoder_error_still_fails(monkeypatch):
     monkeypatch.setattr(probe, "query",
                         lambda *a, **k: (0, "[h264] error while decoding MB 12 34, bytestream -7"))
     assert probe.decode_check("/x/y.mkv") is False
+
+
+def test_remote_search_uses_the_media_type_route_and_query_body(monkeypatch):
+    """Identify IS automatable — but only via /Items/RemoteSearch/Movie.
+
+    Sending the bare search info returns 500; provider-named routes (/RemoteSearch/Tmdb,
+    /TheMovieDb) 404. This pins the working shape so the next session does not rediscover it.
+    """
+    from media_lib import jellyfin as jf
+
+    seen = {}
+
+    def fake_request(path, *, method="GET", body=None, key=None, timeout=60):
+        seen["path"], seen["method"], seen["body"] = path, method, body
+        return '[{"Name": "X", "ProviderIds": {"Tmdb": "295953"}}]'
+
+    monkeypatch.setattr(jf, "_request", fake_request)
+    out = jf.remote_search("abc", "Some Film", 2014, {"Imdb": "tt1"})
+    assert out and out[0]["ProviderIds"]["Tmdb"] == "295953"
+    assert seen["path"] == "/Items/RemoteSearch/Movie"
+    assert seen["method"] == "POST"
+    assert seen["body"]["ItemId"] == "abc"
+    assert seen["body"]["SearchInfo"]["Year"] == 2014
