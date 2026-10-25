@@ -83,6 +83,36 @@ print("provider episodes:", len(eps))
 for e in eps:
     print("   E{} {} [{} min]".format(e.get("episode_number"), e.get("name"), e.get("runtime")))
 
+# ---- guard: do the files' runtimes match the provider's episodes?
+# A count match is not a mapping. The American Revolution had 6 files against 6 episodes, but every file
+# was 59 min against 116-131 min episodes: the set was half the series. Count checks cannot see that.
+def _dur(path):
+    out = sh('ffprobe -v error -show_entries format=duration -of csv=p=0 {p} 2>/dev/null'
+             .format(p=shlex.quote(path)))
+    try:
+        return float(out.strip())
+    except ValueError:
+        return 0.0
+
+
+todo = [f for f in files if f.strip()]
+durs = []
+for f in todo:
+    d = _dur(SRC + "/" + f)
+    durs.append(d)
+print("file runtimes (min):", [round(d / 60, 1) for d in durs])
+prov = [e.get("runtime") or 0 for e in eps[:len(todo)]]
+if prov and all(prov):
+    ratios = [d / 60 / r for d, r in zip(durs, prov) if r]
+    bad = [round(x, 2) for x in ratios if x < 0.75 or x > 1.33]
+    print("duration ratio vs provider:", [round(x, 2) for x in ratios])
+    if bad:
+        print("ABORT: file durations disagree with provider episode runtimes ({}) — the parts are "
+              "not the episodes; holding for a human".format(bad))
+        sys.exit(0)
+else:
+    print("NOTE: provider has no per-episode runtimes — duration guard cannot run")
+
 if len(eps) != len(files):
     if os.environ.get("ALLOW_PARTIAL") != "1":
         print("ABORT: provider has {a} episodes but {b} files — ambiguous, handing to a human"
