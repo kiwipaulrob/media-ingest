@@ -159,3 +159,36 @@ and titled as if complete.
 Compare **runtimes** before renaming: ffprobe each file, divide by the provider's per-episode runtime, and
 refuse when the ratio is outside 0.75-1.33. Wikipedia and the broadcaster's own page give the series total,
 which settles it when the provider is thin — 715 minutes across six episodes is decisive.
+
+## 19. Jellyfin mounts each library folder individually — not the videos root
+
+Jellyfin runs as **Docker inside CT105 (`jellyfin`, 192.168.214.20)**, compose file `/opt/jellyfin/docker-compose.yml`.
+Media volumes are one-per-library:
+
+  /mnt/zmedia/videos/DocuSeries       -> /data/docuseries
+  /mnt/zmedia/videos/musicdocos-series -> /data/musicdocos-series
+  /mnt/zmedia/videos/filmdocuseries   -> /data/filmdocuseries
+
+Consequence: creating a folder on disk does **not** make it usable by the API. `POST /Library/VirtualFolders`
+returns **400** for a path that is not mounted, and the request itself looks valid. Add the compose volume,
+`docker compose up -d` from `/opt/jellyfin`, then create the library.
+
+Check `find / -maxdepth 1 -type d` inside the container, not on the host — `/data` does not exist on proxmox2
+or in CT105, only inside the Jellyfin container.
+
+## 20. Library collection type is immutable after creation
+
+`POST /Library/VirtualFolders/LibraryOptions` accepts a `CollectionType` field and returns success, but the
+type does not change. To move a library from `movies` to `mixed` you must delete and recreate it.
+
+`mixed` exists in 12.2 and can be created, but Jellyfin's own docs discourage it: *"generic folder view …
+unreliable metadata results"*, and jellyfin-meta discussion #46 proposes removing it. Series metadata
+(episode numbers, titles, seasons) degrades in a mixed library — do not use it to host series.
+
+## 21. Placement rule for documentary series
+
+  music subject     -> Music Docos Series        (/mnt/zmedia/videos/musicdocos-series)
+  film subject      -> Film Documentary Series   (/mnt/zmedia/videos/filmdocuseries)
+  everything else   -> Documentary Series        (/mnt/zmedia/videos/DocuSeries)
+
+`scripts/multipart_to_series.py` takes `LIB=` and refuses an unknown value rather than defaulting.
