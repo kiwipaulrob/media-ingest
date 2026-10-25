@@ -34,6 +34,16 @@ SRC = os.environ.get("SRC") or "/mnt/zmedia/videos/FilmDocumentaries/A Century o
 QUERY = os.environ.get("QUERY") or "A Century of Light and Shadow"
 YEAR = int(os.environ.get("YEAR") or 2005)
 SEASON = int(os.environ.get("SEASON") or 1)
+
+# Placement rule: music content -> Music Docos Series, film-subject -> Film Documentary Series,
+# everything else -> Documentary Series. LIB is the Jellyfin library name; LIBDIR is its folder on disk.
+LIB = os.environ.get("LIB") or "Documentary Series"
+LIBDIRS = {"Documentary Series": "DocuSeries",
+           "Music Docos Series": "musicdocos-series",
+           "Film Documentary Series": "filmdocuseries"}
+LIBDIR = LIBDIRS.get(LIB)
+if not LIBDIR:
+    raise SystemExit("unknown LIB {!r}; known: {}".format(LIB, sorted(LIBDIRS)))
 TITLE = os.environ.get("TITLE") or "A Century of Light and Shadow (2005)"
 
 
@@ -49,7 +59,7 @@ ids = {f.get("Name"): f.get("ItemId") for f in (v if isinstance(v, list) else []
 KEY = TITLE.split(" (")[0]                       # derive from arguments, never hardcode
 KEY_NORM = KEY.lower().replace(" ", "").replace(".", "").replace("-", "")
 
-r = jellyfin.get_json("/Items", params={"ParentId": ids["Documentary Series"], "Recursive": "true",
+r = jellyfin.get_json("/Items", params={"ParentId": ids[LIB], "Recursive": "true",
                                         "IncludeItemTypes": "Series", "Fields": "Path,Name",
                                         "Limit": "2000", "SearchTerm": KEY})
 existing = [i for i in (r.get("Items") or [])
@@ -151,7 +161,7 @@ if len(eps) != len(files):
           .format(a=len(eps), b=len(files)))
 
 # ---- convert
-DST = "/mnt/zmedia/videos/DocuSeries/{t}/Season {s:02d}".format(t=TITLE, s=SEASON)
+DST = "/mnt/zmedia/videos/{lib}/{t}/Season {s:02d}".format(lib=LIBDIR, t=TITLE, s=SEASON)
 sh("mkdir -p " + shlex.quote(DST))
 def _part_no(f):
     m = re.search(r"(?i)(?:part|pt|cd|disc)[\s._-]*(\d+)", f)
@@ -171,7 +181,7 @@ for idx, f in enumerate(ordered, start=1):
                                                b=shlex.quote(DST + "/" + name)))
     print("E{:<2} {}".format(idx, "moved" if "OK" in out else "FAILED " + f))
 
-for nm in ("Documentary Series", "Film Documentaries"):
+for nm in (LIB, "Film Documentaries"):
     if ids.get(nm):
         jellyfin.refresh_library(ids[nm])
 time.sleep(95)
