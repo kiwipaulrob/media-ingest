@@ -18,6 +18,7 @@ Identify uses the SERIES route (`media_type="Series"`) — the Movie route silen
 candidates for series and ignores the supplied provider id.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -28,7 +29,6 @@ sys.path.insert(0, "/root/.hermes/profiles/media-maintainer/media-ops")
 from media_lib import jellyfin, tmdb  # noqa: E402  (path set above)
 
 NODE = "root@192.168.214.131"
-import os
 
 SRC = os.environ.get("SRC") or "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)"
 QUERY = os.environ.get("QUERY") or "A Century of Light and Shadow"
