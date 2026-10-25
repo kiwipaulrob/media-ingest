@@ -45,11 +45,14 @@ v = jellyfin.get_json("/Library/VirtualFolders")
 ids = {f.get("Name"): f.get("ItemId") for f in (v if isinstance(v, list) else [])}
 
 # ---- guard 1: existing series entry?
+KEY = TITLE.split(" (")[0]                       # derive from arguments, never hardcode
+KEY_NORM = KEY.lower().replace(" ", "").replace(".", "").replace("-", "")
+
 r = jellyfin.get_json("/Items", params={"ParentId": ids["Documentary Series"], "Recursive": "true",
                                         "IncludeItemTypes": "Series", "Fields": "Path,Name",
-                                        "Limit": "2000", "SearchTerm": "Century of Light"})
+                                        "Limit": "2000", "SearchTerm": KEY})
 existing = [i for i in (r.get("Items") or [])
-            if "century of light" in str(i.get("Path", "")).lower()]
+            if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")]
 if existing:
     print("ABORT: series entry already exists:", existing[0].get("Path"))
     print("     not converting — would create a duplicate")
@@ -100,9 +103,9 @@ time.sleep(95)
 
 r = jellyfin.get_json("/Items", params={"ParentId": ids["Documentary Series"], "Recursive": "true",
                                         "IncludeItemTypes": "Series", "Fields": "Path",
-                                        "Limit": "2000", "SearchTerm": "Century of Light"})
+                                        "Limit": "2000", "SearchTerm": KEY})
 target = next((i for i in (r.get("Items") or [])
-               if "century of light" in str(i.get("Path", "")).lower()), None)
+               if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")), None)
 print("series item:", target and target["Id"])
 if target:
     res = jellyfin.remote_search(target["Id"], QUERY, YEAR, {"Tmdb": str(tid)}, media_type="Series")
