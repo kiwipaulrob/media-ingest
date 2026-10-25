@@ -33,6 +33,7 @@ NODE = "root@192.168.214.131"
 SRC = os.environ.get("SRC") or "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)"
 QUERY = os.environ.get("QUERY") or "A Century of Light and Shadow"
 YEAR = int(os.environ.get("YEAR") or 2005)
+SEASON = int(os.environ.get("SEASON") or 1)
 TITLE = os.environ.get("TITLE") or "A Century of Light and Shadow (2005)"
 
 
@@ -99,7 +100,7 @@ print("tmdb:", tid)
 if not tid:
     print("ABORT: no provider match — leaving files untouched")
     sys.exit(0)
-se = tmdb._get("/tv/{i}/season/1".format(i=tid), {})
+se = tmdb._get("/tv/{i}/season/{n}".format(i=tid, n=SEASON), {})
 eps = se.get("episodes") or []
 print("provider episodes:", len(eps))
 for e in eps:
@@ -150,7 +151,7 @@ if len(eps) != len(files):
           .format(a=len(eps), b=len(files)))
 
 # ---- convert
-DST = "/mnt/zmedia/videos/DocuSeries/{t}/Season 01".format(t=TITLE)
+DST = "/mnt/zmedia/videos/DocuSeries/{t}/Season {s:02d}".format(t=TITLE, s=SEASON)
 sh("mkdir -p " + shlex.quote(DST))
 def _part_no(f):
     m = re.search(r"(?i)(?:part|pt|cd|disc)[\s._-]*(\d+)", f)
@@ -165,7 +166,7 @@ for idx, f in enumerate(ordered, start=1):
     title = (eps[idx - 1].get("name") or "").strip() if idx - 1 < len(eps) else ""
     safe = "".join(c for c in title if c.isalnum() or c in " -'.,&()").strip()
     ext = ("." + f.rsplit(".", 1)[-1].lower()) if "." in f else ".mkv"
-    name = "{t} S01E{n:02d}".format(t=TITLE, n=idx) + ((" " + safe) if safe else "") + ext
+    name = "{t} S{s:02d}E{n:02d}".format(t=TITLE, s=SEASON, n=idx) + ((" " + safe) if safe else "") + ext
     out = sh("mv -f {a} {b} && echo OK".format(a=shlex.quote(SRC + "/" + f),
                                                b=shlex.quote(DST + "/" + name)))
     print("E{:<2} {}".format(idx, "moved" if "OK" in out else "FAILED " + f))
