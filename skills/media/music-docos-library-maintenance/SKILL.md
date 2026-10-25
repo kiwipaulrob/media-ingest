@@ -82,6 +82,30 @@ Consequences:
   as alternate versions in one folder, named `<primary> - <label>.ext`, never by deleting.
 
 
+
+## Before any metadata write, check what already exists
+
+There is dedicated code and a reference for people enrichment — use them instead of improvising
+against the API:
+
+- `media_lib/enrich.py`: `build_plan(parent_id, limit, min_bio=80)` (read-only gap list),
+  `apply_person(person_id, bio, source, lock=True)` (one write, no raise on skip), `MIN_BIO = 80`.
+- `references/people-enrichment.md`: the full chain (TMDB credits → Wikipedia → Last.fm → portraits),
+  with the traps and verification rules.
+
+### Two mistakes this rule prevents, both made in one session
+
+1. **A partial DTO wipes fields you never touched.** Posting `{"LockedFields": [...]}` alone stored
+   `Name` as null and blanked `Overview`. Always: GET the DTO fresh, change only the target fields,
+   **include `Name`**, omit `Genres`, then re-read and diff the fields you did not intend to change.
+2. **Never verify `LockedFields` through a search.** Search-result DTOs omit it and read back
+   null even when the lock is set — which produced a false report that locking had failed. Verify
+   with `GET /Users/{uid}/Items/{id}?Fields=LockedFields`.
+
+"Bios" is a people-enrichment job, not an item edit: bios live on Person records, the item only
+carries credits.
+
+
 ## Never hand-build an ingest spec — the planner already decided
 
 The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`
