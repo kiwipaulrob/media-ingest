@@ -10,6 +10,9 @@ Moving series into the Series library, and removing duplicates between the two.
 
 
 
+
+> **Read `references/session-lessons.md` first.** Twelve rules that each cost real damage or a false report: pipeline-first, no partial DTOs, verify locks by direct GET, refresh timing, path map, hardlink-by-link-count, agentic Identify, bios are People records, empty torrents, temp paths, deletion evidence, probe before declaring a fault.
+
 ## Library paths on disk, and why "duplicate" usually is not one
 
 Jellyfin's library roots are NOT the folder names on disk. Verified mapping (host

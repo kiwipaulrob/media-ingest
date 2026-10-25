@@ -1,0 +1,96 @@
+# Durable lessons — media library maintenance
+
+Hard-won rules from live operation. Each cost real damage or a false report. Read before touching
+metadata, libraries or the ingest pipeline.
+
+## 1. Use the pipeline; never hand-build a spec
+
+`cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. The planner classifies NEW / REPLACE /
+review and runs the quality comparison. A spec assembled from `scan.json`'s `all_videos` bypassed it
+and produced, in one pass: a duplicate (planner said REPLACE, spec said NEW), seven phantom
+placements (paths already consumed by an earlier ingest), and release-junk folder names.
+
+Existence-check every source before it enters a spec (`[-f "$p"]`). The scan is a snapshot.
+
+## 2. Never write a partial metadata DTO
+
+`POST /Items/{id}` replaces metadata wholesale. Posting `{"LockedFields": [...]}` alone stored
+`Name` as null and blanked `Overview` on a live entry.
+
+Correct protocol: GET the DTO fresh, change only the target fields, **always include `Name`**, omit
+`Genres`, POST, then re-read and diff the fields you did not intend to change.
+
+## 3. Verify locks by direct GET, never by search
+
+Search-result DTOs omit `LockedFields` and read back null even when the lock is set — which produced
+a false "locking is broken" report on a lock that had worked. Use
+`GET /Users/{uid}/Items/{id}?Fields=LockedFields`.
+
+## 4. A multi-source item needs minutes, not 90 seconds
+
+Only a per-item FullRefresh repopulates runtime; a library refresh never does. With several media
+sources the refresh takes longer than 90 s. Checking too early reported three failures that were
+actually successes (hardlink test, Doors merge, Costello merge). Wait 2–3 minutes and look again.
+
+## 5. Library names are not disk names
+
+Jellyfin `/data/<lib>` → host `/mnt/zmedia/videos/<folder>`:
+
+    musicdocos → musicdocos        musicdocos-series → musicdocos-series
+    documentaries → Documentaries  docuseries → DocuSeries
+    filmdocos → FilmDocumentaries  filmnoir → filmnoir
+    movies → Films                 tvshows → unresolved, resolve before use
+
+String substitution produced 12 failed moves. Find the file by name, or resolve from CT105's mount.
+
+## 6. Membership in several libraries is a hardlink — judge by LINK COUNT
+
+This share is CIFS and assigns a **different synthetic inode to every path**, even for one file. So
+`%i` cannot detect a hardlink; comparing inodes called real hardlinks "two copies" and called the
+reverse too.
+
+Use `stat -c "%h links %s %n"` on both paths. `ln` and `ln -f` both work (a fresh pair goes to
+links=2). Do not "de-duplicate" a hardlink — removing one name just removes that library entry.
+
+## 7. Identify IS agentic — one route, one body shape
+
+    jellyfin.remote_search(item_id, name, year, provider_ids)
+    jellyfin.apply_identification(item_id, result, replace_images=False)
+
+Route is the media type: `POST /Items/RemoteSearch/Movie`. Provider-named routes 404; bare search
+info 500s; the body is `{"SearchInfo": {...}, "ItemId": ...}`. A hand-rolled `X-Emby-Token` header
+401s where `jellyfin._request()` succeeds — use the module's helper.
+
+**Credits on a generic Video item cannot be written directly**: POSTing `People`/`ProviderIds`
+returns 204 and silently discards both. Identify is the only path that attaches them.
+
+## 8. Bios are People records, not item text
+
+Use `media_lib/enrich.py`: `build_plan(parent_id, limit, min_bio=80)` is read-only and lists credited
+people with no bio; `apply_person(person_id, bio, source, lock=True)` writes one, locked. Chain is
+TMDB credits → Wikipedia (exact title, reject disambiguation pages on content) → Last.fm for music
+domain. `< 80` chars is a partial one-liner, not a failure.
+
+## 9. An empty torrent folder is not an ingest candidate
+
+Packs whose videos were already ingested leave only `.txt`, `.jpg` and `.nfo` residue. Check for
+video files on disk before ingesting *or* deleting; the label may also lie (a torrent named S56
+delivered S65).
+
+## 10. `temp/` paths are valid only mid-download
+
+qBittorrent moves a completed file out of `temp/`. A placement that cites the `temp/` path fails with
+`INCOMPLETE-SOURCE` — correctly, because the path is gone. Re-check the content path after completion.
+
+## 11. Deletion needs evidence, and so does keeping
+
+Delete a source only after the library copy is verified (probe + decode + sync + row runtime), and
+check byte size or checksum first. A guard that matched "John Lennon" (space) against a filename with
+dots deleted the only source of a title that later turned out to be truncated.
+
+## 12. Probe before declaring a fault
+
+`decode_check` failed playable 1080i HDTV captures because it treated any decoder output as
+corruption, and `on_media()` raises on ffmpeg's non-zero exit after recovered warnings. It now uses
+`query()` and ignores known-benign chatter (`mmco:`, `reference picture missing`) while still failing
+on real errors. A warning is not a verdict.
