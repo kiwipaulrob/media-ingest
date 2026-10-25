@@ -59,7 +59,7 @@ if existing:
     sys.exit(0)
 
 # ---- files present
-listing = sh('cd {d} && ls -1 *.mkv *.mp4 2>/dev/null'.format(d=shlex.quote(SRC)))
+listing = sh('cd {d} && ls -1 *.mkv *.mp4 *.avi *.m4v 2>/dev/null'.format(d=shlex.quote(SRC)))
 files = [f for f in listing.splitlines() if f.strip()]
 print("files found:", len(files))
 for f in sorted(files):
@@ -84,18 +84,30 @@ for e in eps:
     print("   E{} {} [{} min]".format(e.get("episode_number"), e.get("name"), e.get("runtime")))
 
 if len(eps) != len(files):
-    print("ABORT: provider has {a} episodes but {b} files — ambiguous, handing to a human"
+    if os.environ.get("ALLOW_PARTIAL") != "1":
+        print("ABORT: provider has {a} episodes but {b} files — ambiguous, handing to a human"
+              .format(a=len(eps), b=len(files)))
+        sys.exit(0)
+    print("PARTIAL: {b} of {a} episodes present — mapping by part number, gap left visible"
           .format(a=len(eps), b=len(files)))
-    sys.exit(0)
 
 # ---- convert
 DST = "/mnt/zmedia/videos/DocuSeries/{t}/Season 01".format(t=TITLE)
 sh("mkdir -p " + shlex.quote(DST))
-ordered = sorted(files, key=lambda f: int((re.findall(r"\d+", f) or ["0"])[0]))
+def _part_no(f):
+    m = re.search(r"(?i)(?:part|pt|cd|disc)[\s._-]*(\d+)", f)
+    if m:
+        return int(m.group(1))
+    nums = re.findall(r"\d+", f)
+    return int(nums[-1]) if nums else 0
+
+
+ordered = sorted(files, key=_part_no)
 for idx, f in enumerate(ordered, start=1):
-    title = (eps[idx - 1].get("name") or "").strip()
+    title = (eps[idx - 1].get("name") or "").strip() if idx - 1 < len(eps) else ""
     safe = "".join(c for c in title if c.isalnum() or c in " -'.,&()").strip()
-    name = "{t} S01E{n:02d}".format(t=TITLE, n=idx) + ((" " + safe) if safe else "") + ".mkv"
+    ext = ("." + f.rsplit(".", 1)[-1].lower()) if "." in f else ".mkv"
+    name = "{t} S01E{n:02d}".format(t=TITLE, n=idx) + ((" " + safe) if safe else "") + ext
     out = sh("mv -f {a} {b} && echo OK".format(a=shlex.quote(SRC + "/" + f),
                                                b=shlex.quote(DST + "/" + name)))
     print("E{:<2} {}".format(idx, "moved" if "OK" in out else "FAILED " + f))
