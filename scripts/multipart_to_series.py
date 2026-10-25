@@ -37,9 +37,12 @@ SEASON = int(os.environ.get("SEASON") or 1)
 
 # Placement rule: music content -> Music Docos Series, film-subject -> Film Documentary Series,
 # everything else -> Documentary Series. LIB is the Jellyfin library name; LIBDIR is its folder on disk.
-LIB = os.environ.get("LIB") or "Documentary Series"
-LIBDIRS = {"Documentary Series": "DocuSeries",
+LIB = os.environ.get("LIB") or "Docos Series"
+LIBDIRS = {"Docos Series": "DocuSeries",
            "Music Docos Series": "musicdocos-series",
+           "Film Docos Series": "filmdocuseries",
+           # pre-rename aliases, so older invocations and notes still work
+           "Documentary Series": "DocuSeries",
            "Film Documentary Series": "filmdocuseries"}
 LIBDIR = LIBDIRS.get(LIB)
 if not LIBDIR:

@@ -192,3 +192,19 @@ unreliable metadata results"*, and jellyfin-meta discussion #46 proposes removin
   everything else   -> Documentary Series        (/mnt/zmedia/videos/DocuSeries)
 
 `scripts/multipart_to_series.py` takes `LIB=` and refuses an unknown value rather than defaulting.
+## 22. Renaming a library needs the dedicated Name endpoint
+
+`POST /Items/{id}` with `{"Name": ...}` is **accepted and silently ignored** for library items, the same way
+`CollectionType` is ignored by `LibraryOptions`. The endpoint that actually renames a library is:
+
+  POST /Library/VirtualFolders/Name?name=<old>&newName=<new>
+
+Renaming changes only the display name; library paths and item ids are untouched, so scans and API calls by
+folder keep working.
+
+Display names now use "Docos":
+
+  Documentaries             -> Docos
+  Film Documentaries        -> Film Docos
+  Documentary Series        -> Docos Series
+  Film Documentary Series   -> Film Docos Series
