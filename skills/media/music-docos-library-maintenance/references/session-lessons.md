@@ -137,3 +137,25 @@ with two parts on this server (Easy Rider, Unforgivable Blackness). The item sho
 own runtime. Do not assume Jellyfin joins parts; verify the item's media-source count after a
 restructure, and prefer the `cd1`/`cd2` convention or a single merged file if joining is required.
 
+## 17. `delete_item` deletes media, not just a library row
+
+`jellyfin.delete_item()` calls `DELETE /Items/{id}`, and the server unlinks the item's **files**. For a
+Series/Season/Folder item it takes the whole folder with it.
+
+This destroyed 5.3 GB of media: a conversion produced a wrong series entry, and deleting the Series row to
+"clear it" deleted the six files underneath. No torrent or download copy existed, so it was unrecoverable.
+
+The function now refuses container types unless `allow_container=True` is passed explicitly.
+
+**To remove a stale row, move the files first and let the scan drop the row on its own.** Never delete a row
+while its media still sits beneath it. A row is cheap; the media may be the only copy.
+
+## 18. A count match is not a mapping
+
+Six files against six episodes passes every count-based check and can still be completely wrong. The American
+Revolution (2025) held six 59-minute files against six 116-131 minute episodes — half the series, mapped 1:1
+and titled as if complete.
+
+Compare **runtimes** before renaming: ffprobe each file, divide by the provider's per-episode runtime, and
+refuse when the ratio is outside 0.75-1.33. Wikipedia and the broadcaster's own page give the series total,
+which settles it when the provider is thin — 715 minutes across six episodes is decisive.
