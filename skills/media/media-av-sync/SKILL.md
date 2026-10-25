@@ -218,8 +218,8 @@ evidence than a title search.
 A rebuild that is never swapped in is not a fix, and the swap has its own failure modes:
 
 - **Resolve the target library by exact name or ItemId**, never a substring test — `Film`
-  matches `Film Noir` before `Film Documentaries`, and the refresh returns 204 either way, so
-  the wrong section is refreshed while the old file keeps serving.
+  matches `Film Noir` and `Film Docos` and `Film Docos Series`, and the refresh returns 204
+  either way, so the wrong section is refreshed while the old file keeps serving.
 - **Quarantine the original, never delete it.** A rebuild that turns out to sound wrong leaves
   the original as the only fallback. `chmod` the replacement to match its siblings. Delete the
   quarantined original only when the replacement has been **re-verified** (sync verdict clean,

@@ -187,9 +187,13 @@ unreliable metadata results"*, and jellyfin-meta discussion #46 proposes removin
 
 ## 21. Placement rule for documentary series
 
-  music subject     -> Music Docos Series        (/mnt/zmedia/videos/musicdocos-series)
-  film subject      -> Film Documentary Series   (/mnt/zmedia/videos/filmdocuseries)
-  everything else   -> Documentary Series        (/mnt/zmedia/videos/DocuSeries)
+  music subject     -> Music Docos Series   /mnt/zmedia/videos/musicdocos-series
+  film subject      -> Film Docos Series    /mnt/zmedia/videos/filmdocuseries
+  everything else   -> Docos Series         /mnt/zmedia/videos/DocuSeries
+
+(Display names were abbreviated on 26 Oct: Documentaries->Docos, Film Documentaries->Film Docos,
+Documentary Series->Docos Series, Film Documentary Series->Film Docos Series. Disk folder names did NOT
+change, so path mappings still read Documentaries / FilmDocumentaries / DocuSeries.)
 
 `scripts/multipart_to_series.py` takes `LIB=` and refuses an unknown value rather than defaulting.
 ## 22. Renaming a library needs the dedicated Name endpoint
