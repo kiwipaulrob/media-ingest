@@ -114,3 +114,26 @@ The same pass skipped 356 of 400 names because those Wikipedia articles carry no
 probes would have revealed that the cohort had nothing to find, before spending a 400-name run and
 Wikimedia's IP-wide rate budget (a follow-up Wikidata call then returned 429).
 
+## 15. Remote search needs the MEDIA TYPE route — Movie is not universal
+
+`POST /Items/RemoteSearch/Movie` works for films and silently fails for series: it returns zero
+candidates, or three unrelated titles from the same year. Supplying a correct TMDB id does NOT help,
+because the endpoint matches on title/year and ignores the id.
+
+    jellyfin.remote_search(item_id, name, year, provider_ids, media_type="Series")
+
+Four series failed identification in one session before this was found (The West, The Ascent of Money,
+Welcome to Lagos, and an earlier one); all identified immediately once `Series` was used. The same
+applies to `Episode`, `Person`, `BoxSet` — match the route to the item type.
+
+Symptom to recognise: series shows `ProviderIds {}`, no overview, no artwork, and every episode sits at
+`SNoneENone` with 0.0 min. Episode numbering comes from a matched series, so an unmatched series leaves
+its episodes as an unordered list.
+
+## 16. `- partN` files are not joined into multi-part movies here
+
+Naming two files `Title - part1.mkv` / `Title - part2.mkv` in one folder did NOT produce a single item
+with two parts on this server (Easy Rider, Unforgivable Blackness). The item showed only part 1 at its
+own runtime. Do not assume Jellyfin joins parts; verify the item's media-source count after a
+restructure, and prefer the `cd1`/`cd2` convention or a single merged file if joining is required.
+

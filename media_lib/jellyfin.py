@@ -250,6 +250,7 @@ def list_items(
 def remote_search(
     item_id: str, name: str, year: Optional[int] = None,
     provider_ids: Optional[Dict[str, str]] = None, *, movie: bool = True,
+    media_type: str = "Movie",
 ) -> List[Dict[str, Any]]:
     """Candidate identifications for an item. Read-only.
 
@@ -263,7 +264,7 @@ def remote_search(
     if provider_ids:
         info["ProviderIds"] = dict(provider_ids)
     txt = _request(
-        "/Items/RemoteSearch/Movie",
+        f"/Items/RemoteSearch/{media_type}",
         method="POST",
         body={"SearchInfo": info, "ItemId": item_id},
         timeout=90,

@@ -77,3 +77,26 @@ def test_remote_search_uses_the_media_type_route_and_query_body(monkeypatch):
     assert seen["method"] == "POST"
     assert seen["body"]["ItemId"] == "abc"
     assert seen["body"]["SearchInfo"]["Year"] == 2014
+
+
+def test_remote_search_uses_the_media_type_route(monkeypatch):
+    """Series must query /Items/RemoteSearch/Series, not /Movie.
+
+    Using the Movie route for a series returns zero candidates (or three wrong titles of the
+    same year) and Identify silently fails. Diagnosed on The West, Ascent of Money and
+    Welcome to Lagos — all three identified immediately once the Series route was used.
+    """
+    from media_lib import jellyfin as jf
+
+    seen = {}
+
+    def fake_request(path, *, method="GET", body=None, key=None, timeout=60):
+        seen["path"] = path
+        return '[{"Name": "X", "ProviderIds": {"Tmdb": "1"}}]'
+
+    monkeypatch.setattr(jf, "_request", fake_request)
+    jf.remote_search("abc", "Some Series", 1996, {"Tmdb": "30715"}, media_type="Series")
+    assert seen["path"] == "/Items/RemoteSearch/Series"
+
+    jf.remote_search("abc", "Some Film", 2013, None)
+    assert seen["path"] == "/Items/RemoteSearch/Movie"
