@@ -58,6 +58,92 @@ are not individually addressable. When the goal is "one entry carrying as much p
 information as possible", an episodic series needs a Shows-type library, regardless of whether
 the content is a documentary.
 
+## Part count decides the target (standing user rule)
+
+Count the parts BEFORE classifying. The rule overrides the per-series judgement below:
+
+| parts of one programme | target |
+|---|---|
+| **3 or more** | **series style** — episodes in the Shows library (`DocuSeries` here): one entry carrying per-episode names, overviews and stills |
+| **exactly 2** | **film style** — one Movies entry (the part-stack recipe below) |
+
+The reason is the per-episode field set: a stack gives one entry but no episode titles, overviews, air
+dates or images, and its parts are not individually addressable. A 3+ part work is almost always an
+episodic strand, so stacking it discards exactly what the user wants to browse.
+
+### `- partN` halves do NOT join; `- label` versions DO
+
+Two multipart shapes behave in opposite ways here, and both were measured:
+
+- `<primary> - part1.ext` / `- part2.ext` — **sequential halves**: NOT joined. A two-part film surfaced
+  as one item carrying only **part 1** at 110.9 min; another pair produced two separate movie items.
+- `<primary> - <label>.ext` — **alternate encodes of one work**: merges into one item with
+  `MediaSources = 2`, and the version picker works.
+
+So a 2-part work is a decision, not a default: merge the halves into one file (ffmpeg concat, stream
+copy where codecs match), try the `cd1`/`cd2` convention on ONE title before committing the rest, or
+accept two labelled rows. Never apply the stack recipe to `- partN` halves and report it done.
+
+## Consolidating a multi-part folder into episodes — guards to run first
+
+`media-ops/scripts/multipart_to_series.py` performs the conversion, parameterised by `SRC`, `QUERY`,
+`YEAR`, `TITLE` (plus `ALLOW_PARTIAL=1` for a known gap). Its three guards exist because each caught
+real damage:
+
+1. **Abort if the Shows library already holds the title.** A title can already be a complete series
+   while a duplicate set sits in the movies library — one case had five correct episodes plus five
+   byte-identical copies in `Documentaries`. Converting without checking manufactures the duplicate
+   you would then have to delete.
+2. **Abort if the provider's episode count differs from the file count.** Eight files numbered
+   `1–6, 8, 9` against a ten-episode listing cannot be mapped by position. `ALLOW_PARTIAL=1` overrides
+   this only when the gap is known and permanent: it maps by part number and leaves the hole visible.
+3. **Print every episode path after the scan.** Renaming files in place leaves **phantom rows** — nine
+   files became **eighteen** episode rows, all pointing at the new folder but carrying the OLD
+   basenames. Sweep the rows whose basename is the old form, not the new one, then recount.
+
+### Pitfalls inside the converter, each found by running it
+
+- **Glob every container you scan for** (`.mkv .mp4 .avi .m4v`). A folder of seven `.avi` parts reported
+  "1 file" because only `.mkv`/`.mp4` were globbed, and the count guard then blocked a perfectly
+  convertible set.
+- **Keep each file's own extension** in the episode name. Forcing `.mkv` onto an `.avi` source
+  mislabels the container — the same defect the Cause B row describes.
+- **Order by `part N`, never by the first number in the name.** `Movie Connections (2007) - part1.avi`
+  sorts on `2007`, so every file ties and episode order becomes arbitrary.
+- **A parameterised script carries its old assumptions.** Three hardcoded title strings survived the
+  first parameterisation pass — the existing-series guard, the post-conversion lookup and the
+  provider-result filter — so the next run aborted on a false positive and would have reported "no
+  provider match" for every later title. After parameterising, `grep` the old value and require
+  **zero** hits before the next run.
+
+### Validate the mapping against runtimes BEFORE naming
+
+A file whose runtime matches an episode gets named. A file whose runtime matches **no** episode is
+held, not slotted: 178.8 min against a 120-min episode list, from a 1024x576 source while its siblings
+were 768x576, was held rather than named to "complete" the set. Naming it would put a title on three
+hours of content the runtime visibly contradicts, and no later refresh corrects a confidently wrong
+name.
+
+When part of a set is held, convert the unambiguous part and report the remainder as HELD with the
+runtime evidence. A six-of-eight series with correct metadata beats an eight-of-eight series with two
+invented titles.
+
+### Delete a duplicate set only after pairing by CONTENT
+
+Identical byte size on both sides with `links=1` means two real copies, not a hardlink — then `cmp -s`
+each pair and delete only when every pair is identical. **Pair by size, never by filename position:**
+capitalisation drifts between releases (`the.genius.of.design.(2010).part 1.mkv` beside
+`The.Genius.Of.Design.(2010).part 3.mkv`), so sorted order does not match episode order and name-based
+pairing deletes the wrong file.
+
+### Two shell traps around this work
+
+- **`sed` mangles a path containing `[tmdbid-NNNN]`** — `Invalid range end`, and the command exits
+  non-zero mid-sweep. Use `find ... -printf` or escape the bracket in the pattern.
+- **A Usenet indexer result is an NZB, not a magnet.** An NZBgeek hit sent to qBittorrent returns `202`
+  with `verified: False` and never downloads; route it to SAB (`sab.add_url`) and send only
+  torrent-indexer hits to `qb.add_verified`.
+
 ## Part-series → one Movies entry (proven recipe)
 
 A part-series is the opposite case: ONE work in N parts, already on disk as N files or N per-part
