@@ -67,8 +67,12 @@ for f in sorted(files):
 
 # ---- provider
 s = tmdb._get("/search/tv", {"query": QUERY})
+def _norm(t):
+    return str(t or "").lower().replace(" ", "").replace(".", "").replace("-", "").replace(":", "")
+
+
 tid = next((x.get("id") for x in (s.get("results") or [])
-            if "century of light" in str(x.get("name", "")).lower()), None)
+            if _norm(KEY) in _norm(x.get("name"))), None)
 print("tmdb:", tid)
 if not tid:
     print("ABORT: no provider match — leaving files untouched")
