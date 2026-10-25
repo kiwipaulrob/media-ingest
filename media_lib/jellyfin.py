@@ -428,13 +428,32 @@ def set_primary_image(item_id: str, data: bytes, content_type: str = "image/jpeg
     return set_image(item_id, data, "Primary", 0, content_type)
 
 
-def delete_item(item_id: str) -> int:
-    """DELETE an item.
+CONTAINER_TYPES = frozenset({"Series", "Season", "Folder", "BoxSet", "CollectionFolder",
+                             "PhotoAlbum", "MusicAlbum", "MusicArtist"})
 
-    The server unlinks the item's file. For a FOLDER-shaped item it can take the
-    whole folder with it, so only call this for a single-file row whose path has
-    been verified.
+
+def delete_item(item_id: str, *, allow_container: bool = False) -> int:
+    """DELETE a single-file row. Refuses container items unless explicitly allowed.
+
+    The server unlinks the item's file(s). For a Series/Season/Folder item it
+    deletes the whole folder and every file inside — this has already destroyed
+    5.3 GB of media once, by calling it on a Series row to clear a stale entry.
+
+    Never use this to tidy up a library row whose files you want to keep. Move the
+    files first, then refresh; the row disappears on its own.
     """
+    if not allow_container:
+        try:
+            item = get_json(f"/Items/{item_id}", params={"Fields": "Type,Name"}) or {}
+        except Exception:
+            item = {}
+        itype = str(item.get("Type") or "")
+        if itype in CONTAINER_TYPES:
+            raise ValueError(
+                "refusing to delete {t} item {i!r} ({n}) — this unlinks every media file beneath it. "
+                "Move the files first and let the scan drop the row, or pass allow_container=True if "
+                "you truly mean to delete the media.".format(
+                    t=itype, i=item_id, n=item.get("Name")))
     _request(f"/Items/{item_id}", method="DELETE")
     return 204
 
