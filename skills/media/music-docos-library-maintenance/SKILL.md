@@ -63,6 +63,15 @@ Worked example from a live audit (all on device 49):
 | The Making of Psycho (2005) Documentaries + FilmDocumentaries | were two copies (links=1/2); now hardlinked, links=2 both |
 | Pussy Riot: A Punk Prayer Documentaries + musicdocos | were two copies (links=2/1); now hardlinked, links=2 both |
 
+### After moving sources, wait before judging the row
+
+A library-scoped refresh never repopulates runtime; only a per-item FullRefresh does. On an item
+with MULTIPLE media sources the refresh takes longer than 90 seconds — an item consolidated to
+three sources still reported 0.0 min at the 90-second mark and was correct a few minutes later.
+
+Check at two to three minutes. Concluding "the refresh failed" from a single early read has
+produced three false failure reports in one session (hardlink test, Doors merge, Costello merge).
+
 Consequences:
 
 - **Do not "de-duplicate" a hardlink.** Deleting one name removes only that library entry; the
