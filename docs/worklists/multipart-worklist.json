@@ -1,0 +1,992 @@
+{
+ "series": [
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Civil War (1990)",
+   "base": "the civil war (1990)",
+   "parts": 9,
+   "files": 17,
+   "duplicate_part_files": 8,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 2.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 3.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part4.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 4.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part5.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 5.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part6.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 6.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part7.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 7.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part8.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 8.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) - part9.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Civil War (1990)/The Civil War (1990) part 9.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)",
+   "base": "a century of light and shadow (2005)",
+   "parts": 8,
+   "files": 8,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part3.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part4.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part5.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part6.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part7.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)/A Century of Light and Shadow (2005) - part8.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)",
+   "base": "new.york.a.documentary.film.(1999)",
+   "parts": 8,
+   "files": 8,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 2.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 3.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 4.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 5.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 6.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 8.mkv",
+    "/mnt/zmedia/videos/Documentaries/New York A Documentary Film (1999)/New.York.A.Documentary.Film.(1999) part 9.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)",
+   "base": "movie connections (2007)",
+   "parts": 7,
+   "files": 7,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part1.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part2.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part3.mp4",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part4.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part5.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part6.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Movie Connections (2007)/Movie Connections (2007) - part7.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)",
+   "base": "traumazone (2022)",
+   "parts": 7,
+   "files": 7,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part4.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part5.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part6.mkv",
+    "/mnt/zmedia/videos/Documentaries/Russia 1985-1999 - TraumaZone (2022)/TraumaZone (2022) - part7.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)",
+   "base": "can't get you out of my head (2021)",
+   "parts": 6,
+   "files": 6,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part4.mkv",
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part5.mkv",
+    "/mnt/zmedia/videos/Documentaries/Can't Get You Out of My Head - Series 1 (2021)/Can't Get You Out of My Head (2021) - part6.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)",
+   "base": "pandora's box (1992)",
+   "parts": 6,
+   "files": 6,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part4.mkv",
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part5.mkv",
+    "/mnt/zmedia/videos/Documentaries/Pandora's Box (1992)/Pandora's Box (1992) - part6.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)",
+   "base": "the american revolution (2025)",
+   "parts": 6,
+   "files": 6,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part4.mkv",
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part5.mkv",
+    "/mnt/zmedia/videos/Documentaries/The American Revolution (2025)/The American Revolution (2025)-part6.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)",
+   "base": "ch4.brave.new.world.with.stephen.hawking",
+   "parts": 5,
+   "files": 6,
+   "duplicate_part_files": 1,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.1of5.Machines.PDTV.x264.AC3.MVGroup.org - 720p.mkv",
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.1of5.Machines.PDTV.x264.AC3.MVGroup.org.mkv",
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.2of5.Health.PDTV.x264.AC3.MVGroup.org.mkv",
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.3of5.Technology.PDTV.x264.AC3.MVGroup.org.mkv",
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.4of5.Environment.PDTV.x264.AC3.MVGroup.org.mkv",
+    "/mnt/zmedia/videos/Documentaries/Brave New World with Stephen Hawking (2011)/Ch4.Brave.New.World.with.Stephen.Hawking.5of5.Biology.PDTV.x264.AC3.MVGroup.org.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/3 Minute Wonder/3 Minute Wonder - Attendants",
+   "base": "3 minute wonder - attendants (",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/3 Minute Wonder/3 Minute Wonder - Attendants/3 Minute Wonder - Attendants (1 of 4).mkv",
+    "/mnt/zmedia/videos/Documentaries/3 Minute Wonder/3 Minute Wonder - Attendants/3 Minute Wonder - Attendants (2 of 4).mkv",
+    "/mnt/zmedia/videos/Documentaries/3 Minute Wonder/3 Minute Wonder - Attendants/3 Minute Wonder - Attendants (3 of 4).mkv",
+    "/mnt/zmedia/videos/Documentaries/3 Minute Wonder/3 Minute Wonder - Attendants/3 Minute Wonder - Attendants (4 of 4).mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/A House Through Time Series 6 (2024)",
+   "base": "a house through time series 6 (2024)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/A House Through Time Series 6 (2024)/A House Through Time Series 6 (2024)-part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/A House Through Time Series 6 (2024)/A House Through Time Series 6 (2024)-part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/A House Through Time Series 6 (2024)/A House Through Time Series 6 (2024)-part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/A House Through Time Series 6 (2024)/A House Through Time Series 6 (2024)-part4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/BBC Cinema Europe The Other Hollywood (1995)",
+   "base": "cinema europe the other hollywood (1995)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/BBC Cinema Europe The Other Hollywood (1995)/Cinema Europe The Other Hollywood (1995) part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/BBC Cinema Europe The Other Hollywood (1995)/Cinema Europe The Other Hollywood (1995) part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/BBC Cinema Europe The Other Hollywood (1995)/Cinema Europe The Other Hollywood (1995) part3.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/BBC Cinema Europe The Other Hollywood (1995)/Cinema Europe The Other Hollywood (1995) part4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/MGM When the Lion Roars (1992)",
+   "base": "mgm when the lion roars (1992)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/MGM When the Lion Roars (1992)/MGM When the Lion Roars (1992) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/MGM When the Lion Roars (1992)/MGM When the Lion Roars (1992) - part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/MGM When the Lion Roars (1992)/MGM When the Lion Roars (1992) - part3.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/MGM When the Lion Roars (1992)/MGM When the Lion Roars (1992) - part4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/My Life  as a Rolling Stone (2022)",
+   "base": "my_life_as_a_rolling_stone_(2022)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/My Life  as a Rolling Stone (2022)/My_Life_as_a_Rolling_Stone_(2022) part 1.mp4",
+    "/mnt/zmedia/videos/musicdocos/My Life  as a Rolling Stone (2022)/My_Life_as_a_Rolling_Stone_(2022) part 2.mp4",
+    "/mnt/zmedia/videos/musicdocos/My Life  as a Rolling Stone (2022)/My_Life_as_a_Rolling_Stone_(2022) part 3.mp4",
+    "/mnt/zmedia/videos/musicdocos/My Life  as a Rolling Stone (2022)/My_Life_as_a_Rolling_Stone_(2022) part 4.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/STAX Soulsville U.S.A (2024)",
+   "base": "stax.soulsville.u.s.a.(2024)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/STAX Soulsville U.S.A (2024)/STAX.Soulsville.U.S.A.(2024) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/STAX Soulsville U.S.A (2024)/STAX.Soulsville.U.S.A.(2024) part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/STAX Soulsville U.S.A (2024)/STAX.Soulsville.U.S.A.(2024) part 3.mkv",
+    "/mnt/zmedia/videos/musicdocos/STAX Soulsville U.S.A (2024)/STAX.Soulsville.U.S.A.(2024) part 4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Syrian School Series (2010) [PDTV (Xvid)]",
+   "base": "syrian school - part",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Syrian School Series (2010) [PDTV (Xvid)]/Syrian School - Part 1 of 5 (10 February 2010)[PDTV(XviD)].mkv",
+    "/mnt/zmedia/videos/Documentaries/Syrian School Series (2010) [PDTV (Xvid)]/Syrian School - Part 3 of 5 (24 February 2010)[PDTV(XviD)].mkv",
+    "/mnt/zmedia/videos/Documentaries/Syrian School Series (2010) [PDTV (Xvid)]/Syrian School - Part 4 of 5 (3 March 2010)[PDTV(XviD)].mkv",
+    "/mnt/zmedia/videos/Documentaries/Syrian School Series (2010) [PDTV (Xvid)]/Syrian School - Part 5 of 5 (10 March 2010)[PDTV(XviD)].mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Century of the Self (2002)",
+   "base": "the century of the self (2002)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Century of the Self (2002)/The Century of the Self (2002) - part1.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Century of the Self (2002)/The Century of the Self (2002) - part2.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Century of the Self (2002)/The Century of the Self (2002) - part3.mp4",
+    "/mnt/zmedia/videos/Documentaries/The Century of the Self (2002)/The Century of the Self (2002) - part4.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Mayfair Set (1999)",
+   "base": "the mayfair set (1999)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Mayfair Set (1999)/The Mayfair Set (1999) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Mayfair Set (1999)/The Mayfair Set (1999) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Mayfair Set (1999)/The Mayfair Set (1999) - part3.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Mayfair Set (1999)/The Mayfair Set (1999) - part4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Genius of Design (2010)",
+   "base": "the.genius.of.design.(2010)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Genius of Design (2010)/the.genius.of.design.(2010).part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Genius of Design (2010)/the.genius.of.design.(2010).part 2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Genius of Design (2010)/The.Genius.Of.Design.(2010).part 3.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Genius of Design (2010)/The.Genius.of.Design.(2010).part 4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/The Devil's Music (1979)",
+   "base": "the_devils_music (1979)",
+   "parts": 4,
+   "files": 4,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/The Devil's Music (1979)/The_Devils_Music (1979) part 1.mp4",
+    "/mnt/zmedia/videos/musicdocos/The Devil's Music (1979)/The_Devils_Music (1979) part 2.mp4",
+    "/mnt/zmedia/videos/musicdocos/The Devil's Music (1979)/The_Devils_Music (1979) part 3.mp4",
+    "/mnt/zmedia/videos/musicdocos/The Devil's Music (1979)/The_Devils_Music (1979) part 4.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/A Personal Journey with Martin Scorsese Through American Movies (1995)",
+   "base": "a personal journey with martin scorsese through american movies (1995)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/A Personal Journey with Martin Scorsese Through American Movies (1995)/A Personal Journey with Martin Scorsese Through American Movies (1995) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Personal Journey with Martin Scorsese Through American Movies (1995)/A Personal Journey with Martin Scorsese Through American Movies (1995) - part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Personal Journey with Martin Scorsese Through American Movies (1995)/A Personal Journey with Martin Scorsese Through American Movies (1995) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Africa A Journey into Music (2018)",
+   "base": "africa a journey into music (2018)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Africa A Journey into Music (2018)/Africa A Journey into Music (2018) part 1.mp4",
+    "/mnt/zmedia/videos/musicdocos/Africa A Journey into Music (2018)/Africa A Journey into Music (2018) part 2.mp4",
+    "/mnt/zmedia/videos/musicdocos/Africa A Journey into Music (2018)/Africa A Journey into Music (2018) part 3.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/AI Confidential (2026)",
+   "base": "ai confidential (2026)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/AI Confidential (2026)/AI Confidential (2026)-part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/AI Confidential (2026)/AI Confidential (2026)-part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/AI Confidential (2026)/AI Confidential (2026)-part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/All Watched Over by Machines of Loving Grace (2011)",
+   "base": "all watched over by machines of loving grace",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/All Watched Over by Machines of Loving Grace (2011)/All Watched Over by Machines of Loving Grace. part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/All Watched Over by Machines of Loving Grace (2011)/All Watched Over by Machines of Loving Grace.part 2.mkv",
+    "/mnt/zmedia/videos/Documentaries/All Watched Over by Machines of Loving Grace (2011)/All Watched Over by Machines of Loving Grace.part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Guitar Drum and Bass (2019)",
+   "base": "bbc.guitar.drum.and.bass.(2019)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Guitar Drum and Bass (2019)/BBC.Guitar.Drum.and.Bass.(2019) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Guitar Drum and Bass (2019)/BBC.Guitar.Drum.and.Bass.(2019) part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Guitar Drum and Bass (2019)/BBC.Guitar.Drum.and.Bass.(2019) part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Music for Misfits the Story of Indie (2015)",
+   "base": "bbc.music.for.misfits.the.story.of.indie",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Music for Misfits the Story of Indie (2015)/BBC.Music.for.Misfits.The.Story.of.Indie.part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Music for Misfits the Story of Indie (2015)/BBC.Music.for.Misfits.The.Story.of.Indie.part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Music for Misfits the Story of Indie (2015)/BBC.Music.for.Misfits.The.Story.of.Indie.part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Before Dookie - How Punk Became Pop (2024)",
+   "base": "before dookie (2024)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Before Dookie - How Punk Became Pop (2024)/Before Dookie (2024) - part1.mp4",
+    "/mnt/zmedia/videos/musicdocos/Before Dookie - How Punk Became Pop (2024)/Before Dookie (2024) - part2.mp4",
+    "/mnt/zmedia/videos/musicdocos/Before Dookie - How Punk Became Pop (2024)/Before Dookie (2024) - part3.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Comics Britannia (2011)",
+   "base": "comics.britannia",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Comics Britannia (2011)/comics.britannia.part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Comics Britannia (2011)/comics.britannia.part 2.mkv",
+    "/mnt/zmedia/videos/Documentaries/Comics Britannia (2011)/comics.britannia.part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Designing the Decades (2003)",
+   "base": "designing the decades",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Designing the Decades (2003)/Designing the Decades.part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Designing the Decades (2003)/Designing the Decades.part 2.mkv",
+    "/mnt/zmedia/videos/Documentaries/Designing the Decades (2003)/Designing the Decades.part 4.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Disco Soundtrack of a Revolution (2023)",
+   "base": "disco_soundtrack_of_a_revolution_(2023)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Disco Soundtrack of a Revolution (2023)/Disco_Soundtrack_of_a_Revolution_(2023).part 1.mp4",
+    "/mnt/zmedia/videos/musicdocos/Disco Soundtrack of a Revolution (2023)/Disco_Soundtrack_of_a_Revolution_(2023).part 2.mp4",
+    "/mnt/zmedia/videos/musicdocos/Disco Soundtrack of a Revolution (2023)/Disco_Soundtrack_of_a_Revolution_(2023).part 3.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Jimi Hendrix The Uncut Story (2004)",
+   "base": "jimi.hendrix.the.uncut.story.(2004)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Jimi Hendrix The Uncut Story (2004)/Jimi.Hendrix.The.Uncut.Story.(2004) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Jimi Hendrix The Uncut Story (2004)/Jimi.Hendrix.The.Uncut.Story.(2004) part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Jimi Hendrix The Uncut Story (2004)/Jimi.Hendrix.The.Uncut.Story.(2004) part  3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Oh You Pretty Things The Story of British Music and Fashion (2014)",
+   "base": "oh you pretty things the story of british music and fashion (2014)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Oh You Pretty Things The Story of British Music and Fashion (2014)/Oh You Pretty Things The Story of British Music and Fashion (2014) - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Oh You Pretty Things The Story of British Music and Fashion (2014)/Oh You Pretty Things The Story of British Music and Fashion (2014) - part2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Oh You Pretty Things The Story of British Music and Fashion (2014)/Oh You Pretty Things The Story of British Music and Fashion (2014) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Paid in Full - The Battle for Black Music (2024)",
+   "base": "paid in full - the battle for black music (2024)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Paid in Full - The Battle for Black Music (2024)/Paid in Full - The Battle for Black Music (2024) - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Paid in Full - The Battle for Black Music (2024)/Paid in Full - The Battle for Black Music (2024) - part2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Paid in Full - The Battle for Black Music (2024)/Paid in Full - The Battle for Black Music (2024) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Soul America (2020)",
+   "base": "soul america (2020)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Soul America (2020)/Soul America (2020) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Soul America (2020)/Soul America (2020) part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Soul America (2020)/Soul America (2020) part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Sound of Cinema The Music That Made the Movies (2013)",
+   "base": "sound of cinema the music that made the movies (2013)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Sound of Cinema The Music That Made the Movies (2013)/Sound of Cinema The Music That Made the Movies (2013) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Sound of Cinema The Music That Made the Movies (2013)/Sound of Cinema The Music That Made the Movies (2013) part 2.mkv",
+    "/mnt/zmedia/videos/musicdocos/Sound of Cinema The Music That Made the Movies (2013)/Sound of Cinema The Music That Made the Movies (2013) part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/The Decline of Western Civilization (1981)",
+   "base": "the decline of western civilization (1981)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/The Decline of Western Civilization (1981)/The Decline of Western Civilization (1981)-part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/The Decline of Western Civilization (1981)/The Decline of Western Civilization (1981)-part2.mkv",
+    "/mnt/zmedia/videos/musicdocos/The Decline of Western Civilization (1981)/The Decline of Western Civilization (1981)-part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Making of Psycho (2005)",
+   "base": "the making of psycho (2005)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/The Making of Psycho (2005)",
+   "base": "the making of psycho (2005)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Making of Psycho (2005)/The Making of Psycho (2005) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/The Pervert's Guide to Cinema (2006)",
+   "base": "the pervert's guide to cinema (2006)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/The Pervert's Guide to Cinema (2006)/The Pervert's Guide to Cinema (2006) part 1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Pervert's Guide to Cinema (2006)/The Pervert's Guide to Cinema (2006) part 2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Pervert's Guide to Cinema (2006)/The Pervert's Guide to Cinema (2006) part 3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Power of Nightmares (2004)",
+   "base": "the power of nightmares (2004)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Power of Nightmares (2004)/The Power of Nightmares (2004) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Power of Nightmares (2004)/The Power of Nightmares (2004) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Power of Nightmares (2004)/The Power of Nightmares (2004) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/The Story of British Pathe (2011)",
+   "base": "the story of british pathe (2011)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/The Story of British Pathe (2011)/The Story of British Pathe (2011) - part1.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Story of British Pathe (2011)/The Story of British Pathe (2011) - part2.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Story of British Pathe (2011)/The Story of British Pathe (2011) - part3.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Trap (2007)",
+   "base": "the trap (2007)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Trap (2007)/The Trap (2007) - part1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Trap (2007)/The Trap (2007) - part2.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Trap (2007)/The Trap (2007) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/They All Came Out to Montreux (2023)",
+   "base": "they_all_came_out_to_montreux (2023)",
+   "parts": 3,
+   "files": 3,
+   "duplicate_part_files": 0,
+   "strategy": "series",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/They All Came Out to Montreux (2023)/They_All_Came_Out_to_Montreux (2023) part 1.mp4",
+    "/mnt/zmedia/videos/musicdocos/They All Came Out to Montreux (2023)/They_All_Came_Out_to_Montreux (2023) part 2.mp4",
+    "/mnt/zmedia/videos/musicdocos/They All Came Out to Montreux (2023)/They_All_Came_Out_to_Montreux (2023) part 3.mp4"
+   ]
+  }
+ ],
+ "film": [
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/A Decade Under the Influence (2003)",
+   "base": "a decade under the influence (2003)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/A Decade Under the Influence (2003)/A Decade Under the Influence (2003) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/A Decade Under the Influence (2003)/A Decade Under the Influence (2003) - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Athens, Ga. - InsideOut (1987)",
+   "base": "athens.ga.inside.out. (1987)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Athens, Ga. - InsideOut (1987)/Athens.GA.Inside.Out. (1987) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Athens, Ga. - InsideOut (1987)/Athens.GA.Inside.Out. (1987) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Quincy Jones The Many Lives of Q (2008)",
+   "base": "bbc.quincy.jones.the.many.lives.of.q.(2008)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Quincy Jones The Many Lives of Q (2008)/BBC.Quincy.Jones.The.Many.Lives.of.Q.(2008) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Quincy Jones The Many Lives of Q (2008)/BBC.Quincy.Jones.The.Many.Lives.of.Q.(2008) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos-series/Classic Albums (1997) [tmdbid-9048]/Season 08",
+   "base": "classic albums (1997) s08e01 the doors",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos-series/Classic Albums (1997) [tmdbid-9048]/Season 08/Classic Albums (1997) S08E01 The Doors - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos-series/Classic Albums (1997) [tmdbid-9048]/Season 08/Classic Albums (1997) S08E01 The Doors - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Films/Greenzone",
+   "base": "dmd-gz",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Films/Greenzone/dmd-gz-cd1.avi",
+    "/mnt/zmedia/videos/Films/Greenzone/dmd-gz-cd2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Films/Knowing",
+   "base": "dmd-k",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Films/Knowing/dmd-k-cd1.avi",
+    "/mnt/zmedia/videos/Films/Knowing/dmd-k-cd2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/filmnoir/Film Noir Bringing Darkness to Light (2006)",
+   "base": "film noir bringing darkness to light (2006)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/filmnoir/Film Noir Bringing Darkness to Light (2006)/Film Noir Bringing Darkness to Light (2006)-part1.mkv",
+    "/mnt/zmedia/videos/filmnoir/Film Noir Bringing Darkness to Light (2006)/Film Noir Bringing Darkness to Light (2006)-part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Films/Four Brothers (2005)",
+   "base": "four brothers (2005)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Films/Four Brothers (2005)/Four Brothers (2005) - part1.avi",
+    "/mnt/zmedia/videos/Films/Four Brothers (2005)/Four Brothers (2005) - part2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Gerry Anderson - Stand By for Action (2007)",
+   "base": "gerry anderson - stand by for action (2007)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Gerry Anderson - Stand By for Action (2007)/Gerry Anderson - Stand By for Action (2007) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/Gerry Anderson - Stand By for Action (2007)/Gerry Anderson - Stand By for Action (2007) - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Girl in a Band (2015)",
+   "base": "girl in a band (2015)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Girl in a Band (2015)/Girl in a Band (2015) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Girl in a Band (2015)/Girl in a Band (2015) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Hollywood Lives (2007)",
+   "base": "hollywood lives (2007)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Hollywood Lives (2007)/Hollywood Lives (2007) - part1.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Hollywood Lives (2007)/Hollywood Lives (2007) - part2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Ken Burns' America - Frank Lloyd Wright (1998)",
+   "base": "ken burns' america - frank lloyd wright (1998)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Ken Burns' America - Frank Lloyd Wright (1998)/Ken Burns' America - Frank Lloyd Wright (1998) part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/Ken Burns' America - Frank Lloyd Wright (1998)/Ken Burns' America - Frank Lloyd Wright (1998) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Latin Music USA (2009)",
+   "base": "latin music usa (2009)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Latin Music USA (2009)/Latin Music USA (2009) part 5.mkv",
+    "/mnt/zmedia/videos/musicdocos/Latin Music USA (2009)/Latin Music USA (2009) part 6.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Laurel Canyon (2020)",
+   "base": "laurel.canyon",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Laurel Canyon (2020)/Laurel.Canyon.part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Laurel Canyon (2020)/Laurel.Canyon.part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Let the Music Play The Barry White Story (2006)",
+   "base": "let the music play the barry white story",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Let the Music Play The Barry White Story (2006)/Let the Music Play The Barry White Story - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Let the Music Play The Barry White Story (2006)/Let the Music Play The Barry White Story - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/Lewis And Clark (1997)",
+   "base": "lewis & clark (1997)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/Lewis And Clark (1997)/Lewis & Clark (1997) part 1.mp4",
+    "/mnt/zmedia/videos/Documentaries/Lewis And Clark (1997)/Lewis & Clark (1997) part 2.mp4"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Manchester Music Pack",
+   "base": "manchester music pack",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Manchester Music Pack/Manchester Music Pack - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Manchester Music Pack/Manchester Music Pack - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/BBC Message to Love The Isle of Wight Festival (1970)",
+   "base": "message.to.love.the.isle.of.wight.festival.1970",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/BBC Message to Love The Isle of Wight Festival (1970)/Message.to.Love.The.Isle.of.Wight.Festival.1970 part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/BBC Message to Love The Isle of Wight Festival (1970)/Message.to.Love.The.Isle.of.Wight.Festival.1970 part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Bob Dylan No Direction Home (2005)",
+   "base": "no direction home (2005)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Bob Dylan No Direction Home (2005)/No Direction Home (2005) - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Bob Dylan No Direction Home (2005)/No Direction Home (2005) - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Paul Merton's Birth of Hollywood (2011)",
+   "base": "paul merton's birth of hollywood (2011)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Paul Merton's Birth of Hollywood (2011)/Paul Merton's Birth of Hollywood (2011) - part1.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Paul Merton's Birth of Hollywood (2011)/Paul Merton's Birth of Hollywood (2011) - part2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Penguin Cafe Orchestra",
+   "base": "penguin cafe orchestra",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Penguin Cafe Orchestra/Penguin Cafe Orchestra - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Penguin Cafe Orchestra/Penguin Cafe Orchestra - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Reputations - Alfred Hitchcock",
+   "base": "reputations - alfred hitchcock",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Reputations - Alfred Hitchcock/Reputations - Alfred Hitchcock - part1.avi",
+    "/mnt/zmedia/videos/FilmDocumentaries/Reputations - Alfred Hitchcock/Reputations - Alfred Hitchcock - part2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Stories of Australian Cinema (2017)",
+   "base": "stories of australian cinema (2017)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Stories of Australian Cinema (2017)/Stories of Australian Cinema (2017) - part2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/Stories of Australian Cinema (2017)/Stories of Australian Cinema (2017) - part3.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/Synth Britannia (2009)",
+   "base": "synth britannia (2009)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/Synth Britannia (2009)/Synth Britannia (2009) part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/Synth Britannia (2009)/Synth Britannia (2009) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/The Beat Is the Law Fanfare for the Common People (2010)",
+   "base": "the beat is law",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/The Beat Is the Law Fanfare for the Common People (2010)/The Beat Is Law Part 1.mkv",
+    "/mnt/zmedia/videos/musicdocos/The Beat Is the Law Fanfare for the Common People (2010)/The Beat Is Law Part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/musicdocos/The Brian Epstein Story (1998)",
+   "base": "the brian epstein story (1998)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/musicdocos/The Brian Epstein Story (1998)/The Brian Epstein Story (1998) - part1.mkv",
+    "/mnt/zmedia/videos/musicdocos/The Brian Epstein Story (1998)/The Brian Epstein Story (1998) - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/Documentaries/The Dust Bowl (2012)",
+   "base": "the dust bowl (2012)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/Documentaries/The Dust Bowl (2012)/The Dust Bowl (2012) part 1.mkv",
+    "/mnt/zmedia/videos/Documentaries/The Dust Bowl (2012)/The Dust Bowl (2012) part 2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/The Making of Lawrence of Arabia",
+   "base": "the making of lawrence of arabia",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/The Making of Lawrence of Arabia/The Making of Lawrence of Arabia 1of2.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/The Making of Lawrence of Arabia/The Making of Lawrence of Arabia 2of2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/TV",
+   "base": "the.commander.blacklight",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/TV/The.Commander.Blacklight.Pt1.avi",
+    "/mnt/zmedia/videos/TV/The.Commander.Blacklight.Pt2.avi"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Unforgivable Blackness - The Rise and Fall of Jack Johnson (2004)",
+   "base": "unforgivable blackness - the rise and fall of jack johnson (2004)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Unforgivable Blackness - The Rise and Fall of Jack Johnson (2004)/Unforgivable Blackness - The Rise and Fall of Jack Johnson (2004) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/Unforgivable Blackness - The Rise and Fall of Jack Johnson (2004)/Unforgivable Blackness - The Rise and Fall of Jack Johnson (2004) - part2.mkv"
+   ]
+  },
+  {
+   "folder": "/mnt/zmedia/videos/FilmDocumentaries/Women Make Film (2018) [imdbid-tt8819192]",
+   "base": "women make film (2018)",
+   "parts": 2,
+   "files": 2,
+   "duplicate_part_files": 0,
+   "strategy": "film",
+   "paths": [
+    "/mnt/zmedia/videos/FilmDocumentaries/Women Make Film (2018) [imdbid-tt8819192]/Women Make Film (2018) - part1.mkv",
+    "/mnt/zmedia/videos/FilmDocumentaries/Women Make Film (2018) [imdbid-tt8819192]/Women Make Film (2018) - part6.mkv"
+   ]
+  }
+ ]
+}
