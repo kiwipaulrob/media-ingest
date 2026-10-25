@@ -94,3 +94,23 @@ dots deleted the only source of a title that later turned out to be truncated.
 corruption, and `on_media()` raises on ffmpeg's non-zero exit after recovered warnings. It now uses
 `query()` and ignores known-benign chatter (`mmco:`, `reference picture missing`) while still failing
 on real errors. A warning is not a verdict.
+
+## 13. Portrait uploads are re-encoded — byte equality is the wrong check
+
+Jellyfin resizes and re-encodes an uploaded image, so the served bytes are LARGER than what you
+sent (392,612 vs 294,457 on one, 338,152 vs 253,613 on another). A verify step that compares
+`len(served) == len(uploaded)` therefore reports failure on a write that succeeded — 35 of 44 in one
+pass, turning a real result of 35 portraits into a reported 0.
+
+Verify a portrait by `ImageTags.Primary` being present on the person row and the served image being
+non-empty and plausibly similar in size (±50%), never by exact equality.
+
+Corollary: report counts from the server's state, not from your own exit paths. The log said
+`written=0` while the library held 35 new portraits.
+
+## 14. Probe availability before running a bulk pass
+
+The same pass skipped 356 of 400 names because those Wikipedia articles carry no image at all. Ten
+probes would have revealed that the cohort had nothing to find, before spending a 400-name run and
+Wikimedia's IP-wide rate budget (a follow-up Wikidata call then returned 429).
+
