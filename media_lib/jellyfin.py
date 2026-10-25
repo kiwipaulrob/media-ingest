@@ -272,14 +272,23 @@ def ensure_row_runtime(path: str, lib_id: str, *, wait: int = 6) -> Optional[flo
     symptom that made items look invisible before). Requesting a FullRefresh on the item
     itself fixes it. Returns the runtime in minutes, or None if the row is not found.
     """
+    items = get_json(
+        "/Items",
+        params={"ParentId": lib_id, "Recursive": "true",
+                "Fields": "Path,RunTimeTicks", "Limit": "5000"},
+    ).get("Items") or []
     for attempt in range(max(1, wait)):
-        items = list_items(lib_id) or []
         row = next((i for i in items if str(i.get("Path", "")) == path), None)
         if row is not None:
             ticks = row.get("RunTimeTicks") or 0
             if ticks:
                 return round(ticks / 600_000_000, 1)
             refresh_item(row["Id"])
+            items = get_json(
+                "/Items",
+                params={"ParentId": lib_id, "Recursive": "true",
+                        "Fields": "Path,RunTimeTicks", "Limit": "5000"},
+            ).get("Items") or []
         time.sleep(12 if attempt == 0 else 15)
     return None
 

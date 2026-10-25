@@ -60,12 +60,12 @@ def test_a_placed_file_must_report_a_runtime(monkeypatch):
     row = {"Id": "abc", "Path": "/x/film.mkv", "RunTimeTicks": 0}
     calls = {"refresh": 0}
 
-    def fake_items(lib_id):
+    def fake_json(path, params=None, **kw):
         if calls["refresh"]:
             row["RunTimeTicks"] = int(119.2 * 600_000_000)
-        return [row]
+        return {"Items": [row]}
 
-    monkeypatch.setattr(jf, "list_items", fake_items)
+    monkeypatch.setattr(jf, "get_json", fake_json)
     monkeypatch.setattr(jf, "refresh_item",
                         lambda i: calls.__setitem__("refresh", 1) or 204)
     monkeypatch.setattr(jf.time, "sleep", lambda s: None)
