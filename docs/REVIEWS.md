@@ -19,7 +19,7 @@ plugins/media-ingest/tools.py:  MEDIA_OPS = /root/.hermes/profiles/media-maintai
 So there is no build or deploy step — a change merged to `master` here is what
 the next tool call runs. Two consequences:
 
-1. **Test before merge**, always. `python3 -m pytest tests/ -q` (162 tests), and
+1. **Test before merge**, always. `python3 -m pytest tests/ -q` (344 tests), and
    CI (`.github/workflows/tests.yml`) runs the same suite on the PR.
 2. A change to the **plugin's own** `tools.py` / `plugin.yaml` additionally needs
    a gateway restart, because the plugin is imported at start-up:
@@ -53,6 +53,10 @@ keeps `git revert` surgical.
 new test. A fix with no test is not done.
 
 ## Invariants a reviewer will trip over (reject with these)
+
+Start with `README.md` § "Beyond ingest" for the four newer verbs and their test
+status — `multipart_to_series.py` and `migrate_series_between_libs.py` carry guards
+but no dedicated tests yet, which is the highest-value review target in the tree.
 
 These look like improvements and are not. Each has an incident behind it.
 

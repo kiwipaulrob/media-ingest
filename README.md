@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**1,400+ lines of library code · 146 tests · no external dependencies beyond
+**~4,400 lines of library code · 344 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -78,10 +78,30 @@ with `swap.py` except the gate philosophy.
 | `swap.py` | Two-phase replacement | Copy → gates → only then retire the old file |
 | `place.py` | Two-phase placement | Copy → 5 gates → notify; a failed gate removes the copy |
 | `source.py` | Sourcing | Broad pool, normalised matching, ranking, queueing |
-| `tmdb.py` | TMDB lookups | Episode resolution **by name**, never by number |
+| `tmdb.py` | TMDB lookups | Episode resolution **by name**, never by number; `find_by_imdb()` for exact resolution from filenames carrying an imdb id |
 | `enrich.py` | Bio planning/applying | Never-clobber; per-item journal |
+| `jellyfin.py` | (also) `ensure_row_runtime()` — the only thing that clears a 0.0-min row after placement (matches Jellyfin `/data/…` and host `/mnt/…` path forms); `resolve_library()` — names to ItemIds; `delete_item` refuses container items |
 | `repair.py` | Guarded bio repair | Signature-guarded replace or clear |
 | `providers/` | Metadata chain | Interface + provenance merge; identity gate; birth-year plausibility; junk-bio rejection |
+
+---
+
+## Beyond ingest: dedupe, merge, concat, series-convert
+
+Placing downloads is only half the job. The same safety philosophy (read-only
+thinking, explicit targets, verify by reading back) covers four more verbs:
+
+| Verb | Entry point | Tests | Rule |
+|---|---|---|---|
+| dedupe (find) | `scripts/find_dups.py` (read-only report) | `tests/test_find_dups.py` | provider-id-first identity; a group needs >1 row on >1 distinct path, so multi-version items never flag |
+| dedupe (resolve) | hardlink (`cmp -s` then `ln -f`, require `links>=2` both paths) or `<primary> - <label>` alternate versions in one folder | verified by read-back (`links`, `sources=2`) | judge hardlinks by link count, never inode (CIFS gives synthetic inodes); different duration = different cut, keep separate |
+| merge (cuts/encodes) | same alternate-version naming | — | `<primary> - <label>` merges; `- partN` does **not** (server-side, verified twice each way) |
+| concat (2-part film) | `scripts/concat_parts.py [--reencode]` (dry-run default) | `tests/test_concat_parts.py` | part-number ordering (never the year); output duration within 2% of the parts' sum or the parts stay |
+| series-convert (3+ parts) | `scripts/multipart_to_series.py` | guards, no dedicated tests yet | existing-series abort; provider-count match; per-episode runtime ratio 0.75–1.33; leftover-source hash check at the end |
+
+2-part films stay films (concat or nothing); 3+ parts default to series style.
+`migrate_series_between_libs.py` moves series between libraries on exact TMDB
+match only (no dedicated tests yet — labelled so in the pipeline skill).
 
 ---
 
@@ -108,6 +128,9 @@ by a test.
 | **Some providers may never supply prose.** `BIOGRAPHY_BLOCKED` (TheAudioDB). | It returned a 2,000-character bio about a French power-metal band for the Sarah Records band *Heavenly* |
 | **TheAudioDB's demotion is structural**, not a priority hint. | The "unknown providers rank last but still count" fallback quietly let it back in |
 | **Repair never clobbers**: refuse unless the current text still contains the flagged year. | Two approved aliases (*Francis Hanly*, *James Hale*) had written wrong-person bios |
+| **A 204 is not evidence.** Verify by reading the row back (providers, overview, images, runtime) — three separate 204s meant nothing until read back. | Identify calls that "succeeded" while rows stayed at 0.0 min with no metadata |
+| **A guard constant must be read, never estimated.** Comparing against a byte count derived from a megabyte display refuses valid work or passes by coincidence. | A hardcoded size from a rounded MB figure aborted a valid delete; operator precedence (`&&`/`||`) silently neutered another |
+| **A search returning zero is a failed query until a control query returns hits.** | A full-title query returned literally zero while the short form returned 29 — reported as "not available" before the control ran |
 
 ---
 
@@ -213,7 +236,7 @@ tool catalog is built at start-up.
   path ~4× — budget at ~40 MB/s.
 - A failed placement re-copies from zero; `.part` files are removed rather than
   resumed.
-- `cli/meta.py` hardcodes one library's parent id; it should be a flag.
+- `cli/meta.py` took a library name where an ItemId was needed; `jellyfin.resolve_library()` now accepts either (with 3 tests).
 - **Not packaged** (`pip install -e .`), so the plugin shells out to `cli.*` with a
   hardcoded `MEDIA_OPS` path. Decided 2026-10-22 and **kept under review** — the
   full reasoning and the five conditions that would reopen it are in
