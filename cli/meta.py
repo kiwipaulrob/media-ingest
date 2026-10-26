@@ -13,13 +13,13 @@ import json
 import sys
 from typing import Any, Dict, List
 
-from media_lib import enrich, safety
+from media_lib import enrich, jellyfin, safety
 
 MUSIC_DOCOS = "5f95760bae4c07e31d840d70c3a46111"
 
 
 def _plan(args) -> int:
-    out = enrich.build_plan(args.library, limit=args.limit)
+    out = enrich.build_plan(jellyfin.resolve_library(args.library), limit=args.limit)
     print(f"people with no bio: {out.get('people_gaps', 0)}")
     print(f"  ready (>=80 chars): {out['ready']}")
     print(f"  thin  (15-79):      {out['thin']}")

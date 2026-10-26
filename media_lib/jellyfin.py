@@ -90,6 +90,26 @@ def auth_header(key: Optional[str] = None) -> Dict[str, str]:
     return {"Authorization": f'MediaBrowser Token="{key or api_key()}"'}
 
 
+def resolve_library(ref: str, _libs: Optional[Dict[str, str]] = None) -> str:
+    """Library name -> ItemId; 32-hex ids pass through unchanged.
+
+    `cli.meta plan --library Docos` passed the NAME straight through as ParentId and
+    the server 400d ("The value 'Docos' is not valid"). Names must be resolved via
+    /Library/VirtualFolders first; an unknown name raises instead of producing a 400.
+    """
+    import re
+
+    if re.fullmatch(r"[0-9a-fA-F]{32}", ref or ""):
+        return ref
+    libs = _libs
+    if libs is None:
+        libs = {f.get("Name"): f.get("ItemId")
+                for f in (get_json("/Library/VirtualFolders") or [])}
+    if ref in libs and libs[ref]:
+        return libs[ref]
+    raise ValueError(f"unknown library: {ref!r}")
+
+
 def coerce_bio(value: Any) -> str:
     """Flatten a (text, thumb) tuple or None into a plain string.
 
