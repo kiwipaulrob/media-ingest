@@ -311,13 +311,27 @@ def ensure_row_runtime(path: str, lib_id: str, *, wait: int = 6) -> Optional[flo
     symptom that made items look invisible before). Requesting a FullRefresh on the item
     itself fixes it. Returns the runtime in minutes, or None if the row is not found.
     """
+    def _rel(p: str) -> str:
+        """Compare a Jellyfin path with a host/mount path by their tail.
+
+        Jellyfin reports /data/documentaries/X while the host sees
+        /mnt/zmedia/videos/Documentaries/X. An exact == silently returns None, which reads
+        as "row not found" and hides a metadata-only problem behind a phantom one.
+        """
+        q = str(p or "").replace("\\", "/").lower()
+        for pre in ("/mnt/zmedia/videos/", "/data/", "/media/videos/"):
+            if pre in q:
+                q = q.split(pre, 1)[1]
+        return q.strip("/")
+
     items = get_json(
         "/Items",
         params={"ParentId": lib_id, "Recursive": "true",
                 "Fields": "Path,RunTimeTicks", "Limit": "5000"},
     ).get("Items") or []
+    want = _rel(path)
     for attempt in range(max(1, wait)):
-        row = next((i for i in items if str(i.get("Path", "")) == path), None)
+        row = next((i for i in items if _rel(i.get("Path")) == want or str(i.get("Path", "")) == path), None)
         if row is not None:
             ticks = row.get("RunTimeTicks") or 0
             if ticks:
