@@ -55,73 +55,23 @@ def sh(cmd, t=400):
                           capture_output=True, text=True, timeout=t).stdout or ""
 
 
-v = jellyfin.get_json("/Library/VirtualFolders")
-ids = {f.get("Name"): f.get("ItemId") for f in (v if isinstance(v, list) else [])}
+def series_library_id(ids, lib):
+    """ItemId for the target series library — by its CURRENT name, never a literal.
 
-# ---- guard 1: existing series entry?
-KEY = TITLE.split(" (")[0]                       # derive from arguments, never hardcode
-KEY_NORM = KEY.lower().replace(" ", "").replace(".", "").replace("-", "")
+    Line 192 used ids["Documentary Series"] after the library was renamed to
+    "Docos Series": KeyError after moving the files and sleeping 95 s. A missing
+    id raises ValueError up front instead of querying with ParentId=None.
+    """
+    try:
+        return ids[lib]
+    except KeyError:
+        raise ValueError(
+            "library {!r} not in VirtualFolders (have: {})".format(lib, sorted(ids)))
 
-r = jellyfin.get_json("/Items", params={"ParentId": ids[LIB], "Recursive": "true",
-                                        "IncludeItemTypes": "Series", "Fields": "Path,Name",
-                                        "Limit": "2000", "SearchTerm": KEY})
-existing = [i for i in (r.get("Items") or [])
-            if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")]
-if existing:
-    print("ABORT: series entry already exists:", existing[0].get("Path"))
-    print("     not converting — would create a duplicate")
-    sys.exit(0)
 
-# ---- files present
-listing = sh('cd {d} && ls -1 *.mkv *.mp4 *.avi *.m4v 2>/dev/null'.format(d=shlex.quote(SRC)))
-files = [f for f in listing.splitlines() if f.strip()]
-print("files found:", len(files))
-for f in sorted(files):
-    print("   ", f)
-
-# ---- provider
-s = tmdb._get("/search/tv", {"query": QUERY})
 def _norm(t):
     return str(t or "").lower().replace(" ", "").replace(".", "").replace("-", "").replace(":", "")
 
-
-# YEAR must disambiguate: 'Pandora's Box' matches a 2021 series (12 eps) before the 1992 one (6 eps),
-# and taking the first name match silently bound the wrong show.
-_matches = [x for x in (s.get("results") or []) if _norm(KEY) in _norm(x.get("name"))]
-if YEAR and _matches:
-    def _year_of(x):
-        try:
-            return int(str(x.get("first_air_date") or "")[:4])
-        except ValueError:
-            return 0
-
-    _exact = [x for x in _matches if _year_of(x) == YEAR]
-    _near = [x for x in _matches if _year_of(x) and abs(_year_of(x) - YEAR) <= 2]
-    if _exact:
-        _matches = _exact
-    elif _near:
-        print("NOTE: no exact year match for {} — using nearest ({})"
-              .format(YEAR, [_year_of(x) for x in _near]))
-        _matches = _near
-    else:
-        print("WARN: no year match for {} — falling back to name only".format(YEAR))
-
-tid = _matches[0].get("id") if _matches else None
-if _matches:
-    print("provider candidates:", [(_year_of(x), x.get("name")) for x in _matches[:4]])
-print("tmdb:", tid)
-if not tid:
-    print("ABORT: no provider match — leaving files untouched")
-    sys.exit(0)
-se = tmdb._get("/tv/{i}/season/{n}".format(i=tid, n=SEASON), {})
-eps = se.get("episodes") or []
-print("provider episodes:", len(eps))
-for e in eps:
-    print("   E{} {} [{} min]".format(e.get("episode_number"), e.get("name"), e.get("runtime")))
-
-# ---- guard: do the files' runtimes match the provider's episodes?
-# A count match is not a mapping. The American Revolution had 6 files against 6 episodes, but every file
-# was 59 min against 116-131 min episodes: the set was half the series. Count checks cannot see that.
 def _dur(path):
     out = sh('ffprobe -v error -show_entries format=duration -of csv=p=0 {p} 2>/dev/null'
              .format(p=shlex.quote(path)))
@@ -130,126 +80,215 @@ def _dur(path):
     except ValueError:
         return 0.0
 
+def _roman(s):
+    """Small Roman numerals I..VIII as part numbers; anything else is 0.
 
-todo = [f for f in files if f.strip()]
-durs = []
-for f in todo:
-    d = _dur(SRC + "/" + f)
-    durs.append(d)
-print("file runtimes (min):", [round(d / 60, 1) for d in durs])
-prov = [e.get("runtime") or 0 for e in eps[:len(todo)]]
-if prov and all(prov):
-    ratios = [d / 60 / r for d, r in zip(durs, prov) if r]
-    bad = [round(x, 2) for x in ratios if x < 0.75 or x > 1.33]
-    print("duration ratio vs provider:", [round(x, 2) for x in ratios])
-    if bad:
-        within_tolerance = abs(sum(durs) / 60 - sum(prov[:len(todo)])) <= 0.05 * max(1, sum(prov[:len(todo)]))
-        total_note = "totals {} vs {} min".format(round(sum(durs) / 60), sum(prov[:len(todo)]))
-        if os.environ.get("ALLOW_RUNTIME_MISMATCH") == "1" and within_tolerance:
-            print("WARN: per-file split disagrees ({}) but {} — set is complete, converting by order"
-                  .format(bad, total_note))
-        else:
-            print("ABORT: file durations disagree with provider episode runtimes ({}) — {}. Holding for a "
-                  "human.".format(bad, total_note))
-            sys.exit(0)
-else:
-    print("NOTE: provider has no per-episode runtimes — duration guard cannot run")
+    Deliberately capped: a bare trailing X is more likely a title (Malcolm X)
+    than part 10, and 9+ part sets use digits. Returns 0 when not I..VIII.
+    """
+    return {"I": 1, "II": 2, "III": 3, "IV": 4,
+            "V": 5, "VI": 6, "VII": 7, "VIII": 8}.get((s or "").upper(), 0)
 
-if len(eps) != len(files):
-    if os.environ.get("ALLOW_PARTIAL") != "1":
-        print("ABORT: provider has {a} episodes but {b} files — ambiguous, handing to a human"
-              .format(a=len(eps), b=len(files)))
-        sys.exit(0)
-    print("PARTIAL: {b} of {a} episodes present — mapping by part number, gap left visible"
-          .format(a=len(eps), b=len(files)))
 
-# ---- convert
-DST = "/mnt/zmedia/videos/{lib}/{t}/Season {s:02d}".format(lib=LIBDIR, t=TITLE, s=SEASON)
-sh("mkdir -p " + shlex.quote(DST))
 def _part_no(f):
     m = re.search(r"(?i)(?:part|pt|cd|disc)[\s._-]*(\d+)", f)
     if m:
         return int(m.group(1))
+    m = re.search(r"\b([IVXLCDM]+)\s*\.(?:mkv|avi|mp4|m4v)$", f, re.I)
+    if m and _roman(m.group(1)):
+        # 'Thomas Jefferson I.avi' / 'Part II.avi': no digits at all, so the
+        # last-number fallback below would score every part 0 and the join
+        # order would be whatever find(1) happened to return.
+        return _roman(m.group(1))
     nums = re.findall(r"\d+", f)
     return int(nums[-1]) if nums else 0
 
 
-ordered = sorted(files, key=_part_no)
-for idx, f in enumerate(ordered, start=1):
-    title = (eps[idx - 1].get("name") or "").strip() if idx - 1 < len(eps) else ""
-    safe = "".join(c for c in title if c.isalnum() or c in " -'.,&()").strip()
-    ext = ("." + f.rsplit(".", 1)[-1].lower()) if "." in f else ".mkv"
-    name = "{t} S{s:02d}E{n:02d}".format(t=TITLE, s=SEASON, n=idx) + ((" " + safe) if safe else "") + ext
-    out = sh("mv -f {a} {b} && echo OK".format(a=shlex.quote(SRC + "/" + f),
-                                               b=shlex.quote(DST + "/" + name)))
-    print("E{:<2} {}".format(idx, "moved" if "OK" in out else "FAILED " + f))
+def main():
+    v = jellyfin.get_json("/Library/VirtualFolders")
+    ids = {f.get("Name"): f.get("ItemId") for f in (v if isinstance(v, list) else [])}
 
-for nm in (LIB, "Film Documentaries"):
-    if ids.get(nm):
-        jellyfin.refresh_library(ids[nm])
-time.sleep(95)
+    # ---- guard 1: existing series entry?
+    KEY = TITLE.split(" (")[0]                       # derive from arguments, never hardcode
+    KEY_NORM = KEY.lower().replace(" ", "").replace(".", "").replace("-", "")
 
-r = jellyfin.get_json("/Items", params={"ParentId": ids["Documentary Series"], "Recursive": "true",
-                                        "IncludeItemTypes": "Series", "Fields": "Path",
-                                        "Limit": "2000", "SearchTerm": KEY})
-target = next((i for i in (r.get("Items") or [])
-               if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")), None)
-print("series item:", target and target["Id"])
-if target:
-    res = jellyfin.remote_search(target["Id"], QUERY, YEAR, {"Tmdb": str(tid)}, media_type="Series")
-    print("candidates:", [(x.get("Name"), x.get("ProductionYear"), x.get("ProviderIds")) for x in res[:3]])
-    best = next((x for x in res if x.get("ProviderIds", {}).get("Tmdb") == str(tid)), None)
-    if best:
-        print("apply ->", jellyfin.apply_identification(target["Id"], best, replace_images=True))
-    time.sleep(85)
-    a = jellyfin.get_json("/Users/{u}/Items/{i}".format(u=jellyfin.user_id(), i=target["Id"]),
-                          params={"Fields": "ProviderIds,Overview,ImageTags,Name,ProductionYear"})
-    print("series now:", a.get("Name"), a.get("ProductionYear"), a.get("ProviderIds"))
-    ep = jellyfin.get_json("/Items", params={"ParentId": target["Id"], "Recursive": "true",
-                                            "IncludeItemTypes": "Episode",
-                                            "Fields": "Path,Name,RunTimeTicks,IndexNumber",
-                                            "Limit": "100"})
-    got = ep.get("Items") or []
-    # sweep phantom rows (path no longer on disk)
-    live = [e for e in got if TITLE.split(" (")[0].lower().replace(" ", "") in
-            str(e.get("Path", "")).lower().replace(" ", "").replace(".", "")]
-    print("episodes: {}  distinct paths: {}".format(len(got), len({e.get("Path") for e in got})))
-    for e in sorted(got, key=lambda x: x.get("IndexNumber") or 0):
-        print("   E{} {:>6}min {}  {}".format(e.get("IndexNumber"),
-                                              round((e.get("RunTimeTicks") or 0) / 600_000_000, 1),
-                                              str(e.get("Name"))[:40],
-                                              "OK" if e in live else "STALE?"))
+    r = jellyfin.get_json("/Items", params={"ParentId": ids[LIB], "Recursive": "true",
+                                            "IncludeItemTypes": "Series", "Fields": "Path,Name",
+                                            "Limit": "2000", "SearchTerm": KEY})
+    existing = [i for i in (r.get("Items") or [])
+                if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")]
+    if existing:
+        print("ABORT: series entry already exists:", existing[0].get("Path"))
+        print("     not converting — would create a duplicate")
+        sys.exit(0)
 
-# --- leftover-source check ---------------------------------------------------
-# The conversion moves files into the series folder, but has repeatedly left a
-# byte-identical copy behind in SRC (Great British Story, Peter Cook, Century of the
-# Self, Edwardians in Colour, Brave New World, Can't Get You Out of My Head). Each time
-# it was found by hand, days apart, or by the user. Report it here, at the moment it
-# happens. Never delete: a source copy needs explicit approval.
-def _leftover_sources():
-    placed = sh("find {d} -maxdepth 1 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
-                "-exec md5sum {{}} \; 2>/dev/null | awk '{{print $1}}' | sort -u".format(
-                    d=shlex.quote(DST)))
-    keep = set(placed.split())
-    if not keep:
-        print("\nleftover-source check: SKIPPED (no placed files hashed)")
-        return
-    out = sh("find {s} -maxdepth 2 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
-             "-exec md5sum {{}} \; 2>/dev/null".format(s=shlex.quote(SRC)))
-    hits = []
-    for line in out.splitlines():
-        bits = line.split(None, 1)
-        if len(bits) == 2 and bits[0] in keep:
-            hits.append(bits[1])
-    if hits:
-        print("\n!! LEFTOVER-SOURCE: {} byte-identical file(s) still in SRC".format(len(hits)))
-        for h in hits:
-            mb = sh("stat -c %s " + shlex.quote(h)).strip()
-            size = "{}MB".format(int(mb) // 1048576) if mb.isdigit() else "?"
-            print("   {}  {}".format(size, h))
-        print("   NOT deleted - source copies need explicit approval.")
+    # ---- files present
+    listing = sh('cd {d} && ls -1 *.mkv *.mp4 *.avi *.m4v 2>/dev/null'.format(d=shlex.quote(SRC)))
+    files = [f for f in listing.splitlines() if f.strip()]
+    print("files found:", len(files))
+    for f in sorted(files):
+        print("   ", f)
+
+    # ---- provider
+    s = tmdb._get("/search/tv", {"query": QUERY})
+
+
+    # YEAR must disambiguate: 'Pandora's Box' matches a 2021 series (12 eps) before the 1992 one (6 eps),
+    # and taking the first name match silently bound the wrong show.
+    _matches = [x for x in (s.get("results") or []) if _norm(KEY) in _norm(x.get("name"))]
+    if YEAR and _matches:
+        def _year_of(x):
+            try:
+                return int(str(x.get("first_air_date") or "")[:4])
+            except ValueError:
+                return 0
+
+        _exact = [x for x in _matches if _year_of(x) == YEAR]
+        _near = [x for x in _matches if _year_of(x) and abs(_year_of(x) - YEAR) <= 2]
+        if _exact:
+            _matches = _exact
+        elif _near:
+            print("NOTE: no exact year match for {} — using nearest ({})"
+                  .format(YEAR, [_year_of(x) for x in _near]))
+            _matches = _near
+        else:
+            print("WARN: no year match for {} — falling back to name only".format(YEAR))
+
+    tid = _matches[0].get("id") if _matches else None
+    if _matches:
+        print("provider candidates:", [(_year_of(x), x.get("name")) for x in _matches[:4]])
+    print("tmdb:", tid)
+    if not tid:
+        print("ABORT: no provider match — leaving files untouched")
+        sys.exit(0)
+    se = tmdb._get("/tv/{i}/season/{n}".format(i=tid, n=SEASON), {})
+    eps = se.get("episodes") or []
+    print("provider episodes:", len(eps))
+    for e in eps:
+        print("   E{} {} [{} min]".format(e.get("episode_number"), e.get("name"), e.get("runtime")))
+
+    # ---- guard: do the files' runtimes match the provider's episodes?
+    # A count match is not a mapping. The American Revolution had 6 files against 6 episodes, but every file
+    # was 59 min against 116-131 min episodes: the set was half the series. Count checks cannot see that.
+
+
+    todo = [f for f in files if f.strip()]
+    durs = []
+    for f in todo:
+        d = _dur(SRC + "/" + f)
+        durs.append(d)
+    print("file runtimes (min):", [round(d / 60, 1) for d in durs])
+    prov = [e.get("runtime") or 0 for e in eps[:len(todo)]]
+    if prov and all(prov):
+        ratios = [d / 60 / r for d, r in zip(durs, prov) if r]
+        bad = [round(x, 2) for x in ratios if x < 0.75 or x > 1.33]
+        print("duration ratio vs provider:", [round(x, 2) for x in ratios])
+        if bad:
+            within_tolerance = abs(sum(durs) / 60 - sum(prov[:len(todo)])) <= 0.05 * max(1, sum(prov[:len(todo)]))
+            total_note = "totals {} vs {} min".format(round(sum(durs) / 60), sum(prov[:len(todo)]))
+            if os.environ.get("ALLOW_RUNTIME_MISMATCH") == "1" and within_tolerance:
+                print("WARN: per-file split disagrees ({}) but {} — set is complete, converting by order"
+                      .format(bad, total_note))
+            else:
+                print("ABORT: file durations disagree with provider episode runtimes ({}) — {}. Holding for a "
+                      "human.".format(bad, total_note))
+                sys.exit(0)
     else:
-        print("\nleftover-source check: clean (no byte-identical copy left in SRC)")
+        print("NOTE: provider has no per-episode runtimes — duration guard cannot run")
+
+    if len(eps) != len(files):
+        if os.environ.get("ALLOW_PARTIAL") != "1":
+            print("ABORT: provider has {a} episodes but {b} files — ambiguous, handing to a human"
+                  .format(a=len(eps), b=len(files)))
+            sys.exit(0)
+        print("PARTIAL: {b} of {a} episodes present — mapping by part number, gap left visible"
+              .format(a=len(eps), b=len(files)))
+
+    # ---- convert
+    DST = "/mnt/zmedia/videos/{lib}/{t}/Season {s:02d}".format(lib=LIBDIR, t=TITLE, s=SEASON)
+    sh("mkdir -p " + shlex.quote(DST))
 
 
-_leftover_sources()
+    ordered = sorted(files, key=_part_no)
+    for idx, f in enumerate(ordered, start=1):
+        title = (eps[idx - 1].get("name") or "").strip() if idx - 1 < len(eps) else ""
+        safe = "".join(c for c in title if c.isalnum() or c in " -'.,&()").strip()
+        ext = ("." + f.rsplit(".", 1)[-1].lower()) if "." in f else ".mkv"
+        name = "{t} S{s:02d}E{n:02d}".format(t=TITLE, s=SEASON, n=idx) + ((" " + safe) if safe else "") + ext
+        out = sh("mv -f {a} {b} && echo OK".format(a=shlex.quote(SRC + "/" + f),
+                                                   b=shlex.quote(DST + "/" + name)))
+        print("E{:<2} {}".format(idx, "moved" if "OK" in out else "FAILED " + f))
+
+    for nm in (LIB, "Film Docos Series", "Film Documentaries", "Docos Series", "Documentaries"):
+        if ids.get(nm):
+            jellyfin.refresh_library(ids[nm])
+    time.sleep(95)
+
+    r = jellyfin.get_json("/Items", params={"ParentId": series_library_id(ids, LIB), "Recursive": "true",
+                                            "IncludeItemTypes": "Series", "Fields": "Path",
+                                            "Limit": "2000", "SearchTerm": KEY})
+    target = next((i for i in (r.get("Items") or [])
+                   if KEY_NORM in str(i.get("Path", "")).lower().replace(" ", "").replace(".", "").replace("-", "")), None)
+    print("series item:", target and target["Id"])
+    if target:
+        res = jellyfin.remote_search(target["Id"], QUERY, YEAR, {"Tmdb": str(tid)}, media_type="Series")
+        print("candidates:", [(x.get("Name"), x.get("ProductionYear"), x.get("ProviderIds")) for x in res[:3]])
+        best = next((x for x in res if x.get("ProviderIds", {}).get("Tmdb") == str(tid)), None)
+        if best:
+            print("apply ->", jellyfin.apply_identification(target["Id"], best, replace_images=True))
+        time.sleep(85)
+        a = jellyfin.get_json("/Users/{u}/Items/{i}".format(u=jellyfin.user_id(), i=target["Id"]),
+                              params={"Fields": "ProviderIds,Overview,ImageTags,Name,ProductionYear"})
+        print("series now:", a.get("Name"), a.get("ProductionYear"), a.get("ProviderIds"))
+        ep = jellyfin.get_json("/Items", params={"ParentId": target["Id"], "Recursive": "true",
+                                                "IncludeItemTypes": "Episode",
+                                                "Fields": "Path,Name,RunTimeTicks,IndexNumber",
+                                                "Limit": "100"})
+        got = ep.get("Items") or []
+        # sweep phantom rows (path no longer on disk)
+        live = [e for e in got if TITLE.split(" (")[0].lower().replace(" ", "") in
+                str(e.get("Path", "")).lower().replace(" ", "").replace(".", "")]
+        print("episodes: {}  distinct paths: {}".format(len(got), len({e.get("Path") for e in got})))
+        for e in sorted(got, key=lambda x: x.get("IndexNumber") or 0):
+            print("   E{} {:>6}min {}  {}".format(e.get("IndexNumber"),
+                                                  round((e.get("RunTimeTicks") or 0) / 600_000_000, 1),
+                                                  str(e.get("Name"))[:40],
+                                                  "OK" if e in live else "STALE?"))
+
+    # --- leftover-source check ---------------------------------------------------
+    # The conversion moves files into the series folder, but has repeatedly left a
+    # byte-identical copy behind in SRC (Great British Story, Peter Cook, Century of the
+    # Self, Edwardians in Colour, Brave New World, Can't Get You Out of My Head). Each time
+    # it was found by hand, days apart, or by the user. Report it here, at the moment it
+    # happens. Never delete: a source copy needs explicit approval.
+    def _leftover_sources():
+        placed = sh("find {d} -maxdepth 1 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
+                    "-exec md5sum {{}} \; 2>/dev/null | awk '{{print $1}}' | sort -u".format(
+                        d=shlex.quote(DST)))
+        keep = set(placed.split())
+        if not keep:
+            print("\nleftover-source check: SKIPPED (no placed files hashed)")
+            return
+        out = sh("find {s} -maxdepth 2 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
+                 "-exec md5sum {{}} \; 2>/dev/null".format(s=shlex.quote(SRC)))
+        hits = []
+        for line in out.splitlines():
+            bits = line.split(None, 1)
+            if len(bits) == 2 and bits[0] in keep:
+                hits.append(bits[1])
+        if hits:
+            print("\n!! LEFTOVER-SOURCE: {} byte-identical file(s) still in SRC".format(len(hits)))
+            for h in hits:
+                mb = sh("stat -c %s " + shlex.quote(h)).strip()
+                size = "{}MB".format(int(mb) // 1048576) if mb.isdigit() else "?"
+                print("   {}  {}".format(size, h))
+            print("   NOT deleted - source copies need explicit approval.")
+        else:
+            print("\nleftover-source check: clean (no byte-identical copy left in SRC)")
+
+
+    _leftover_sources()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
