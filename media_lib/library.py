@@ -15,10 +15,17 @@ from . import config, jellyfin, matcher
 
 
 def _lib_for(jf_path: str) -> Optional[str]:
-    """Map a container path to its library root, longest prefix first."""
+    """Map a container path to its library root, longest prefix first.
+
+    Boundary-aware: /data/movies-extra/x.mkv must NOT match /data/movies (it
+    would corrupt the disk path into .../Films-extra/...). place.to_disk() was
+    fixed for this exact bug; this was missed.
+    """
     best: Optional[str] = None
     for prefix in config.JF_TO_DISK:
-        if jf_path.startswith(prefix) and (best is None or len(prefix) > len(best)):
+        if (jf_path == prefix or jf_path.startswith(prefix + "/")) and (
+            best is None or len(prefix) > len(best)
+        ):
             best = prefix
     return best
 
