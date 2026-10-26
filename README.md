@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 344 tests · no external dependencies beyond
+**~4,400 lines of library code · 367 tests · no external dependencies beyond
 the Python standard library**
 
 ---
