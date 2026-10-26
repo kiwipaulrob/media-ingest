@@ -20,6 +20,15 @@ metadata:
 - **Everything else: ASK FIRST.** No exceptions for "not library material",
   audio packs, low quality, or anything assumed unwanted. Torrent entries AND
   files both need approval.
+- **Gate every file individually inside the deletion command.** Hash each candidate against the keeper
+  digest set in the same ssh call and delete only on match — a file whose hash is absent is kept and
+  reported, never swept up for sharing a folder with approved files. Folder membership is not a digest.
+- **Before a batch that deletes source originals, prove the snapshot net covers them.** Confirm a
+  same-day snapshot exists and the exact paths are visible under `.zfs/snapshot/<name>/` — a snapshot
+  service running on schedule is not proof today's files are restorable until their paths resolve through it.
+  If a deletion goes wrong despite the gates, recover by copying the exact paths back out of the snapshot
+  tree (`<pool>/.zfs/snapshot/<name>/<path>`), then verify byte sizes against the pre-deletion record and
+  probe durations before doing anything else — a recovered file is a claim until measured.
 - A timed-out/absent answer is NEVER approval. If the user doesn't answer,
   leave it alone and report it as pending.
 

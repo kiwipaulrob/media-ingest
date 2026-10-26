@@ -88,6 +88,10 @@ Delete a source only after the library copy is verified (probe + decode + sync +
 check byte size or checksum first. A guard that matched "John Lennon" (space) against a filename with
 dots deleted the only source of a title that later turned out to be truncated.
 
+For source-vs-series consolidation, hash the keepers first and delete only exact matches: collect the
+keeper md5 set, then per candidate file delete iff its hash is in the set, printing kept-vs-removed per
+file. Sizes alone are not identity — equal sizes with different hashes are different encodes, not dupes.
+
 ## 12. Probe before declaring a fault
 
 `decode_check` failed playable 1080i HDTV captures because it treated any decoder output as
@@ -137,6 +141,10 @@ with two parts on this server (Easy Rider, Unforgivable Blackness). The item sho
 own runtime. Do not assume Jellyfin joins parts; verify the item's media-source count after a
 restructure, and prefer the `cd1`/`cd2` convention or a single merged file if joining is required.
 
+The version suffix must be the release's own label, never a coined one: renaming a file labelled
+`Born to Be Wild` to `Broadcast Version` to fit the merge pattern misdescribes the content. Keep the
+original wording after the dash.
+
 ## 17. `delete_item` deletes media, not just a library row
 
 `jellyfin.delete_item()` calls `DELETE /Items/{id}`, and the server unlinks the item's **files**. For a
@@ -149,6 +157,10 @@ The function now refuses container types unless `allow_container=True` is passed
 
 **To remove a stale row, move the files first and let the scan drop the row on its own.** Never delete a row
 while its media still sits beneath it. A row is cheap; the media may be the only copy.
+
+Before any batch delete or concat `--apply`, confirm a same-day snapshot exists and is browsable — a
+morning snapshot recovered the only copies of a film after a script bug deleted everything including its
+own output. Recoverability is checked before the run, not discovered after it.
 
 ## 18. A count match is not a mapping
 
@@ -176,7 +188,26 @@ returns **400** for a path that is not mounted, and the request itself looks val
 Check `find / -maxdepth 1 -type d` inside the container, not on the host — `/data` does not exist on proxmox2
 or in CT105, only inside the Jellyfin container.
 
-## 20. Library collection type is immutable after creation
+## 23. A batch script must exclude its own output from its input glob
+
+Any script that scans a folder for inputs and writes its output into the same folder will, on re-run
+(`--apply`, retry), ingest the previous output as a bonus input. The verification gate cannot catch this:
+the inflated total is self-consistent (a doubled concat verifies against its own doubled duration), and
+the cleanup step then deletes everything including the output — destroying the only copies.
+
+Filter the output filename out of the input list (`exclude_output()` in `concat_parts.py`, with a
+behavioral test), and treat every same-folder input glob in every script as suspect until it carries the
+exclusion.
+
+## 24. Jellyfin merges alternate versions only on joint discovery
+
+Two files with correct `<stem>` / `<stem> - <label>` naming still land as two rows when the scanner
+discovered them weeks apart — per-item refreshes and library rescans do not merge them after the fact.
+To force the merge: move the files out, rescan until the stale rows vanish, move the files back
+together, rescan. Only attempt this when both rows are metadata-bare (no provider ids, no overview),
+so the re-import costs nothing.
+
+## 25. Library collection type is immutable after creation
 
 `POST /Library/VirtualFolders/LibraryOptions` accepts a `CollectionType` field and returns success, but the
 type does not change. To move a library from `movies` to `mixed` you must delete and recreate it.
@@ -185,7 +216,7 @@ type does not change. To move a library from `movies` to `mixed` you must delete
 unreliable metadata results"*, and jellyfin-meta discussion #46 proposes removing it. Series metadata
 (episode numbers, titles, seasons) degrades in a mixed library — do not use it to host series.
 
-## 21. Placement rule for documentary series
+## 26. Placement rule for documentary series
 
   music subject     -> Music Docos Series   /mnt/zmedia/videos/musicdocos-series
   film subject      -> Film Docos Series    /mnt/zmedia/videos/filmdocuseries
@@ -196,7 +227,7 @@ Documentary Series->Docos Series, Film Documentary Series->Film Docos Series. Di
 change, so path mappings still read Documentaries / FilmDocumentaries / DocuSeries.)
 
 `scripts/multipart_to_series.py` takes `LIB=` and refuses an unknown value rather than defaulting.
-## 22. Renaming a library needs the dedicated Name endpoint
+## 27. Renaming a library needs the dedicated Name endpoint
 
 `POST /Items/{id}` with `{"Name": ...}` is **accepted and silently ignored** for library items, the same way
 `CollectionType` is ignored by `LibraryOptions`. The endpoint that actually renames a library is:
