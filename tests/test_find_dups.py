@@ -13,6 +13,7 @@ SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from find_dups import find_duplicate_groups, group_key, norm  # noqa: E402
+from classify_dups import display_name, display_year, verdict_for  # noqa: E402
 
 
 def _row(lib, name, year, path, prov=None):
@@ -71,3 +72,15 @@ def test_same_path_twice_is_not_a_duplicate():
 
 def test_norm_strips_parens():
     assert norm("Metroland (1998)") == "metroland"
+
+
+def test_classify_tolerates_both_row_key_shapes(monkeypatch):
+    """find_dups writes API-shape rows (Name/ProductionYear); older candidate
+    files use lowercase. classify_dups crashed with KeyError on the new shape."""
+    assert display_name({"Name": "X", "ProductionYear": 2005}) == "X"
+    assert display_name({"name": "X", "year": 2005}) == "X"
+    assert display_year({"Name": "X", "ProductionYear": 2005}) == 2005
+    assert display_year({"name": "X", "year": 2005}) == 2005
+    assert verdict_for({"a": 2, "b": 3}, {"a": 9, "b": 9}) == "HARDLINK (no disk cost)"
+    assert verdict_for({"a": 1, "b": 1}, {"a": 9, "b": 9}) == "COPY (same size)"
+    assert verdict_for({"a": 1, "b": 1}, {"a": 9, "b": 8}) == "DIFFERENT VERSION/SIZE"
