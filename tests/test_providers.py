@@ -413,3 +413,53 @@ def test_a_real_modern_bio_passes():
     assert bio_implausible(
         'John Robb is a British music journalist, author and singer, best known '
         'for fronting Goldblade and writing about punk rock.') is None
+
+
+# ------------------------------------------------- cache atomicity + prune
+def _use_tmp_cache(monkeypatch, tmp_path):
+    d = tmp_path / "meta-cache"
+    d.mkdir()
+    monkeypatch.setattr(cache, "CACHE_DIR", d)
+    return d
+
+
+def test_cached_writes_atomically_with_no_temp_leftovers(tmp_path, monkeypatch):
+    """A killed writer must never leave a half-written entry: temp file +
+    os.replace, and no .tmp-* debris afterwards."""
+    d = _use_tmp_cache(monkeypatch, tmp_path)
+    assert cache.cached("k1", lambda: {"a": 1}) == {"a": 1}
+    assert cache.cached("k1", lambda: {"a": 2}) == {"a": 1}  # served, not recomputed
+    assert list(d.glob(".tmp-*")) == []
+    assert len(list(d.glob("*.json"))) == 1
+
+
+def test_prune_evicts_stale_unreadable_and_oldest_first(tmp_path, monkeypatch):
+    import json
+    import time
+
+    d = _use_tmp_cache(monkeypatch, tmp_path)
+    now = int(time.time())
+    (d / "fresh.json").write_text(json.dumps({"_at": now, "value": 1}))
+    (d / "stale.json").write_text(json.dumps({"_at": now - cache.DEFAULT_TTL * 5, "value": 2}))
+    (d / "broken.json").write_text("{not json")
+    out = cache.prune_cache(max_entries=4000, max_age=cache.DEFAULT_TTL * 4)
+    assert out["removed"] == 2
+    assert out["kept"] == 1
+    assert (d / "fresh.json").exists()
+
+
+def test_prune_caps_entry_count_oldest_first(tmp_path, monkeypatch):
+    import json
+    import os
+    import time
+
+    d = _use_tmp_cache(monkeypatch, tmp_path)
+    now = int(time.time())
+    for i in range(5):
+        p = d / f"e{i}.json"
+        p.write_text(json.dumps({"_at": now, "value": i}))
+        old = now - (5 - i) * 100
+        os.utime(p, (old, old))
+    out = cache.prune_cache(max_entries=2, max_age=cache.DEFAULT_TTL * 4)
+    assert out == {"removed": 3, "kept": 2}
+    assert (d / "e4.json").exists() and (d / "e3.json").exists()

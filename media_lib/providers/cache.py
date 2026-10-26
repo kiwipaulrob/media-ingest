@@ -52,10 +52,63 @@ def cached(key: str, producer: Callable[[], Any], ttl: int = DEFAULT_TTL) -> Any
         pass
     value = producer()
     try:
-        path.write_text(json.dumps({"_at": int(time.time()), "value": value}))
+        _atomic_write(path, {"_at": int(time.time()), "value": value})
     except OSError:
         pass
     return value
+
+
+def _atomic_write(path: Path, blob: Dict[str, Any]) -> None:
+    """Write via temp file + os.replace: an interrupted process must never leave
+    a half-written JSON entry that reads back as corrupt."""
+    import os
+    import tempfile
+
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".tmp-")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(blob, fh)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def prune_cache(max_entries: int = 4000, max_age: int = DEFAULT_TTL * 4) -> Dict[str, int]:
+    """Evict stale cache entries. The cache grows without bound (README weak
+    spot); call this after large sweeps, never inside hot lookups."""
+    removed, kept = 0, 0
+    now = time.time()
+    try:
+        # Stale temp files from interrupted writes never match *.json: sweep them.
+        for tmp in CACHE_DIR.glob(".tmp-*"):
+            try:
+                if now - tmp.stat().st_mtime > 3600:
+                    tmp.unlink()
+                    removed += 1
+            except OSError:
+                pass
+        files = sorted(CACHE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime)
+    except OSError:
+        return {"removed": 0, "kept": 0}
+    for path in files:
+        try:
+            blob = json.loads(path.read_text())
+            age = now - blob.get("_at", 0)
+        except (json.JSONDecodeError, OSError, ValueError):
+            age = max_age + 1  # unreadable: evict
+        if age > max_age or (len(files) - removed) > max_entries:
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                kept += 1
+        else:
+            kept += 1
+    return {"removed": removed, "kept": kept}
 
 
 def throttle(provider: str, min_interval: float) -> None:
