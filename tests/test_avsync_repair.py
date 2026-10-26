@@ -111,3 +111,30 @@ def test_unreadable_sample_is_unknown_not_ok(monkeypatch):
     """A probe that returns nothing must not be read as a clean bill of health."""
     monkeypatch.setattr(avsync.probe, "query", lambda inner, timeout=300: (0, ""))
     assert avsync.index_health("/x.mkv")["verdict"] == "unknown"
+
+
+def test_resync_keeps_subtitle_streams(monkeypatch):
+    """Every resync command must carry -map 0:s?: the old itsoffset mapping
+    silently dropped commentary tracks and all subtitles."""
+    seen = _wire(monkeypatch, 4419.3, 4416.3, ["fail", "ok"])
+    out = avsync.resync("/x.mkv", "/y.mkv")
+    assert out["ok"] is True
+    for cmd in seen["cmds"]:
+        assert "-map 0:s?" in cmd, f"subtitles dropped by: {cmd[:120]}"
+        assert "-c:s copy" in cmd, f"subtitles not stream-copied by: {cmd[:120]}"
+
+
+def test_itsoffset_shift_keeps_subtitles(monkeypatch):
+    """The start-offset branch remaps audio; subtitles must survive it too."""
+    seen = _wire(monkeypatch, 4419.3, 4419.3, ["fail", "ok"])
+    import media_lib.avsync as avmod
+
+    def shifted(path):
+        return {"verdict": "fail", "problems": ["A/V start differs by +400 ms"],
+                "start_delta_ms": 400.0, "ok": False}
+
+    monkeypatch.setattr(avmod, "check", shifted)
+    out = avmod.resync("/x.mkv", "/y.mkv")
+    assert seen["cmds"], "expected an itsoffset repair command"
+    assert "-map 1:a:0" in seen["cmds"][0]
+    assert "-map 0:s?" in seen["cmds"][0]
