@@ -59,6 +59,17 @@ def part_no(name: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+def exclude_output(names, out):
+    """Drop our own previous output from the part list.
+
+    A re-run (--apply, or a retry) finds the old output in the folder and would
+    otherwise ingest it as a bonus "part": the doubled total is self-consistent,
+    so the duration gate passes, and --apply then deletes everything including
+    the output. That destroyed the only copies of a film once.
+    """
+    return [n for n in names if n != out]
+
+
 def durations_match(out_min: float, total_min: float, tol: float = 0.02) -> bool:
     """Is the concatenated output the whole programme, not a truncated fragment?
 
@@ -84,6 +95,12 @@ def main() -> int:
     listing = sh(f'find {shlex.quote(d)} -maxdepth 1 -type f '
                  f'\\( -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mp4" \\) -printf "%f\\n"')
     names = [n.strip() for n in listing.splitlines() if n.strip()]
+    # NEVER ingest our own output: a re-run (--apply, or a retry) finds the
+    # previous output in the folder, concats it in as a third "part", verifies
+    # against the inflated total, then deletes everything including the output.
+    # That destroyed the only copies of a film once; the gate cannot catch it
+    # because the doubled total is self-consistent.
+    names = exclude_output(names, a.out)
     if len(names) < 2:
         print(f"ABORT: need at least 2 parts, found {len(names)}: {names}")
         return 1

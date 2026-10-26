@@ -57,3 +57,15 @@ def test_part_no_n_of_m():
 )
 def test_durations_match(out_min, total_min, expected):
     assert durations_match(out_min, total_min) is expected
+
+
+def test_output_filename_is_never_a_part():
+    """Re-running in a folder containing the previous output must not ingest it:
+    the doubled total is self-consistent, so the duration gate passes and the
+    script deletes everything including its own output. That destroyed the only
+    copies of a film."""
+    from concat_parts import exclude_output
+
+    names = ["Film 1of2.mkv", "Film 2of2.mkv", "Film (1989).mkv"]
+    assert exclude_output(names, "Film (1989).mkv") == ["Film 1of2.mkv", "Film 2of2.mkv"]
+    assert exclude_output(names, "Other (1990).mkv") == names
