@@ -26,13 +26,13 @@ class SabError(RuntimeError):
 
 
 def _base() -> str:
-    if not config.SAB_URL:
+    if not config.sab_url():
         raise SabError("SABNZBD_URL is not set")
-    return config.SAB_URL.rstrip("/")
+    return config.sab_url().rstrip("/")
 
 
 def _call(mode: str, **params: Any) -> Dict[str, Any]:
-    qs = {"mode": mode, "output": "json", "apikey": config.SAB_KEY}
+    qs = {"mode": mode, "output": "json", "apikey": config.sab_key()}
     qs.update({k: str(v) for k, v in params.items()})
     url = f"{_base()}/api?" + urllib.parse.urlencode(qs)
     try:

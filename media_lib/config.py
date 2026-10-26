@@ -217,6 +217,38 @@ PROWLARR_KEY = os.environ.get("PROWLARR_API_KEY", "")
 SAB_URL = os.environ.get("SABNZBD_URL", "")
 SAB_KEY = os.environ.get("SABNZBD_API_KEY", "")
 
+
+def _live(mod_value: str, env_name: str) -> str:
+    """Module attr wins (monkeypatchable); the shared .env file is the fallback.
+
+    These four constants freeze at import time, so a cron shell that never exported
+    the .env sees "" even though the file has them. Resolving at call time through
+    jellyfin.env() (process env, then /root/.hermes/.env) fixes cron without
+    breaking tests that monkeypatch the module attributes. The import is lazy:
+    jellyfin must never become an import-time dependency of config.
+    """
+    if mod_value:
+        return mod_value
+    from . import jellyfin
+
+    return jellyfin.env(env_name, "") or ""
+
+
+def prowlarr_url() -> str:
+    return _live(PROWLARR_URL, "PROWLARR_URL")
+
+
+def prowlarr_key() -> str:
+    return _live(PROWLARR_KEY, "PROWLARR_API_KEY")
+
+
+def sab_url() -> str:
+    return _live(SAB_URL, "SABNZBD_URL")
+
+
+def sab_key() -> str:
+    return _live(SAB_KEY, "SABNZBD_API_KEY")
+
 #: A posting with fewer advertised seeds than this is not offered as a pick.
 #: Advertised seeders are routinely stale (63 and 95 "seeds" both delivered
 #: zero bytes), so this is a floor, not evidence of health.

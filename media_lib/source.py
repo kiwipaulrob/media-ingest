@@ -87,18 +87,18 @@ class SourceError(RuntimeError):
 def _prowlarr(
     query: str, indexer_ids: Optional[str] = None, timeout: int = 90
 ) -> List[Dict[str, Any]]:
-    if not config.PROWLARR_URL:
+    if not config.prowlarr_url():
         raise SourceError("PROWLARR_URL is not set")
     params = {"query": query, "type": "search", "limit": 100}
     if indexer_ids:
         params["indexerIds"] = indexer_ids  # comma-separated STRING
-    url = f"{config.PROWLARR_URL.rstrip('/')}/api/v1/search?" + urllib.parse.urlencode(
+    url = f"{config.prowlarr_url().rstrip('/')}/api/v1/search?" + urllib.parse.urlencode(
         params
     )
     for attempt in range(2):
         try:
             req = urllib.request.Request(
-                url, headers={"X-Api-Key": config.PROWLARR_KEY}
+                url, headers={"X-Api-Key": config.prowlarr_key()}
             )
             with urllib.request.urlopen(req, timeout=timeout) as fh:
                 return json.loads(fh.read() or b"[]")
@@ -247,7 +247,7 @@ def queue_url(res: Dict[str, Any]) -> Optional[str]:
     dl = res.get("downloadUrl") or ""
     if dl:
         sep = "&" if "?" in dl else "?"
-        return f"{dl}{sep}apikey={config.PROWLARR_KEY}"
+        return f"{dl}{sep}apikey={config.prowlarr_key()}"
     return None
 
 

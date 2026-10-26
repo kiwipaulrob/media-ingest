@@ -32,7 +32,7 @@ from typing import Any, Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from media_lib import quality, sab  # noqa: E402
+from media_lib import config, quality, sab  # noqa: E402
 
 _STOP = {"1080p", "720p", "480p", "2160p", "hdtv", "webrip", "web", "webdl", "bluray",
          "x264", "x265", "hevc", "h264", "aac", "ac3", "ddp", "dd5", "10bit", "proper",
@@ -50,8 +50,8 @@ def clean_title(name: str) -> str:
 
 def prowlarr_search(term: str, limit: int = 40) -> List[Dict[str, Any]]:
     """Ask Prowlarr for releases matching `term`. Returns [] on any failure."""
-    base = os.environ.get("PROWLARR_URL", "").rstrip("/")
-    key = os.environ.get("PROWLARR_API_KEY", "")
+    base = config.prowlarr_url().rstrip("/")
+    key = config.prowlarr_key()
     if not base or not key or not term:
         return []
     url = f"{base}/api/v1/search?query={urllib.parse.quote(term)}&type=search&limit={limit}"

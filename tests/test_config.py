@@ -78,3 +78,40 @@ def test_media_command_is_wrapped_for_ct105():
     cmd = probe.media_cmd('echo hi')
     assert cmd.startswith(config.MEDIA_CT)
     assert 'echo hi' in cmd
+
+
+def test_prowlarr_helpers_prefer_monkeypatched_module_attrs(monkeypatch):
+    # Tests set config.PROWLARR_URL directly; the helper must honour that
+    # without touching the environment or the .env file.
+    monkeypatch.setattr(config, "PROWLARR_URL", "http://patched:9696")
+    monkeypatch.setattr(config, "PROWLARR_KEY", "patched-key")
+    monkeypatch.setattr(config, "SAB_URL", "http://patched:8080")
+    monkeypatch.setattr(config, "SAB_KEY", "patched-sab")
+    assert config.prowlarr_url() == "http://patched:9696"
+    assert config.prowlarr_key() == "patched-key"
+    assert config.sab_url() == "http://patched:8080"
+    assert config.sab_key() == "patched-sab"
+
+
+def test_prowlarr_helpers_fall_back_to_env_file(monkeypatch):
+    # A cron shell with an empty environment still gets values from
+    # /root/.hermes/.env via jellyfin.env().
+    monkeypatch.setattr(config, "PROWLARR_URL", "")
+    monkeypatch.setattr(config, "PROWLARR_KEY", "")
+    monkeypatch.delenv("PROWLARR_URL", raising=False)
+    monkeypatch.delenv("PROWLARR_API_KEY", raising=False)
+    import media_lib.jellyfin as jf
+
+    monkeypatch.setattr(jf, "load_env_file", lambda: {
+        "PROWLARR_URL": "http://file:9696", "PROWLARR_API_KEY": "file-key"})
+    assert config.prowlarr_url() == "http://file:9696"
+    assert config.prowlarr_key() == "file-key"
+
+
+def test_prowlarr_helpers_empty_when_nowhere(monkeypatch):
+    monkeypatch.setattr(config, "SAB_URL", "")
+    monkeypatch.delenv("SABNZBD_URL", raising=False)
+    import media_lib.jellyfin as jf
+
+    monkeypatch.setattr(jf, "load_env_file", lambda: {})
+    assert config.sab_url() == ""

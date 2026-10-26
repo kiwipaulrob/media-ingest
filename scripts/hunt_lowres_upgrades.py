@@ -125,8 +125,9 @@ def do_scan(threshold: int) -> int:
 def prowlarr_search(query: str, limit: int = 30) -> List[Dict[str, Any]]:
     import os
     import urllib.request
-    base = os.environ["PROWLARR_URL"].rstrip("/")
-    key = os.environ["PROWLARR_API_KEY"]
+    from media_lib import config
+    base = config.prowlarr_url().rstrip("/")
+    key = config.prowlarr_key()
     url = f"{base}/api/v1/search?query={urllib.parse.quote(query)}&type=search&limit={limit}"
     try:
         return json.loads(urllib.request.urlopen(
