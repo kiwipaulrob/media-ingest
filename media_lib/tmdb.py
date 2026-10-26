@@ -168,3 +168,22 @@ def find_episode_by_name(series_id: int, wanted: str, max_season: int = 20):
                 if best is None or overlap > best[0]:
                     best = (overlap, season, ep)
     return best[2] if best else None
+
+def find_by_imdb(imdb_id: str) -> Optional[Dict[str, Any]]:
+    """Resolve an imdb id (tt0123456) to its TMDB movie record, or None.
+
+    Exact by construction: the /find endpoint takes the id, so there is no fuzzy title
+    matching to get wrong. Used for library filenames that carry [imdbid-tt...] but whose
+    release-style stem defeats title parsing.
+    """
+    iid = (imdb_id or "").strip()
+    if not iid.lower().startswith("tt"):
+        iid = "tt" + iid
+    try:
+        d = _get("/find/" + iid, {"external_source": "imdb_id"})
+    except Exception:
+        return None
+    for key in ("movie_results", "tv_results"):
+        for r in (d.get(key) or []):
+            return r
+    return None

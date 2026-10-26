@@ -219,3 +219,37 @@ if target:
                                               round((e.get("RunTimeTicks") or 0) / 600_000_000, 1),
                                               str(e.get("Name"))[:40],
                                               "OK" if e in live else "STALE?"))
+
+# --- leftover-source check ---------------------------------------------------
+# The conversion moves files into the series folder, but has repeatedly left a
+# byte-identical copy behind in SRC (Great British Story, Peter Cook, Century of the
+# Self, Edwardians in Colour, Brave New World, Can't Get You Out of My Head). Each time
+# it was found by hand, days apart, or by the user. Report it here, at the moment it
+# happens. Never delete: a source copy needs explicit approval.
+def _leftover_sources():
+    placed = sh("find {d} -maxdepth 1 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
+                "-exec md5sum {{}} \; 2>/dev/null | awk '{{print $1}}' | sort -u".format(
+                    d=shlex.quote(DST)))
+    keep = set(placed.split())
+    if not keep:
+        print("\nleftover-source check: SKIPPED (no placed files hashed)")
+        return
+    out = sh("find {s} -maxdepth 2 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.avi' \) "
+             "-exec md5sum {{}} \; 2>/dev/null".format(s=shlex.quote(SRC)))
+    hits = []
+    for line in out.splitlines():
+        bits = line.split(None, 1)
+        if len(bits) == 2 and bits[0] in keep:
+            hits.append(bits[1])
+    if hits:
+        print("\n!! LEFTOVER-SOURCE: {} byte-identical file(s) still in SRC".format(len(hits)))
+        for h in hits:
+            mb = sh("stat -c %s " + shlex.quote(h)).strip()
+            size = "{}MB".format(int(mb) // 1048576) if mb.isdigit() else "?"
+            print("   {}  {}".format(size, h))
+        print("   NOT deleted - source copies need explicit approval.")
+    else:
+        print("\nleftover-source check: clean (no byte-identical copy left in SRC)")
+
+
+_leftover_sources()
