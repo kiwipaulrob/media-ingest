@@ -76,9 +76,10 @@ SAVE_TO_REMOTE = {
 }
 
 # ---------------------------------------------------------------- costing
-#: Measured sustained copy throughput (fsync-enforced). dd without conv=fsync
-#: reports page-cache speed and overstates by ~4x.
-COPY_MBPS = 158
+#: Measured sustained copy throughput (fsync-enforced) on THIS path: ~39-40 MB/s
+#: to CIFS. dd without conv=fsync reports page-cache speed and overstates by ~4x,
+#: which is what 158 was. Budget at the measured figure.
+COPY_MBPS = 40
 PER_ITEM_OVERHEAD_S = 20
 REFRESH_COST_S = 20
 LIB_CACHE_STALE_S = 600

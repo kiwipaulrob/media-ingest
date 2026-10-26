@@ -123,7 +123,6 @@ def do_scan(threshold: int) -> int:
 
 
 def prowlarr_search(query: str, limit: int = 30) -> List[Dict[str, Any]]:
-    import os
     import urllib.request
     from media_lib import config
     base = config.prowlarr_url().rstrip("/")

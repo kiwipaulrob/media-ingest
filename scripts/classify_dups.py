@@ -85,9 +85,9 @@ def main():
     for r in rows:
         print(f"[{r['verdict']}] {r['name']} ({r['year']})")
         for p in r["paths"]:
-            s = r["sizes"].get(p, 0)
-            l = r["links"].get(p, 0)
-            print(f"    {l} links  {s/1e6:>8.0f}MB  {str(p).replace('/data/', '')}")
+            nbytes = r["sizes"].get(p, 0)
+            nlinks = r["links"].get(p, 0)
+            print(f"    {nlinks} links  {nbytes/1e6:>8.0f}MB  {str(p).replace('/data/', '')}")
     print("\nwrote /tmp/dup_classified.json")
     json.dump(rows, open("/tmp/dup_classified.json", "w"), indent=1)
 

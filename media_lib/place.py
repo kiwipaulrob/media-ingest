@@ -7,8 +7,7 @@ Measured cost model (prox2 / CT105, a 1.3 GB episode):
   * one `docker run ... ffprobe` round-trip    1.42 s
   * one `probe.head_bytes` round-trip          1.08 s
   * copy of 1.3 GB onto the CIFS-backed share  ~33 s  (≈39 MB/s effective —
-    well under the 158 MB/s in config.COPY_MBPS, which is a local-disk figure
-    and overstates this path ~4x; budget placements at ~40 MB/s)
+    matching config.COPY_MBPS = 40, the measured figure for this path)
 
 The first version made SIX remote calls per file (probe src, stage, probe dst,
 three decode spans). Each pays SSH plus container startup, so the gates cost

@@ -101,10 +101,11 @@ def resolve_library(ref: str, _libs: Optional[Dict[str, str]] = None) -> str:
 
     if re.fullmatch(r"[0-9a-fA-F]{32}", ref or ""):
         return ref
-    libs = _libs
-    if libs is None:
-        libs = {f.get("Name"): f.get("ItemId")
-                for f in (get_json("/Library/VirtualFolders") or [])}
+    libs: Dict[str, str] = dict(_libs) if _libs else {}
+    if not libs:
+        for f in get_json("/Library/VirtualFolders") or []:
+            if isinstance(f, dict) and f.get("Name") and f.get("ItemId"):
+                libs[str(f["Name"])] = str(f["ItemId"])
     if ref in libs and libs[ref]:
         return libs[ref]
     raise ValueError(f"unknown library: {ref!r}")

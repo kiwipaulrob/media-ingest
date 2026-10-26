@@ -129,12 +129,22 @@ def test_itsoffset_shift_keeps_subtitles(monkeypatch):
     seen = _wire(monkeypatch, 4419.3, 4419.3, ["fail", "ok"])
     import media_lib.avsync as avmod
 
+    calls = []
+
     def shifted(path):
-        return {"verdict": "fail", "problems": ["A/V start differs by +400 ms"],
-                "start_delta_ms": 400.0, "ok": False}
+        # First call (before) fails with a start offset; the post-repair
+        # verification passes — otherwise ok is False for stub reasons.
+        calls.append(path)
+        if len(calls) == 1:
+            return {"verdict": "fail", "problems": ["A/V start differs by +400 ms"],
+                    "start_delta_ms": 400.0, "ok": False}
+        return {"verdict": "ok", "problems": [], "start_delta_ms": 0.0, "ok": True}
 
     monkeypatch.setattr(avmod, "check", shifted)
     out = avmod.resync("/x.mkv", "/y.mkv")
+    assert out["ok"] is True
     assert seen["cmds"], "expected an itsoffset repair command"
-    assert "-map 1:a:0" in seen["cmds"][0]
-    assert "-map 0:s?" in seen["cmds"][0]
+    assert "-map 1:a:0" in seen["cmds"][0] and "-map 0:a:0" not in seen["cmds"][0]
+    for cmd in seen["cmds"]:
+        assert "-map 0:s?" in cmd, f"subtitles dropped by: {cmd[:120]}"
+        assert "-c:s copy" in cmd, f"subtitles not stream-copied by: {cmd[:120]}"
