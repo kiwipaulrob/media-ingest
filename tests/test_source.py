@@ -414,3 +414,52 @@ def test_queue_reports_unverified_when_the_torrent_is_not_in_the_queue(monkeypat
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "b" * 40,
                         "protocol": "torrent", "title": "ghost"})
     assert out["ok"] is True and out["verified"] is False
+
+
+def test_torrent_for_path_rejects_prefix_sibling(monkeypatch):
+    """/downloads-zmedia/Rush Hour/x.mkv is NOT inside /downloads-zmedia/Rush:
+    normalised prefix matching said it was."""
+    from media_lib import qb as qbmod
+    calls = []
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [
+        {'hash': 'h1', 'name': 'Rush (1991)', 'save_path': '/downloads-zmedia',
+         'content_path': '/downloads-zmedia/Rush'}])
+    monkeypatch.setattr(qbmod, 'files',
+                        lambda h, op=None: calls.append(h) or [])
+    assert qbmod.torrent_for_path('/downloads-zmedia/Rush Hour/movie.mkv') is None
+    assert calls == []
+
+
+def test_torrent_for_path_maps_host_path_to_qb_namespace(monkeypatch):
+    """Callers hold /mnt/zmedia/... while content_path is /downloads-zmedia/...;
+    without mapping, every lookup fell through to the per-torrent loop."""
+    from media_lib import qb as qbmod
+    calls = []
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [
+        {'hash': 'h1', 'name': 'Some Release', 'save_path': '/downloads-zmedia',
+         'content_path': '/downloads-zmedia/Some Release'}])
+    monkeypatch.setattr(qbmod, 'files',
+                        lambda h, op=None: calls.append(h) or [])
+    got = qbmod.torrent_for_path('/mnt/zmedia/downloads/Some Release/movie.mkv')
+    assert got and got['hash'] == 'h1'
+    assert calls == []
+
+
+def test_torrent_for_path_skips_implausible_torrents(monkeypatch):
+    """The per-file fallback must not HTTP every torrent in the client: torrents
+    sharing no token with the file are skipped. Dots force the fallback loop
+    (the raw first loop only matches identical separators)."""
+    from media_lib import qb as qbmod
+    calls = []
+    monkeypatch.setattr(qbmod, 'torrents', lambda op=None: [
+        {'hash': 'nope', 'name': 'Totally Unrelated Pack', 'save_path': '/downloads-zmedia',
+         'content_path': '/downloads-zmedia/Totally Unrelated Pack'},
+        {'hash': 'h1', 'name': 'Wanted Film 1080p', 'save_path': '/downloads-zmedia',
+         'content_path': '/downloads-zmedia/Wanted Film 1080p'}])
+    monkeypatch.setattr(qbmod, 'files',
+                        lambda h, op=None: calls.append(h) or (
+                            [{'name': 'Wanted Film 1080p/movie.mkv', 'size': 1}]
+                            if h == 'h1' else []))
+    got = qbmod.torrent_for_path('/downloads-zmedia/Wanted.Film.1080p/movie.mkv')
+    assert got and got['hash'] == 'h1'
+    assert calls == ['h1']

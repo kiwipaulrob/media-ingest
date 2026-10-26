@@ -333,21 +333,52 @@ def find_torrent(fragment: str, op=None) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _to_qb_namespace(path: str) -> str:
+    """Map a host path back into qBittorrent's container namespace.
+
+    content_path arrives as /downloads-zmedia/... while callers often hold the
+    host form (/mnt/zmedia/...); comparing across namespaces never matches, so
+    the old code fell through to the per-torrent files() loop every time.
+    """
+    for qb_prefix, remote in SAVE_TO_REMOTE.items():
+        if path == remote or path.startswith(remote + "/"):
+            return qb_prefix + path[len(remote):]
+    return path
+
+
 def torrent_for_path(path: str, op=None) -> Optional[Dict[str, Any]]:
     """The torrent whose content contains this file path.
 
     Used to attach a ledger hash to a placement, so `scan` stops re-offering a
     release that has already been ingested (the two-ledger split).
     """
+    if not path:
+        return None
+    qp = _to_qb_namespace(path)
+    all_t = torrents(op=op)
+    for t in all_t:  # cheap: content_path first, exact and boundary-aware
+        cp = t.get("content_path") or ""
+        if cp and (qp == cp or qp.startswith(cp + "/")):
+            return t
     target = norm_name(path)
     if not target:
         return None
-    all_t = torrents(op=op)
-    for t in all_t:  # cheap: content_path first
-        cp = norm_name(t.get("content_path") or "")
-        if cp and (cp == target or target.startswith(cp)):
-            return t
-    for t in all_t:  # then per-file
+    # Distinctive tokens only: save_path contributes nothing but generic words
+    # (/downloads-zmedia matches everything), and bare basenames like movie.mkv
+    # match nothing. Without the stop set the filter either skips nothing or,
+    # as first written, skips the right torrent too (basename 'movie' is disjoint
+    # from every release name).
+    _STOP = {"downloads", "zmedia", "mnt", "media", "videos", "movie", "mkv",
+             "mp4", "avi", "m4v", "mov", "ts"}
+    want = {w for w in target.split() if len(w) >= 4} - _STOP
+    for t in all_t:  # then per-file, but only on plausible torrents
+        hay = set(norm_name(t.get("name")).split())
+        # Quorum: one shared word proves nothing ('Rush Hour' shares 'rush' with
+        # the 'Rush' torrent — the exact false positive this fix removes). Need
+        # two shared tokens, or one when the path yields only one.
+        need = min(2, len(want))
+        if want and len(want & hay) < need:
+            continue  # shares nothing distinctive: one HTTP call saved
         save = (t.get("save_path") or "").rstrip("/")
         for f in files(t.get("hash") or "", op=op):
             if norm_name(f"{save}/{f.get('name')}") == target:
