@@ -154,7 +154,17 @@ def main(argv=None) -> int:
         # the container-level fault set (offset, drift, missing track, disagreeing
         # tracks); subjective lip-sync is not testable from the file alone, so a
         # pass must not be read as "the dialogue looks right" (see media_lib.avsync).
+        #
+        # place_new() ALREADY ran this check as its Gate 6 and returned the stage
+        # in r["av_sync"] — re-running it here costs ~30 s of CIFS I/O per file
+        # for an identical verdict on identical bytes. Reuse it; only fall back
+        # to a fresh check when the stage is absent (older callers) or "unknown"
+        # (place's own probe failed, so there is no verdict to reuse).
         for r in placed:
+            stage = r.get("av_sync")
+            if stage in ("ok", "repaired", "warn"):
+                r["sync"] = stage
+                continue
             try:
                 verdict = avsync.check(place.to_disk(r["dest"]))
             except Exception as exc:  # noqa: BLE001 - the file is already placed

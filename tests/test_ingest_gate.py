@@ -72,3 +72,48 @@ def test_a_placed_file_must_report_a_runtime(monkeypatch):
 
     assert jf.ensure_row_runtime("/x/film.mkv", "lib") == 119.2
     assert calls["refresh"] == 1
+
+
+def test_placed_file_reuses_place_av_sync_without_rechecking(tmp_path, monkeypatch):
+    """place_new() already ran avsync.check as Gate 6: a second run over SSH
+    costs ~30 s per file for an identical verdict on identical bytes."""
+    from media_lib import avsync as avsyncmod
+
+    spec = tmp_path / "spec.json"
+    spec.write_text(json.dumps([{"src": "/mnt/zmedia/downloads/X/x.mkv",
+                                 "dest": DEST}]))
+    calls = []
+    monkeypatch.setattr(cli_ingest, "config", type("C", (), {
+        "ensure_state_dir": staticmethod(lambda: None), "STATE_DIR": tmp_path})())
+    monkeypatch.setattr(qbmod, "torrent_for_path", lambda p: None)
+    monkeypatch.setattr(qualitymod, "decide", lambda cand, term, **k: {"verdict": "upgrade"})
+    monkeypatch.setattr(placemod, "place_new",
+                        lambda *a, **k: {"ok": True, "stage": "PLACED", "av_sync": "ok"})
+    monkeypatch.setattr(avsyncmod, "check", lambda p: calls.append(p) or {"verdict": "ok"})
+    monkeypatch.setattr(safetymod, "record", lambda **kw: None)
+    monkeypatch.setattr(jf, "notify_media", lambda paths: 204)
+    monkeypatch.setattr(jf, "refresh_library", lambda lib: 204)
+    assert cli_ingest.main(["--spec", str(spec)]) == 0
+    assert calls == []
+
+
+def test_missing_av_sync_stage_falls_back_to_fresh_check(tmp_path, monkeypatch):
+    """No stage (or 'unknown') means there is no verdict to reuse — check."""
+    from media_lib import avsync as avsyncmod
+
+    spec = tmp_path / "spec.json"
+    spec.write_text(json.dumps([{"src": "/mnt/zmedia/downloads/X/x.mkv",
+                                 "dest": DEST}]))
+    calls = []
+    monkeypatch.setattr(cli_ingest, "config", type("C", (), {
+        "ensure_state_dir": staticmethod(lambda: None), "STATE_DIR": tmp_path})())
+    monkeypatch.setattr(qbmod, "torrent_for_path", lambda p: None)
+    monkeypatch.setattr(qualitymod, "decide", lambda cand, term, **k: {"verdict": "upgrade"})
+    monkeypatch.setattr(placemod, "place_new",
+                        lambda *a, **k: {"ok": True, "stage": "PLACED", "av_sync": "unknown"})
+    monkeypatch.setattr(avsyncmod, "check", lambda p: calls.append(p) or {"verdict": "ok"})
+    monkeypatch.setattr(safetymod, "record", lambda **kw: None)
+    monkeypatch.setattr(jf, "notify_media", lambda paths: 204)
+    monkeypatch.setattr(jf, "refresh_library", lambda lib: 204)
+    assert cli_ingest.main(["--spec", str(spec)]) == 0
+    assert len(calls) == 1
