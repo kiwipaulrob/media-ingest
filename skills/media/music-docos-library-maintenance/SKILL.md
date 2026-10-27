@@ -233,12 +233,15 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 | Place a completed download as a NEW library item | `python3 -m cli.ingest_new --spec <json> --refresh-lib <id> [--wait-rows 200]` — copy → size → probe → min-height → duration → 3-span decode; a failed gate deletes the staged copy so a half-good file never lands. It now fires `/Library/Media/Updated` itself, so the row appears without a manual ping. `cli.plan`/`media_plan` is **REPLACE-only** by design, so genuinely NEW episodes always fall to its check list; do not read that as a rejection. |
 | Bios/portraits from providers | `media_lib.providers.chain.resolve(name, kind)` or `cli.meta plan` → `cli.meta apply` |
 | Identify a series/film row (replaces inline heredocs) | `python3 scripts/identify_series.py --library 'Docos Series' --frag tmdbid-123 --title 'Name' --year 2020 --tmdb-id 123` / `scripts/identify_movie.py` — find-by-path, pinned-id apply, read-back verify, exit 0 only on id match |
+| Discover series-shaped sets sitting in a flat library | `ssh <media-host> 'find <root> -type f ...' | python3 scripts/scan_series_shapes.py --from-stdin` — groups SxxEyy/part/ep/NofM filenames by stripped title, TMDB-matches each group, prints proposal JSON (read-only, moves nothing) |
 | Enrichment gap report | `python3 -m cli.meta plan` (read-only: ready / thin / gap / no-row counts) |
 | A/B a sample against the library | `python3 -m scripts.meta_test_10 --seed N --sample 10` |
 
 Agent-side tools (when the plugins are loaded): `media_scan`, `media_plan`, `media_apply`, `media_verify`, `media_source_plan`, `media_source_queue`, `meta_search`, `meta_resolve`. The `meta_apply` write path lives in `cli.meta apply`, not yet as a tool.
 
 **One rule for all sourcing: extend `media_lib.source`, never write a hunt script.** Four hand-rolled hunt scripts were deleted because duplicating its logic produced three separate bugs in a single session (narrow-query zeros, dotted-name mismatches, blind seed trust).
+
+**Promote a repeated inline flow to a tested script instead of re-typing it.** A heredoc run three times is a script that lacks tests: `identify_series.py` / `identify_movie.py` / `scan_series_shapes.py` all began as inline snippets and earned `--help`, `main()`-wrapping, fixture tests and a skill-table row. When the user asks whether a script is ad hoc or suite, the answer must be suite with tests — or say plainly that it is ad hoc and why it cannot go through the suite yet.
 
 ## Adding a series to Music Docos Series
 
