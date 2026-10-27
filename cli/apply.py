@@ -35,11 +35,12 @@ def _refresh(lib_ids, item_ids=()):
             print(f"  refresh {lib_id} failed: {str(exc)[:100]}")
 
 
-def _lib_id(uid, name):
+def _lib_id(uid, name) -> str | None:
     rows = jellyfin.get_json("/Library/VirtualFolders")
     for r in rows if isinstance(rows, list) else []:
         if r.get("Name") == name:
-            return r.get("ItemId")
+            item_id = r.get("ItemId")
+            return str(item_id) if item_id else None
     return None
 
 
