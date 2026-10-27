@@ -107,3 +107,34 @@ def test_check_list_sorts_by_recommend_then_title(tmp_path):
     ], p)
     data = json.loads(p.read_text())
     assert [r['title'] for r in data] == ['A', 'Z']
+
+
+# ------------------------------------------------------- Review-8 guards
+def test_is_playing_matches_now_playing_item(monkeypatch):
+    from media_lib import jellyfin
+
+    monkeypatch.setattr(
+        jellyfin, "get_json",
+        lambda *a, **k: [{"UserName": "paul", "NowPlayingItem": {"Id": "abc123"}}, {"UserName": "x"}],
+    )
+    assert jellyfin.is_playing("abc123") is True
+    assert jellyfin.is_playing("other") is False
+
+
+def test_is_playing_false_when_sessions_unreadable(monkeypatch):
+    from media_lib import jellyfin
+
+    def boom(*a, **k):
+        raise ConnectionError("down")
+
+    monkeypatch.setattr(jellyfin, "get_json", boom)
+    assert jellyfin.is_playing("abc123") is False
+
+
+def test_bio_mutating_commands_hold_the_lock():
+    import inspect
+
+    from cli import bio
+
+    for fn in (bio.cmd_fill, bio.cmd_alias, bio.cmd_wikidata):
+        assert "safety.acquire" in inspect.getsource(fn), fn.__name__

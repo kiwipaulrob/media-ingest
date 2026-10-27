@@ -108,6 +108,13 @@ def main(argv=None) -> int:
                 flush=True,
             )
             try:
+                # Review-8: never swap bytes under an active viewer. old_id is
+                # the live Jellyfin row being replaced; skip (don't fail) when
+                # it is currently playing — the next apply run retries it.
+                if r.get("old_id") and jellyfin.is_playing(r["old_id"]):
+                    print("    SKIPPED: client is playing this item right now", flush=True)
+                    failed.append((r, "playing — retry on next apply run"))
+                    continue
                 status, detail = swap.replace(
                     r["src"],
                     r["dest_disk"],

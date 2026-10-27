@@ -271,3 +271,14 @@ clawarr-suite, homelab-agent-skills) found nothing installable — all assume
 Sonarr/Radarr movie+TV flows, not an approval-gated documentary library —
 but contributed two stolen ideas: doctor-style fleet-health rows and a
 wanted-list-driven hunt sweep, both read-only.
+
+## 31. External review working from a stale tree
+
+A review brief citing exact file/function/line numbers described 8 bugs as
+live that HEAD had already fixed (tree current, reviewer's clone two days
+old — the cited failures matched our own fix-comments verbatim). Lesson:
+verify every citation against the tree before implementing, and answer with
+a `docs/REVIEW-RESPONSE.md` verdict table so the re-review skips to what is
+genuinely new. Real gains from that review: bio locks, playing-guard,
+--from-plan, 4-field pinning, .nfo sidecars, TVmaze fallback, url-rels,
+container-tag synopsis.

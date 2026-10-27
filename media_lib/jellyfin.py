@@ -324,6 +324,26 @@ def refresh_library(lib_id: str) -> int:
     return 204
 
 
+def is_playing(item_id: str) -> bool:
+    """True when any session is currently playing this item.
+
+    Review-8: the apply path swaps bytes under an EXISTING row, so an
+    in-place upgrade must never land while a client is mid-stream.
+    Golden Rule #5 (never swap under a playing client) enforced in code.
+    """
+    try:
+        sessions: Any = get_json("/Sessions") or []
+    except Exception:  # noqa: BLE001 - an unreadable session list is "unknown", not "playing"
+        return False
+    for s in sessions:
+        if not isinstance(s, dict):
+            continue
+        now = s.get("NowPlayingItem") or {}
+        if str(now.get("Id") or "") == str(item_id):
+            return True
+    return False
+
+
 def ensure_row_runtime(path: str, lib_id: str, *, wait: int = 6) -> Optional[float]:
     """A freshly placed file lands as a 0.0-minute row until metadata is re-read.
 

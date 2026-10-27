@@ -70,7 +70,7 @@ class MusicBrainzProvider(Provider):
         """Aliases and identity fields. Deliberately sets NO biography."""
         if not cand.id:
             return None
-        q = urllib.parse.urlencode({"inc": "aliases", "fmt": "json"})
+        q = urllib.parse.urlencode({"inc": "aliases+url-rels", "fmt": "json"})
         data = cache.cached(
             f"mb-artist:{cand.id}",
             lambda: cache.get_json(
@@ -87,6 +87,16 @@ class MusicBrainzProvider(Provider):
         rec.set("disambiguation", data.get("disambiguation"))
         aliases = [a.get("name") for a in data.get("aliases") or [] if a.get("name")]
         rec.set("aliases", aliases)
+        # Review-P3.4: editor-mapped Wikidata/Wikipedia/Discogs/IMDb URLs bypass
+        # same-name search collisions on Wikipedia entirely.
+        urls = {}
+        for rel in data.get("relations") or []:
+            tgt = rel.get("url") or {}
+            u = tgt.get("resource")
+            if u:
+                urls[str(rel.get("type") or "other")] = u
+        if urls:
+            rec.set("urls", urls)
         life = data.get("life-span") or {}
         if (life.get("begin") or "")[:4].isdigit():
             rec.set("birth_year", life["begin"][:4])

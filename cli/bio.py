@@ -26,7 +26,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from media_lib import enrich
+from media_lib import enrich, safety
 from media_lib.providers import chain
 
 MUSIC_DOCOS = "5f95760bae4c07e31d840d70c3a46111"
@@ -103,69 +103,73 @@ def cmd_worklist(args) -> int:
 
 
 def cmd_fill(args) -> int:
-    plan = json.loads(Path(args.plan).read_text())
-    rows: List[Dict[str, Any]] = plan.get("rows") or []
-    if args.ids:
-        wanted = {int(x) for x in args.ids.split(",") if x.strip()}
-        rows = [r for i, r in enumerate(rows, 1) if i in wanted]
-    else:
-        # `suspect` is excluded by design: it looks ready and is not.
-        rows = [r for r in rows if r.get("status") in ("ready", "thin")]
-    if args.limit:
-        rows = rows[: args.limit]
-    if not rows:
-        print("nothing to apply", file=sys.stderr)
-        return 2
-    counts: Dict[str, int] = {}
-    for r in rows:
-        if not r.get("id"):
-            counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
-            continue
-        res = enrich.apply_person(r["id"], r.get("bio") or "", r.get("source") or "")
-        counts[res["status"]] = counts.get(res["status"], 0) + 1
-    print(json.dumps(counts, sort_keys=True))
-    return 0
+    # Review-8: mutating commands hold the lock, like ingest/apply.
+    with safety.acquire():
+        plan = json.loads(Path(args.plan).read_text())
+        rows: List[Dict[str, Any]] = plan.get("rows") or []
+        if args.ids:
+            wanted = {int(x) for x in args.ids.split(",") if x.strip()}
+            rows = [r for i, r in enumerate(rows, 1) if i in wanted]
+        else:
+            # `suspect` is excluded by design: it looks ready and is not.
+            rows = [r for r in rows if r.get("status") in ("ready", "thin")]
+        if args.limit:
+            rows = rows[: args.limit]
+        if not rows:
+            print("nothing to apply", file=sys.stderr)
+            return 2
+        counts: Dict[str, int] = {}
+        for r in rows:
+            if not r.get("id"):
+                counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
+                continue
+            res = enrich.apply_person(r["id"], r.get("bio") or "", r.get("source") or "")
+            counts[res["status"]] = counts.get(res["status"], 0) + 1
+        print(json.dumps(counts, sort_keys=True))
+        return 0
 
 
 def cmd_alias(args) -> int:
-    pairs = json.loads(Path(args.file).read_text())
-    if not pairs:
-        print("no approved pairs", file=sys.stderr)
-        return 2
-    fetched = _wiki_batch([p["wiki_title"] for p in pairs])
-    print(f"approved pairs: {len(pairs)} | targets with prose: {len(fetched)}")
+    # Review-8: mutating commands hold the lock, like ingest/apply.
+    with safety.acquire():
+        pairs = json.loads(Path(args.file).read_text())
+        if not pairs:
+            print("no approved pairs", file=sys.stderr)
+            return 2
+        fetched = _wiki_batch([p["wiki_title"] for p in pairs])
+        print(f"approved pairs: {len(pairs)} | targets with prose: {len(fetched)}")
 
-    index = enrich.person_rows()   # one scan, not one per name
-    counts: Dict[str, int] = {}
-    for p in pairs:
-        name = p["name"]
-        text = fetched.get(p["wiki_title"]) or ""
-        if not text:
-            counts["GAP-NO-PROSE"] = counts.get("GAP-NO-PROSE", 0) + 1
-            print(f"  GAP-NO-PROSE {name}")
-            continue
-        # Screen before writing. The alias path used to hand the extract straight to
-        # apply_person, so an approved target that happens to be a disambiguation page
-        # or a pre-1900 life would be written as a biography — the exact class the
-        # rest of the pipeline now rejects.
-        bad = chain.bio_implausible(text)
-        if bad:
-            counts[f"REJECT-{bad}"] = counts.get(f"REJECT-{bad}", 0) + 1
-            print(f"  REJECT-{bad} {name}")
-            continue
-        row = index.get(name)
-        if not row:
-            counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
-            print(f"  NO-ROW {name}")
-            continue
-        # A band page carries group prose; it is fine as text but its image is a
-        # group photo, so portraits are never taken from here (handled by callers).
-        res = enrich.apply_person(row["Id"], text, "wikipedia")
-        counts[res["status"]] = counts.get(res["status"], 0) + 1
-        print(f"  {res['status']:<14} {name}"
-              + ("  [band page: prose only]" if p.get("band_page") else ""))
-    print(json.dumps(counts, sort_keys=True))
-    return 0
+        index = enrich.person_rows()   # one scan, not one per name
+        counts: Dict[str, int] = {}
+        for p in pairs:
+            name = p["name"]
+            text = fetched.get(p["wiki_title"]) or ""
+            if not text:
+                counts["GAP-NO-PROSE"] = counts.get("GAP-NO-PROSE", 0) + 1
+                print(f"  GAP-NO-PROSE {name}")
+                continue
+            # Screen before writing. The alias path used to hand the extract straight to
+            # apply_person, so an approved target that happens to be a disambiguation page
+            # or a pre-1900 life would be written as a biography — the exact class the
+            # rest of the pipeline now rejects.
+            bad = chain.bio_implausible(text)
+            if bad:
+                counts[f"REJECT-{bad}"] = counts.get(f"REJECT-{bad}", 0) + 1
+                print(f"  REJECT-{bad} {name}")
+                continue
+            row = index.get(name)
+            if not row:
+                counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
+                print(f"  NO-ROW {name}")
+                continue
+            # A band page carries group prose; it is fine as text but its image is a
+            # group photo, so portraits are never taken from here (handled by callers).
+            res = enrich.apply_person(row["Id"], text, "wikipedia")
+            counts[res["status"]] = counts.get(res["status"], 0) + 1
+            print(f"  {res['status']:<14} {name}"
+                  + ("  [band page: prose only]" if p.get("band_page") else ""))
+        print(json.dumps(counts, sort_keys=True))
+        return 0
 
 
 def cmd_portrait(args) -> int:
@@ -242,28 +246,30 @@ def _wikidata_line(name: str) -> str:
 
 
 def cmd_wikidata(args) -> int:
-    """Fill honest one-liners from Wikidata where no prose exists.
+    # Review-8: mutating commands hold the lock, like ingest/apply.
+    with safety.acquire():
+        """Fill honest one-liners from Wikidata where no prose exists.
 
-    Deliberately short: an obviously-thin Overview is a gap a later pass can
-    improve, whereas an invented biography is damage nobody can spot.
-    """
-    names = [n.strip() for n in args.names.split(",") if n.strip()]
-    index = enrich.person_rows()
-    counts: Dict[str, int] = {}
-    for name in names:
-        row = index.get(name)
-        if not row:
-            counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
-            continue
-        line = _wikidata_line(name)
-        if not line:
-            counts["GAP"] = counts.get("GAP", 0) + 1
-            continue
-        res = enrich.apply_person(row["Id"], line, "wikidata")
-        counts[res["status"]] = counts.get(res["status"], 0) + 1
-        print(f"  {res['status']:<12} {name}: {line[:70]}")
-    print(json.dumps(counts, sort_keys=True))
-    return 0
+        Deliberately short: an obviously-thin Overview is a gap a later pass can
+        improve, whereas an invented biography is damage nobody can spot.
+        """
+        names = [n.strip() for n in args.names.split(",") if n.strip()]
+        index = enrich.person_rows()
+        counts: Dict[str, int] = {}
+        for name in names:
+            row = index.get(name)
+            if not row:
+                counts["NO-ROW"] = counts.get("NO-ROW", 0) + 1
+                continue
+            line = _wikidata_line(name)
+            if not line:
+                counts["GAP"] = counts.get("GAP", 0) + 1
+                continue
+            res = enrich.apply_person(row["Id"], line, "wikidata")
+            counts[res["status"]] = counts.get(res["status"], 0) + 1
+            print(f"  {res['status']:<12} {name}: {line[:70]}")
+        print(json.dumps(counts, sort_keys=True))
+        return 0
 
 
 def main(argv: Optional[List[str]] = None) -> int:

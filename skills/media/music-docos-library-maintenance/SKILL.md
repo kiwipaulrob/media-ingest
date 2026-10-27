@@ -234,6 +234,8 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 | Bios/portraits from providers | `media_lib.providers.chain.resolve(name, kind)` or `cli.meta plan` → `cli.meta apply` |
 | Identify a series/film row (replaces inline heredocs) | `python3 scripts/identify_series.py --library 'Docos Series' --frag tmdbid-123 --title 'Name' --year 2020 --tmdb-id 123` / `scripts/identify_movie.py` — find-by-path, pinned-id apply, read-back verify, exit 0 only on id match |
 | Discover series-shaped sets sitting in a flat library | `ssh <media-host> 'find <root> -type f ...' | python3 scripts/scan_series_shapes.py --from-stdin` — groups SxxEyy/part/ep/NofM filenames by stripped title, TMDB-matches each group, prints proposal JSON (read-only, moves nothing) |
+| Hunt the watchlist (read-only sweep) | `python3 scripts/wanted.py` — runs every `state/wanted.json` entry through `hunt.plan`, prints ranked candidates, queues nothing |
+| Fleet health (read-only) | `python3 -c "from media_lib import fleet; print(fleet.render(fleet.check()))"` — one ok/FAIL row per service; red rows are human decisions, never auto-repairs |
 | Enrichment gap report | `python3 -m cli.meta plan` (read-only: ready / thin / gap / no-row counts) |
 | A/B a sample against the library | `python3 -m scripts.meta_test_10 --seed N --sample 10` |
 

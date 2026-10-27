@@ -190,3 +190,34 @@ def test_fix_row_name_declines_when_tmdb_has_no_matching_episode(monkeypatch):
     monkeypatch.setattr(cli.jellyfin, "post_item",
                         lambda *a: (_ for _ in ()).throw(AssertionError("must not write")))
     assert cli._fix_row_name("abc", "/lib/S03E05 Mystery.mkv", 9048) is False
+
+
+# ------------------------------------------------- Review-P2.2 extras pin
+def test_pin_extras_merges_without_clobber(monkeypatch):
+    import cli.ingest_new as cli
+
+    posted = {}
+
+    def fake_dto(url, *a, **k):
+        if "ImageTags" not in url and "/Items/" in url:
+            return {"ProviderIds": {}, "People": [{"Name": "Kept Person"}],
+                    "ImageTags": {"Primary": "x"}}
+        return {}
+
+    monkeypatch.setattr(cli.tmdb, "episode_extras", lambda *a, **k: {
+        "external_ids": {"imdb_id": "tt1234567"},
+        "credits": {"cast": [{"name": "New Actor", "character": "Self", "id": 9}],
+                    "crew": [{"name": "New Director", "job": "Director", "id": 10}]},
+        "images": {"stills": []}})
+    monkeypatch.setattr(cli.jellyfin, "user_id", lambda: "u")
+    monkeypatch.setattr(cli.jellyfin, "get_json", fake_dto)
+    monkeypatch.setattr(cli.jellyfin, "post_item",
+                        lambda i, d: posted.setdefault("dto", d))
+    monkeypatch.setattr(cli.jellyfin, "set_primary_image",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not upload")))
+    cli._pin_episode_extras("item1", 1, 2, 3)
+    dto = posted["dto"]
+    assert dto["ProviderIds"]["Imdb"] == "tt1234567"
+    names = [p["Name"] for p in dto["People"]]
+    assert names == ["Kept Person", "New Actor", "New Director"]
+    assert dto["People"][1]["ProviderIds"] == {"Tmdb": "9"}

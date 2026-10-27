@@ -20,10 +20,90 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from media_lib import (awaiting, avsync, config, jellyfin, place, qb, quality, rowcheck,
-                       safety, tmdb)
+from media_lib import (awaiting, avsync, config, jellyfin, matcher, nfo, place, qb,
+                       quality, rowcheck, safety, tmdb)
+
+
+def placement_for_new(row: Dict, lib_disk_root: str):
+    """A placement spec for one approved NEW plan row, or (None, reason).
+
+    Review-P2.1: closes the plan -> ingest loop for standalone films with a
+    high-confidence gate hit (exact normalized title + year within 1, which
+    tmdb.gate already enforces). Episodic files are NEVER auto-pathed: the
+    ghost-slot rule needs a disk check of the Season folder first, so they
+    come back as (None, 'episodic ...') for hand-routing.
+    Pure — no network, no writes.
+    """
+    src = row.get("src") or ""
+    ext = Path(src).suffix or ".mkv"
+    gate = row.get("tmdb") or {}
+    if gate.get("status") != "candidate" or not gate.get("candidate"):
+        return None, "no high-confidence TMDB candidate"
+    cand = gate["candidate"]
+    if not cand.get("id"):
+        return None, "candidate has no TMDB id"
+    if matcher.squash(str(cand.get("title") or "")) != matcher.squash(
+        str(gate.get("query") or "")
+    ):
+        return None, "candidate title is not an exact normalized match"
+    title = str(cand.get("title"))
+    year = cand.get("year") or gate.get("year") or ""
+    if hunt_episode_marker(row.get("title") or ""):
+        return None, "episodic — needs a series slot check, not a film path"
+    folder = f"{title} ({year}) [tmdbid-{cand['id']}]" if year else f"{title} [tmdbid-{cand['id']}]"
+    leaf = f"{title} ({year}){ext}" if year else f"{title}{ext}"
+    return {"src": src, "dest": f"{lib_disk_root}/{folder}/{leaf}"}, ""
+
+
+def placements_from_plan_file(check_path: str, ids: str, library: str) -> List[Dict]:
+    """Approved NEW rows -> placement specs. Explicit ids are the approval."""
+    rows = json.loads(Path(check_path).read_text())
+    if isinstance(rows, dict):
+        rows = rows.get("rows") or rows.get("check") or []
+    wanted = {int(x) for x in ids.split(",") if x.strip()}
+    root = library_disk_root(library)
+    if not root:
+        print(f"unknown library {library!r}", file=sys.stderr)
+        return []
+    out = []
+    for i, r in enumerate(rows, 1):
+        if not isinstance(r, dict) or i not in wanted:
+            continue
+        if r.get("recommend") != "NEW":
+            print(f"[{i}] skipped: recommend={r.get('recommend')} (only NEW rows)", flush=True)
+            continue
+        spec, reason = placement_for_new(r, root)
+        if not spec:
+            print(f"[{i}] skipped: {reason}", flush=True)
+            continue
+        print(f"[{i}] {Path(spec['src']).name[:50]} -> {Path(spec['dest']).name}", flush=True)
+        out.append(spec)
+    return out
+
+
+def library_disk_root(library: str) -> str:
+    """Jellyfin library display name -> media-host disk root for new folders."""
+    try:
+        folders: Any = jellyfin.get_json("/Library/VirtualFolders") or []
+    except Exception:  # noqa: BLE001 - unresolvable library aborts the conversion
+        return ""
+    for f in folders:
+        if not isinstance(f, dict):
+            continue
+        if f.get("Name") == library:
+            locs = f.get("Locations") or []
+            if locs:
+                return place.to_disk(str(locs[0]))
+    return ""
+
+
+def hunt_episode_marker(name: str) -> bool:
+    """SxxEyy / NxN / 'episode N' markers — the film path must not take these."""
+    import re
+
+    return bool(re.search(r"[Ss]\d{1,2}[EeXx]\d{1,2}|\b\d{1,2}x\d{1,2}\b|\bepisode\s+\d+", name, re.I))
 
 
 def main(argv=None) -> int:
@@ -37,6 +117,13 @@ def main(argv=None) -> int:
                     help="TMDB series id used by --fix-names (e.g. 9048 Classic Albums)")
     ap.add_argument("--backfill", action="store_true",
                     help="record past placements from the journal into the ledger, then exit")
+    ap.add_argument("--from-plan", default=None, metavar="CHECK_JSON",
+                    help="Review-P2.1: build placements from approved NEW rows in a "
+                         "needs-your-check.json file instead of --spec (requires --ids + --library)")
+    ap.add_argument("--ids", default=None,
+                    help="comma-separated 1-based NEW row numbers to place (no 'all')")
+    ap.add_argument("--library", default=None,
+                    help="destination Jellyfin library name for --from-plan")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument(
         "--refresh-lib", default=None, help="library id to refresh after placing"
@@ -55,9 +142,16 @@ def main(argv=None) -> int:
     if args.backfill:
         backfill_ledger(journal)
         return 0
-    if not args.spec:
-        ap.error("--spec is required unless --backfill is used")
-    placements = json.loads(Path(args.spec).read_text())
+    if args.from_plan:
+        if not args.ids or not args.library:
+            ap.error("--from-plan requires --ids and --library")
+        placements = placements_from_plan_file(args.from_plan, args.ids, args.library)
+        if not placements:
+            return 2
+    elif not args.spec:
+        ap.error("--spec is required unless --backfill or --from-plan is used")
+    else:
+        placements = json.loads(Path(args.spec).read_text())
     done = set()
     if journal.exists():
         for line in journal.read_text().splitlines():
@@ -236,6 +330,53 @@ def main(argv=None) -> int:
     return 0 if len(placed) == len(results) else 1
 
 
+def series_slot_from_path(path: str):
+    """(series folder name, season, ep) parsed from a series-style path.
+
+    Review-P3.1 helper: feeds the TVmaze fallback when TMDB has no match.
+    Pure. Returns (None, 0, 0) when the path is not series-shaped.
+    """
+    import re
+
+    parts = [p for p in str(path).replace("\\", "/").split("/") if p]
+    season, ep, series = 0, 0, None
+    for i, p in enumerate(parts):
+        m = re.search(r"[Ss]eason\s+0*(\d+)", p)
+        if m and i > 0:
+            season = int(m.group(1))
+            series = re.sub(r"\s*\(\d{4}\).*$", "", parts[i - 1]).strip()
+            break
+    m = re.search(r"[Ss]0*(\d{1,2})[EeXx]0*(\d{1,2})", parts[-1] if parts else "")
+    if m:
+        if not season:
+            season = int(m.group(1))
+        ep = int(m.group(2))
+    return (series or None), season, ep
+
+
+def _tvmaze_fallback(path: str, wanted: str):
+    """TVmaze episode dict (TMDB-shaped) or None. Never raises."""
+    from media_lib import tvmaze
+
+    try:
+        series, season, ep = series_slot_from_path(path)
+        if not series:
+            return None
+        hit = tvmaze.by_name(series, wanted)
+        if hit and (hit.get("overview") or "").strip():
+            print(f"      TVmaze name match: {hit['name']!r}", flush=True)
+            return hit
+        if season and ep:
+            hit = tvmaze.by_number(series, season, ep)
+            if hit and (hit.get("overview") or "").strip():
+                print(f"      TVmaze slot match S{season:02d}E{ep:02d}: {hit['name']!r}",
+                      flush=True)
+                return hit
+    except Exception:  # noqa: BLE001 - fallback never fails the repair
+        pass
+    return None
+
+
 def _fix_row_name(item_id: str, path: str, series_id: int) -> bool:
     """Name a mis-resolved row from the episode matched BY NAME on TMDB.
 
@@ -249,8 +390,15 @@ def _fix_row_name(item_id: str, path: str, series_id: int) -> bool:
     except Exception as exc:  # noqa: BLE001
         print(f"      repair lookup failed: {type(exc).__name__}: {exc}", flush=True)
         return False
+    from_tmdb = True
     if not episode or not (episode.get("overview") or "").strip():
-        print(f"      no TMDB episode matched {wanted!r} — left for review", flush=True)
+        # Review-P3.1: TMDB has empty shells for UK strands — fall back to
+        # TVmaze by NAME first (doctrine: never by number alone), then by
+        # broadcast slot. TVmaze never overrides a TMDB hit, only a miss.
+        episode = _tvmaze_fallback(path, wanted)
+        from_tmdb = False
+    if not episode or not (episode.get("overview") or "").strip():
+        print(f"      no TMDB/TVmaze episode matched {wanted!r} — left for review", flush=True)
         return False
 
     uid = jellyfin.user_id()
@@ -265,15 +413,97 @@ def _fix_row_name(item_id: str, path: str, series_id: int) -> bool:
     if episode.get("air_date"):
         dto["PremiereDate"] = episode["air_date"]
         dto["ProductionYear"] = int(episode["air_date"][:4])
-    dto["ProviderIds"] = {"Tmdb": str(episode.get("id"))}
+    dto["ProviderIds"] = {"Tmdb": str(episode.get("id"))} if from_tmdb else dto.get("ProviderIds")
     dto["LockedFields"] = sorted(set((dto.get("LockedFields") or []) + ["Name", "Overview"]))
     jellyfin.post_item(item_id, dto)
 
+    # Review-P2.2: pin the other verify fields while we are here, so the row
+    # passes the 4-field gate (Tmdb, Imdb, Primary, Overview>50c) at birth.
+    # Every sub-step is best-effort: extras must never fail the name repair.
+    # TVmaze-sourced rows skip this: there is no TMDB episode id to pin.
+    if from_tmdb:
+        _pin_episode_extras(
+            item_id,
+            series_id,
+            int(episode.get("season_number") or 0),
+            int(episode.get("episode_number") or 0),
+        )
+
     back = jellyfin.get_json(f"/Users/{uid}/Items/{item_id}")
     ok = rowcheck.names_match(path, back.get("Name"))
+    # Review-P2.3: sidecar the repaired metadata next to the file, so a Tdarr
+    # container swap or folder move (new DB row) cannot wipe the locks.
+    try:
+        disk = place.to_disk(path)
+        xml = nfo.episode_nfo(
+            back.get("Name") or wanted,
+            back.get("Overview") or episode["overview"],
+            premiered=episode.get("air_date") or "",
+            tmdb_id=str(episode.get("id") or ""),
+            imdb_id=str((back.get("ProviderIds") or {}).get("Imdb") or ""),
+        )
+        if nfo.write_sidecar(disk, xml):
+            print("      sidecar: .nfo written", flush=True)
+    except Exception:  # noqa: BLE001 - sidecar is a bonus, never a gate
+        pass
     print(f"      {'repaired' if ok else 'STILL WRONG'}: "
           f"{back.get('Name')!r} locked={back.get('LockedFields')}", flush=True)
     return ok
+
+
+def _pin_episode_extras(item_id: str, series_id: int, season: int, ep: int) -> None:
+    """Pin Imdb id, Primary still, and People onto a repaired episode row.
+
+    Review-P2.2. Never raises; never clobbers (Primary only when the row has
+    none, People only merged by name, Imdb only when absent).
+    """
+    if not (series_id and season and ep):
+        return
+    try:
+        extras = tmdb.episode_extras(series_id, season, ep)
+        if not extras:
+            return
+        uid = jellyfin.user_id()
+        dto = jellyfin.get_json(f"/Users/{uid}/Items/{item_id}") or {}
+        prov = dict(dto.get("ProviderIds") or {})
+        changed = False
+        imdb = ((extras.get("external_ids") or {}).get("imdb_id") or "")
+        if imdb and not prov.get("Imdb"):
+            prov["Imdb"] = imdb
+            dto["ProviderIds"] = prov
+            changed = True
+        people = list(dto.get("People") or [])
+        have = {str(p.get("Name") or "") for p in people if isinstance(p, dict)}
+        for c in (extras.get("credits") or {}).get("cast", [])[:5]:
+            if c.get("name") and c["name"] not in have:
+                entry = {"Name": c["name"], "Role": c.get("character") or "",
+                         "Type": "Actor"}
+                if c.get("id"):
+                    entry["ProviderIds"] = {"Tmdb": str(c["id"])}
+                people.append(entry)
+                have.add(c["name"])
+                changed = True
+        for c in (extras.get("credits") or {}).get("crew", []):
+            if c.get("job") in ("Director", "Writer") and c.get("name") not in have:
+                entry = {"Name": c["name"], "Role": c.get("job") or "", "Type": "Director"}
+                if c.get("id"):
+                    entry["ProviderIds"] = {"Tmdb": str(c["id"])}
+                people.append(entry)
+                have.add(c["name"])
+                changed = True
+        if changed:
+            dto["People"] = people
+            dto.pop("Genres", None)
+            jellyfin.post_item(item_id, dto)
+        tags = dto.get("ImageTags") or {}
+        if not tags.get("Primary"):
+            stills = (extras.get("images") or {}).get("stills") or []
+            if stills and stills[0].get("file_path"):
+                img = tmdb.image_bytes(stills[0]["file_path"])
+                if img:
+                    jellyfin.set_primary_image(item_id, img)
+    except Exception as exc:  # noqa: BLE001 - extras are a bonus, never a gate
+        print(f"      extras pin skipped: {type(exc).__name__}", flush=True)
 
 
 def check_row_names(rows: List[Dict], *, journal: Path, fix: bool = False,

@@ -97,7 +97,7 @@ def probe_wrap(binary: str) -> str:
 def ffprobe_cmd(path: str) -> str:
     return (
         f"{probe_wrap(config.FFPROBE_ENTRY)} -v error -select_streams v:0 "
-        f"-show_entries stream=width,height,codec_name:format=duration,size:format_tags=title "
+        f"-show_entries stream=width,height,codec_name:format=duration,size:format_tags=title,description,synopsis,comment "  # noqa: E501 - Review-P3.5a tags
         f"-of json {shlex.quote(path)}"
     )
 
@@ -158,6 +158,9 @@ class ProbeResult(TypedDict):
     dur: Optional[float]
     size: int
     title: Optional[str]
+    # Review-P3.5a: embedded container tags (BBC iPlayer synopsis, broadcast
+    # date) — an offline overview when external providers have nothing.
+    synopsis: Optional[str]
 
 
 def probe(remote_path: str) -> ProbeResult:
@@ -171,7 +174,8 @@ def probe(remote_path: str) -> ProbeResult:
         # A failed probe returns the SHAPE with unknown values, not {} — an empty dict
         # violates the declared contract and made "could not measure" indistinguishable
         # from a type that was never meant to carry the key.
-        return {"w": None, "h": None, "codec": None, "dur": None, "size": 0, "title": None}
+        return {"w": None, "h": None, "codec": None, "dur": None, "size": 0, "title": None,
+                "synopsis": None}
     streams = data.get("streams") or [{}]
     fmt = data.get("format") or {}
     s = streams[0] if streams else {}
@@ -184,13 +188,22 @@ def probe(remote_path: str) -> ProbeResult:
         size = int(fmt.get("size") or 0)
     except (TypeError, ValueError):
         size = 0
+    tags = fmt.get("tags") or {}
+    # First non-empty embedded synopsis-ish tag (Review-P3.5a).
+    synopsis = next(
+        (str(tags.get(k) or "").strip()
+         for k in ("description", "synopsis", "comment")
+         if str(tags.get(k) or "").strip()),
+        None,
+    )
     return {
         "w": s.get("width"),
         "h": s.get("height"),
         "codec": s.get("codec_name"),
         "dur": dur,
         "size": size,
-        "title": (fmt.get("tags") or {}).get("title"),
+        "title": tags.get("title"),
+        "synopsis": synopsis,
     }
 
 

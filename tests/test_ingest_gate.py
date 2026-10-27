@@ -117,3 +117,42 @@ def test_missing_av_sync_stage_falls_back_to_fresh_check(tmp_path, monkeypatch):
     monkeypatch.setattr(jf, "refresh_library", lambda lib: 204)
     assert cli_ingest.main(["--spec", str(spec)]) == 0
     assert len(calls) == 1
+
+
+# -------------------------------------------------- Review-P2.1 from-plan
+def _new_row(**kw):
+    row = {
+        "recommend": "NEW",
+        "title": "Some.Film.2020.720p",
+        "src": "/downloads-zmedia/Some.Film.2020.mkv",
+        "tmdb": {"status": "candidate", "query": "Some Film",
+                 "candidate": {"id": 1, "title": "Some Film", "year": "2020"}},
+    }
+    row.update(kw)
+    return row
+
+
+def test_from_plan_builds_film_path():
+    from cli.ingest_new import placement_for_new
+
+    spec, reason = placement_for_new(_new_row(), "/disk/Films")
+    assert spec == {"src": "/downloads-zmedia/Some.Film.2020.mkv",
+                    "dest": "/disk/Films/Some Film (2020) [tmdbid-1]/Some Film (2020).mkv"}
+
+
+def test_from_plan_refuses_episodic_and_fuzzy():
+    from cli.ingest_new import placement_for_new
+
+    spec, reason = placement_for_new(
+        _new_row(title="Show.S01E01.720p",
+                 tmdb={"status": "candidate", "query": "Show",
+                       "candidate": {"id": 2, "title": "Show", "year": "2020"}}),
+        "/disk/Series")
+    assert spec is None and "episodic" in reason
+    spec, reason = placement_for_new(
+        _new_row(tmdb={"status": "candidate", "query": "Some Film",
+                       "candidate": {"id": 1, "title": "Some Other Film", "year": "2020"}}),
+        "/disk/Films")
+    assert spec is None and "exact normalized" in reason
+    spec, reason = placement_for_new(_new_row(tmdb={"status": "no-match"}), "/disk/Films")
+    assert spec is None

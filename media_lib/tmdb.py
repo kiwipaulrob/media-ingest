@@ -169,6 +169,37 @@ def find_episode_by_name(series_id: int, wanted: str, max_season: int = 20):
                     best = (overlap, season, ep)
     return best[2] if best else None
 
+def episode_extras(series_id: int, season: int, ep: int) -> Dict[str, Any]:
+    """One TMDB call: external_ids + images + credits for an episode.
+
+    Review-P2.2: feeds the 4-field pinning step (Imdb id, Primary still,
+    People with Tmdb pins) so a fresh placement passes verify immediately
+    instead of failing on Imdb/image. Best-effort — returns {} on any error.
+    """
+    try:
+        return _get(
+            f"/tv/{series_id}/season/{season}/episode/{ep}",
+            {"append_to_response": "external_ids,images,credits"},
+        ) or {}
+    except Exception:  # noqa: BLE001 - extras are a bonus, never a gate
+        return {}
+
+
+def image_bytes(file_path: str, size: str = "original") -> Optional[bytes]:
+    """Raw TMDB image bytes for a poster/still path. None on any failure."""
+    import urllib.request
+
+    try:
+        req = urllib.request.Request(
+            f"https://image.tmdb.org/t/p/{size}{file_path}",
+            headers={"User-Agent": "hermes-media-maintainer/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.read()
+    except Exception:  # noqa: BLE001 - image is a bonus, never a gate
+        return None
+
+
 def find_by_imdb(imdb_id: str) -> Optional[Dict[str, Any]]:
     """Resolve an imdb id (tt0123456) to its TMDB movie record, or None.
 
