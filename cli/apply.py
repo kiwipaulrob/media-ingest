@@ -36,8 +36,11 @@ def _refresh(lib_ids, item_ids=()):
 
 
 def _lib_id(uid, name) -> str | None:
-    rows = jellyfin.get_json("/Library/VirtualFolders")
-    for r in rows if isinstance(rows, list) else []:
+    from typing import Any
+
+    rows: Any = jellyfin.get_json("/Library/VirtualFolders")
+    items: list[Any] = rows if isinstance(rows, list) else []
+    for r in items:
         if r.get("Name") == name:
             item_id = r.get("ItemId")
             return str(item_id) if item_id else None
