@@ -174,3 +174,14 @@ def test_add_release_prefers_magnet_over_download_url(monkeypatch):
 
     out = qb.add_release({'title': 'nothing'})
     assert out['ok'] is False and out['state'] == 'no-url'
+
+
+def test_episode_slot_markers_match_across_forms():
+    from media_lib import quality
+
+    assert quality.title_matches(
+        "Louis.Theroux.By.Reason.Of.Insanity.S01E02.720p.HDTV.x264-TASTETV",
+        "Louis Theroux - By Reason of Insanity E02 (2015)") is True
+    assert quality.title_matches("Show S01E02 720p", "Show S01E03") is False
+    # episodic release still cannot stand in for a standalone film
+    assert quality.title_matches("Show S01E02 720p", "Show") is False

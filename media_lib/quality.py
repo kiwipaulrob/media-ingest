@@ -53,6 +53,10 @@ YEAR_TOLERANCE = 1
 
 _EPISODE_RE = re.compile(r"\bs\d{1,2}\s*e\d{1,3}\b|\bs\d{2}\b|\bepisode\s*\d+\b")
 
+#: Single-token episode markers that word-set comparison must ignore on BOTH
+#: sides: a release's "S01E02" and a folder label's "E02" are the same slot.
+_EP_TOKEN_RE = re.compile(r"^(s\d{1,2}e\d{1,3}|e\d{1,3}|s\d{2}|episode\d*)$")
+
 #: Markers that make a release a DIFFERENT work, not a better copy of the same one.
 _SEQUEL_RE = re.compile(r"\b(?:ii|iii|iv|part\s*[2-9]|vol(?:ume)?\s*[2-9])\b")
 
@@ -88,12 +92,36 @@ def _normalise(text: str) -> str:
 
 
 def _title_words(text: str, *, strip_junk: bool) -> set:
-    """Significant words of a title, optionally dropping release-name noise."""
+    """Significant words of a title, optionally dropping release-name noise.
+
+    Episode-marker tokens are ALWAYS dropped (both sides): the release says
+    S01E02 where the folder label says E02, and word-set comparison must not
+    fail on that. Slot compatibility is enforced separately, in title_matches.
+    """
     words = {w for w in _normalise(text).split() if len(w) > 2 and not w.isdigit()}
+    words = {w for w in words if not _EP_TOKEN_RE.match(w)}
     if strip_junk:
         words -= RELEASE_JUNK
         words -= NETWORKS
     return words
+
+
+def _slots_compatible(candidate: str, wanted: str) -> bool:
+    """Same episode slot, or no slot conflict. Season 0 is a wildcard.
+
+    A bare "E02" folder label ((0, 2)) matches a release's "S01E02" ((1, 2)):
+    the label was derived from the release and carries no season. Different
+    episode numbers are different programmes.
+    """
+    from . import slot_check  # deferred: quality stays import-light for tests
+
+    cs, ce = slot_check.slot_numbers(candidate)
+    ws, we = slot_check.slot_numbers(wanted)
+    if not ce or not we:
+        return True
+    if ce != we:
+        return False
+    return not (cs and ws) or cs == ws
 
 
 def title_matches(candidate: str, wanted: str) -> bool:
@@ -115,8 +143,18 @@ def title_matches(candidate: str, wanted: str) -> bool:
     cand = _title_words(candidate, strip_junk=True)
     if not want <= cand:
         return False
-    if _EPISODE_RE.search(_normalise(candidate)) and not _EPISODE_RE.search(_normalise(wanted)):
+    # Same-slot check replaces the old episodic-asymmetry guard: S01E02 vs E02
+    # is the same programme; S01E02 vs S01E03 is not. The regex guard below
+    # survives only for markers no slot parser reconciled (one side episodic,
+    # the other not, with no comparable slot numbers).
+    if not _slots_compatible(candidate, wanted):
         return False
+    if _EPISODE_RE.search(_normalise(candidate)) and not _EPISODE_RE.search(_normalise(wanted)):
+        from . import slot_check as _sc
+
+        cs, ws = _sc.slot_numbers(candidate), _sc.slot_numbers(wanted)
+        if not (cs[1] and ws[1]):
+            return False
     # A sequel is a different film: "Stairway To Heaven II" is not "Stairway to Heaven".
     if _SEQUEL_RE.search(_normalise(candidate)) and not _SEQUEL_RE.search(_normalise(wanted)):
         return False

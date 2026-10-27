@@ -13,7 +13,7 @@ import re
 import shlex
 from typing import List, Optional
 
-_SLOT = re.compile(r"[Ss]0*(\d{1,2})[EeXx]0*(\d{1,2})")
+_SLOT = re.compile(r"[Ss]0*(\d{1,2})[EeXx]0*(\d{1,3})|\b[Ee]0*(\d{1,3})\b")
 
 
 def slot_of(filename: str) -> Optional[str]:
@@ -25,11 +25,18 @@ def slot_of(filename: str) -> Optional[str]:
 
 
 def slot_numbers(filename: str) -> tuple:
-    """(season, episode) ints from an SxxEyy token, else (0, 0). Pure."""
+    """(season, episode) ints from an SxxEyy (or bare Exx) token, else (0, 0).
+
+    A bare E02 means season-unknown (0, N) — the folder label derived from a
+    release carries no season, and season 0 is the wildcard in slot compares.
+    Pure.
+    """
     m = _SLOT.search(filename or "")
     if not m:
         return (0, 0)
-    return (int(m.group(1)), int(m.group(2)))
+    if m.group(1) is not None:
+        return (int(m.group(1)), int(m.group(2)))
+    return (0, int(m.group(3)))
 
 
 def season_dir_of(dest: str) -> Optional[str]:
