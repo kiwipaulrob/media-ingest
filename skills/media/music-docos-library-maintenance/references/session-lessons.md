@@ -243,3 +243,19 @@ Display names now use "Docos":
   Film Documentaries        -> Film Docos
   Documentary Series        -> Docos Series
   Film Documentary Series   -> Film Docos Series
+
+## 28. Check both download clients before sourcing anything
+
+A search hit that matches bytes already held or in flight is a duplicate trip, not a find. Before
+queueing any download, list qBittorrent torrents and the SAB queue/history for the title: a "new"
+result at the same size as the held file, or a job already queued under another name, means the
+title is handled. Two same-night re-queues of already-delivered episodes came from skipping this
+check and reading the search output as if the shelf were empty.
+
+## 29. An empty `find` is a suspect pattern, not an empty result
+
+Release names use dots and spaces unpredictably (`Gandhi.Ep1` on disk vs `Gandhi Ep1` in the
+pattern), and a type filter (`-name '*.mp4'`) silently drops real files of other containers. A find
+that returns nothing proves the pattern failed until a second spelling or an unfiltered listing
+confirms it. Verify against a known listing before concluding absence — and never treat absence as
+licence to download.
