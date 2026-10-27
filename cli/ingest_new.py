@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from media_lib import (awaiting, avsync, config, jellyfin, matcher, nfo, place, qb,
-                       quality, rowcheck, safety, tmdb)
+                       quality, rowcheck, safety, slot_check, tmdb)
 
 
 def placement_for_new(row: Dict, lib_disk_root: str):
@@ -413,6 +413,14 @@ def _fix_row_name(item_id: str, path: str, series_id: int) -> bool:
     if episode.get("air_date"):
         dto["PremiereDate"] = episode["air_date"]
         dto["ProductionYear"] = int(episode["air_date"][:4])
+    # Review-P3.1: a ghost-purged slot leaves IndexNumber null — repopulate
+    # from the filename's SxxEyy token, which is the disk truth. Only fills
+    # nulls, never overwrites.
+    season_n, ep_n = slot_check.slot_numbers(Path(path).name)
+    if season_n and dto.get("ParentIndexNumber") is None:
+        dto["ParentIndexNumber"] = season_n
+    if ep_n and dto.get("IndexNumber") is None:
+        dto["IndexNumber"] = ep_n
     dto["ProviderIds"] = {"Tmdb": str(episode.get("id"))} if from_tmdb else dto.get("ProviderIds")
     dto["LockedFields"] = sorted(set((dto.get("LockedFields") or []) + ["Name", "Overview"]))
     jellyfin.post_item(item_id, dto)
@@ -468,6 +476,10 @@ def _pin_episode_extras(item_id: str, series_id: int, season: int, ep: int) -> N
         prov = dict(dto.get("ProviderIds") or {})
         changed = False
         imdb = ((extras.get("external_ids") or {}).get("imdb_id") or "")
+        if not imdb:
+            # Review-P3.1: episodes rarely carry their own IMDb entry — the
+            # series-level id is the documented convention for the 4th field.
+            imdb = tmdb.series_imdb(series_id)
         if imdb and not prov.get("Imdb"):
             prov["Imdb"] = imdb
             dto["ProviderIds"] = prov

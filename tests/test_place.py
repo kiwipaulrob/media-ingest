@@ -4,9 +4,10 @@ Two things are pinned here because they cost real time or real correctness when
 they regress:
   * a failing gate must REMOVE the staged copy — a half-good file must never
     stay in the library;
-  * a successful placement must use exactly TWO remote calls. The first version
-    used six (probe src, stage, probe dst, three decode spans) and every one
-    pays SSH plus container startup — ~5.7 s per file wasted.
+  * a successful placement must use exactly THREE remote calls: the slot-collision
+    `ls` (Review-P3.3, ~50 ms, before a single byte is copied) plus the two the
+    copy itself needs. The first version used six (probe src, stage, probe dst,
+    three decode spans) and every one pays SSH plus container startup.
 """
 import json
 
@@ -58,6 +59,8 @@ class FakeHost:
             return (f'COPIED={self.copied}\nSIZE_SRC={self.size_src}\nSIZE_DST={self.size_dst}\n'
                     f'{place.M_SRC}\n{_probe_json(*self.src)}\n{place.M_END}\n'
                     f'{place.M_DST}\n{_probe_json(*self.dst)}\n{place.M_END}\n')
+        if inner.strip().startswith('ls -1'):               # the slot-collision check
+            return ''
         raise AssertionError(f'unexpected remote call: {inner[:80]}')
 
 
@@ -76,7 +79,8 @@ def test_good_placement_passes_with_two_remote_calls(monkeypatch):
     assert out['ok'] and out['stage'] == 'PLACED'
     assert out['res'] == '1920x1080 h264'
     assert out['av_sync'] == 'ok'
-    assert len(h.calls) == 2, f'expected 2 remote calls, got {len(h.calls)}'
+    assert len(h.calls) == 3, f'expected 3 remote calls, got {len(h.calls)}'
+    assert h.calls[0].strip().startswith('ls -1'), 'slot check runs before any copy'
     assert h.removed == []
 
 
@@ -180,7 +184,7 @@ def test_copy_failure_never_reaches_a_gate(monkeypatch):
     h.install(monkeypatch)
     out = place.place_new(SRC, DEST)
     assert not out['ok'] and out['stage'] == 'COPY-FAIL'
-    assert len(h.calls) == 1
+    assert len(h.calls) == 2  # slot ls, then the failed copy — no gate runs after
 
 
 def test_bad_destination_extension_is_refused_before_any_remote_call(monkeypatch):
@@ -256,3 +260,21 @@ def test_a_sync_check_that_crashes_refuses_the_file(monkeypatch):
     assert out['ok'] is False
     assert out['stage'] == 'AV-SYNC-UNVERIFIED'
     assert h.removed, 'an unverifiable copy must not be left in the library'
+
+
+def test_slot_collision_refuses_before_copy(monkeypatch):
+    """Review-P3.3: an occupied slot refuses with SLOT-COLLISION, no copy."""
+    h = FakeHost()
+    h.install(monkeypatch)
+    orig = h.on_media
+
+    def occupied(inner, timeout=300):
+        h.calls.append(inner)
+        if inner.strip().startswith('ls -1'):
+            return 'Show S02E03 Other Title.mkv\n'
+        return orig(inner, timeout)
+
+    monkeypatch.setattr(place.probe, 'on_media', occupied)
+    out = place.place_new(SRC, DEST)
+    assert not out['ok'] and out['stage'] == 'SLOT-COLLISION'
+    assert len(h.calls) == 1 and 'cp --reflink' not in ''.join(h.calls)

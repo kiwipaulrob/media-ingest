@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 405 tests · no external dependencies beyond
+**~4,400 lines of library code · 415 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -102,6 +102,11 @@ thinking, explicit targets, verify by reading back) covers four more verbs:
 | hunt (plan) | `media_lib/hunt.py::plan` (read-only) | `tests/test_hunt.py` | token-set title matching (dotted = spaced); protocol/seeder/episode filters; seed+grab rank; queue takes one explicit candidate only |
 | fleet-health | `media_lib/fleet.py::check` (read-only) | `tests/test_fleet_wanted.py` | never raises; red rows are human decisions, never auto-repairs |
 | wanted sweep | `scripts/wanted.py` + `state/wanted.json` (read-only) | `tests/test_fleet_wanted.py` | watchlist hunts via hunt.plan; never queues |
+| slot gate | `media_lib/slot_check.py` (1 remote `ls`, pre-copy) | `tests/test_slot_check.py` + place budget tests | disk is truth on SxxEyy slots; SLOT-COLLISION refuses before a byte copies |
+| tvmaze fallback | `media_lib/tvmaze.py` (keyless, name-first) | `tests/test_tvmaze.py` | UK strands where TMDB shells/misses; never overrides TMDB |
+| wikidata claims | `media_lib/wikidata_claims.py` + `bio portrait-search` | `tests/test_wikidata_claims.py` | P345/P569/P106/P18 bridge; URLs printed, attaching stays approved |
+| bbc pid.json | `media_lib/bbc.py::programme` | `tests/test_bbc.py` | version PIDs resolve via parent; empty json falls back to HTML |
+| nfo sidecars | `media_lib/nfo.py` (written on repair) | `tests/test_nfo.py` | lockdata survives Tdarr swaps and row recreation |
 
 2-part films stay films (concat or nothing); 3+ parts default to series style.
 `migrate_series_between_libs.py` moves series between libraries on exact TMDB

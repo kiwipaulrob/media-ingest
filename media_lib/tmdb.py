@@ -185,6 +185,18 @@ def episode_extras(series_id: int, season: int, ep: int) -> Dict[str, Any]:
         return {}
 
 
+def series_imdb(series_id: int) -> str:
+    """The series-level IMDb id (convention for episodes without their own).
+
+    Best-effort — returns "" on any error.
+    """
+    try:
+        data = _get(f"/tv/{series_id}", {"append_to_response": "external_ids"})
+        return ((data.get("external_ids") or {}).get("imdb_id") or "")
+    except Exception:  # noqa: BLE001 - id is a bonus, never a gate
+        return ""
+
+
 def image_bytes(file_path: str, size: str = "original") -> Optional[bytes]:
     """Raw TMDB image bytes for a poster/still path. None on any failure."""
     import urllib.request

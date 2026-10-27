@@ -51,6 +51,15 @@ def _fetch(url: str) -> str:
         raise BbcError(f"BBC fetch failed: {str(exc)[:160]}") from exc
 
 
+def _fetch_json(url: str) -> Dict[str, Any]:
+    import json
+
+    try:
+        return json.loads(_fetch(url))
+    except (ValueError, BbcError) as exc:
+        raise BbcError(f"BBC json fetch failed: {str(exc)[:160]}") from exc
+
+
 def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", _html.unescape(_TAG.sub(" ", text))).strip()
 
@@ -83,7 +92,49 @@ def search_programmes(query: str, limit: int = 5) -> List[Dict[str, str]]:
 
 
 def programme(pid: str) -> Dict[str, Any]:
-    """Title + synopsis for a programme PID. Raises BbcError on failure."""
+    """Title + synopsis + first-broadcast + image for a programme PID.
+
+    Review-P4.4: prefers the public pid.json payload (clean fields, no HTML
+    scraping); falls back to the HTML page when json is unavailable.
+    Raises BbcError on failure.
+    """
+    try:
+        data = _fetch_json(f"https://www.bbc.co.uk/programmes/{pid}.json")
+        prog = data.get("programme") or {}
+        if not prog and "version" in data:
+            # Version/clip PIDs carry no programme block — the canonical
+            # version names its parent episode, which has the metadata.
+            versions = data.get("version") or {}
+            if isinstance(versions, dict):
+                parent = ((versions.get("parent") or {}).get("programme") or {})
+                if parent.get("pid"):
+                    data = _fetch_json(
+                        f"https://www.bbc.co.uk/programmes/{parent['pid']}.json")
+                    prog = data.get("programme") or {}
+        syn = (
+            prog.get("long_synopsis")
+            or prog.get("medium_synopsis")
+            or prog.get("short_synopsis")
+            or ""
+        )
+        image_pid = (prog.get("image") or {}).get("pid") or ""
+        disp = prog.get("display_title")
+        if isinstance(disp, dict):
+            disp = disp.get("subtitle") or disp.get("title") or ""
+        title = prog.get("title") or disp or ""
+        if title or syn:
+            return {
+                "pid": pid,
+                "title": title,
+                "synopsis": _clean(syn)[:600],
+                "first_broadcast": prog.get("first_broadcast_date") or "",
+                "image": (
+                    f"https://ichef.bbci.co.uk/images/ic/1200x675/{image_pid}.jpg"
+                    if image_pid else ""
+                ),
+            }
+    except BbcError:
+        pass
     page = _fetch(f"https://www.bbc.co.uk/programmes/{pid}")
     title_m = _TITLE.search(page)
     title = _clean(title_m.group(1)).split(" - ")[-1] if title_m else ""

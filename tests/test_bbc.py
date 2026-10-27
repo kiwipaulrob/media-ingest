@@ -74,3 +74,35 @@ def test_programme_prefers_jsonld(monkeypatch):
 
 def test_match_empty_title():
     assert bbc.match("")["status"] == "no-match"
+
+
+def test_programme_prefers_pid_json_and_resolves_versions(monkeypatch):
+    import media_lib.bbc as bbc
+
+    ep = {"programme": {"title": "Ep Title", "medium_synopsis": "A synopsis here.",
+                        "first_broadcast_date": "2020-01-01",
+                        "image": {"pid": "p0abc123"}}}
+
+    def fake_json(url):
+        if url.endswith("vvvvvvvv.json"):
+            return {"version": {"canonical": 1, "pid": "vvvvvvvv",
+                                "parent": {"programme": {"pid": "eeeeeeee"}}}}
+        return ep
+
+    monkeypatch.setattr(bbc, "_fetch_json", fake_json)
+    d = bbc.programme("eeeeeeee")
+    assert d["title"] == "Ep Title" and d["first_broadcast"] == "2020-01-01"
+    assert d["image"].endswith("/p0abc123.jpg")
+    d = bbc.programme("vvvvvvvv")
+    assert d["title"] == "Ep Title"
+
+
+def test_programme_falls_back_to_html_on_empty_json(monkeypatch):
+    import media_lib.bbc as bbc
+
+    monkeypatch.setattr(bbc, "_fetch_json", lambda *a: {"programme": {}})
+    monkeypatch.setattr(bbc, "_fetch", lambda *a: (
+        '<html><head><title>Show Title - BBC One</title>'
+        '<meta name="description" content="HTML synopsis."></head></html>'))
+    d = bbc.programme("bbbbbbbb")
+    assert d["title"] == "BBC One" or "Show" in d["title"] or d["synopsis"] != ""

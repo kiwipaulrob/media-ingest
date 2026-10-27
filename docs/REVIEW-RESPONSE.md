@@ -30,3 +30,21 @@ skip straight to what is actually new.
 - MusicBrainz `url-rels` (`Review-P3.4`).
 - Container-tag mining (`description`/`synopsis`/`comment`) in `probe.py` (`Review-P3.5a`).
 - Transcript title mining stays a documented manual step (`references/transcript-title-mining.md`); faster-whisper automation deferred — needs CT110 GPU time, not code.
+
+## Second brief (`media_ingest_agent_review_and_metadata_plan.md`) — verdicts
+
+Same staleness on Part 1 (bugs 1–7 identical citations, all fixed pre-brief).
+Part 2–4 triaged item by item:
+- Adopted: `git rm -r vendor/` (drift real, nothing imported it);
+  `slot_check.py` + SLOT-COLLISION gate in `place_new` (gap real — placement
+  budget now 3 remote calls, asserted in tests); series-Imdb fallback +
+  SxxEyy IndexNumber backfill in `_fix_row_name`; TVmaze fallback already
+  shipped, BBC `programme()` upgraded to pid.json (version-PID + empty-json
+  lessons included); MusicBrainz url-rels already shipped; probe
+  `synopsis` + `aired` container tags; `wikidata_claims.py` + read-only
+  `bio portrait-search` (attaching stays approval-gated).
+- Already true (brief wrong): sweep hardlink guard; plugin MEDIA_OPS_HOME;
+  `cli/sync.py::tests()` already runs the plugin suite.
+- Deferred with reason: transcript-mining CLI (needs CT110 GPU time, not
+  code); ffmpeg frame-extract Primary fallback (still_path covers the common
+  case; frame-pick needs a quality heuristic or it pins blurry frames).

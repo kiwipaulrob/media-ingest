@@ -39,7 +39,7 @@ import re
 import shlex
 from typing import Any, Dict, Optional
 
-from . import avsync, completeness, config, probe
+from . import avsync, completeness, config, probe, slot_check
 
 DECODE_SPANS = (0.05, 0.50, 0.95)
 M_SRC = "@@SRC@@"
@@ -190,6 +190,18 @@ def place_new(
             "stage": "INCOMPLETE-SOURCE",
             "detail": "; ".join(problems[:3]),
             "problems": problems,
+            "dest": dest,
+        }
+
+    # Review-P3.3: the disk is the truth on episode slots. A TMDB-numbered
+    # dest that collides with a different-stemmed file already on the slot
+    # is refused before a single byte is copied (Def Leppard/Sex Pistols).
+    occupier = slot_check.refuse_collision(dst_d)
+    if occupier:
+        return {
+            "ok": False,
+            "stage": "SLOT-COLLISION",
+            "detail": f"{dst_d.rsplit('/', 1)[-1]} collides with {occupier}",
             "dest": dest,
         }
 

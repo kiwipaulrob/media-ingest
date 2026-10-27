@@ -210,7 +210,7 @@ def cmd_portrait(args) -> int:
 
 
 def _name_matches(name: str, label: str) -> bool:
-    """Is `label` the same name as `name`? Punctuation/order-insensitive, strict."""
+    """Is `label` the same name as `name`? Punctuation-insensitive, strict."""
     def norm(v: str) -> str:
         return re.sub(r"[^a-z0-9]+", " ", (v or "").lower()).strip()
 
@@ -272,6 +272,20 @@ def cmd_wikidata(args) -> int:
         return 0
 
 
+def cmd_portrait_search(args) -> int:
+    """Print exact Commons portrait URLs (read-only; approval happens later).
+
+    Review-P4.2: P18 is editor-curated, so the URL is the right file by
+    construction — but attaching stays behind `portrait --url` + human yes.
+    """
+    from media_lib import wikidata_claims
+
+    for name in [n.strip() for n in args.names.split(",") if n.strip()]:
+        url = wikidata_claims.portrait_url(name)
+        print(f"  {name}: {url or 'NO-P18'}", flush=True)
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -301,6 +315,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     wd = sub.add_parser("wikidata", help="fill one-liners where no prose exists")
     wd.add_argument("--names", required=True, help="comma-separated")
     wd.set_defaults(func=cmd_wikidata)
+
+    ps = sub.add_parser("portrait-search",
+                        help="read-only: exact Commons portrait URL via Wikidata P18")
+    ps.add_argument("--names", required=True, help="comma-separated")
+    ps.set_defaults(func=cmd_portrait_search)
 
     args = ap.parse_args(argv)
     return args.func(args)
