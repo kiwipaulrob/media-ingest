@@ -218,6 +218,16 @@ client for the first time.
 - **One hash per mutating request.** `setForceStart`, `setLocation`,
   `recheck` and deletes reject pipe-joined hash batches with 400 — loop one
   hash per POST.
+- **To fetch one file from a pack, add stopped, list, prioritise, then start.**
+  Add the magnet with `stopped=true`, wait for metadata, list
+  `/api/v2/torrents/files`, then `POST /api/v2/torrents/filePrio` with
+  `id=all` + `priority=0` followed by the wanted file's index + `priority=1`,
+  and only then start the torrent. Two guards this needs: **verify the stopped
+  state actually took** — an add can land force-started and pull gigabytes
+  before the priorities are set — and **confirm the wanted file is IN the
+  listing first**: a pack named for the complete series can hold the same gap
+  as every other source, and the file list (free while stopped) proves it
+  before any bandwidth is spent.
 - **Stall triage, in order:** (1) `reannounce` with `hashes=` (zero-risk
   first nudge — there is no `reannounceAll` endpoint);
   (2) recheck `error`-state torrents — bad-piece flags often clear;
@@ -328,6 +338,14 @@ client for the first time.
   fabricates gaps in a complete season.
 - A lone `part 1` / `1ofN` proves nothing alone; the series total comes from
   external knowledge (actual episode count), never from the files held.
+- **A gap absent from two complete packs is not circulating in those rips —
+  stop re-hunting the same packs.** One missing episode absent from the held
+  set AND from a 27-file "complete" pack (verified via the stopped file list
+  before downloading) means the pack was mastered without it, not that the
+  search was wrong. A second complete pack showing the identical gap confirms
+  it. Re-queueing the same packs, or broadening the query to find them a
+  third time, spends bandwidth re-proving the gap. Log it as uncirculating
+  and re-hunt only when a new source appears.
 - Same-name traps: verify the found title is the same work (year, path
   context) before queueing — remakes and same-named shows abound. Prove
   identity with at least two of: ffprobe runtime within ~5% of the known

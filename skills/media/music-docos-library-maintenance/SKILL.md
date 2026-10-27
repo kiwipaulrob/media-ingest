@@ -131,6 +131,24 @@ Identify also fixes what a credit write cannot: on a generic Video item in a mus
 `People` and `ProviderIds` returns **204 and silently discards both**. Identifying the item attaches
 the credits properly (nine people plus Tmdb/Imdb/Tvdb ids on this entry).
 
+### When TMDB has no match, fall back to the BBC programme site — never to guessing
+
+TMDB under-covers BBC-original documentaries (strand episodes, one-offs, pre-2000 archive).
+A TMDB no-match is not evidence of absence. The BBC programme site carries the title, synopsis
+and full episode guide, and its pages are server-rendered enough to parse with stdlib:
+`media_lib/bbc.py` (`programme(pid)` for title+synopsis, `episode_guide(pid)` for n/m-numbered
+episodes, `gate_with_fallback(release)` which runs `tmdb.gate` first and consults the BBC only
+on a clean no-match). Proven: Hawking's Universe episode guide, Bitter Lake / It Felt Like a
+Kiss / A303 synopses applied as sourced overviews.
+
+Two constraints on the fallback. First, **the BBC never overrides an ambiguous TMDB hit** — it
+is a gap-filler, not an appeals court; an ambiguous hit stays ambiguous. Second, **programme
+search from the media box is bot-walled** (DDG serves a consent page, Bing serves junk), so PID
+discovery happens agent-side via web search (`site:bbc.co.uk/programmes <title>`) and the code
+consumes PIDs — do not build a runtime path that depends on search-engine scraping from the box.
+A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt
+instead of failing it.
+
 ## Never hand-build an ingest spec — the planner already decided
 
 The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`
@@ -240,6 +258,7 @@ A provider-driven scan creates a row for **every** episode the provider lists, i
 
 - **Check the DISK before choosing a slot — the library's numbering is not TMDB's.** Listing the target season first is mandatory. Proven: placing Deep Purple *Machine Head* at TMDB's `S04E03` and Def Leppard at `S04E01` put Def Leppard on top of an existing `S04E01 The Sex Pistols` file (the library numbered Sex Pistols as E01, TMDB calls it E02), so two files claimed one episode and one vanished from the UI. Fix is to lay the season out from what is already on disk (Sex Pistols E01, Dark Side E04, ghosts for the rest), put new files in the free slots, then write Name/Overview/IndexNumber yourself and lock them. Grep the season directory for its existing `SxxEyy` stems — never trust a provider's episode number alone.
 - **A placed file does NOT bind to its ghost slot.** The scan purges the ghost and creates a NEW unnumbered row named after the file, so `Name` is the bare series title and `IndexNumber`/`ParentIndexNumber` are `null`. Set all four (`Name`, `Overview`, `IndexNumber`, `ParentIndexNumber`) via DTO and lock `Name`+`Overview`, or a later refresh puts the generic name back.
+- **When the newcomer's number is already taken, de-collide instead of overwriting.** A release-named episode (broadcast order) can claim an `SxxEyy` the library already gave a different episode under another ordering (proven: a release called S09E03 landing on a library S09E03 of a different title). Do not renumber either row — strip the newcomer's episode number so it stands as its own unnumbered row, refresh, then identify it individually.
 - **Name episodes by their subject, not the series.** `Name = "<Artist>: <Album>"` and open the overview with the book identity ("Classic Albums: the making of X's 1976 album Y.") — a library of rows all called "Classic Albums" cannot be browsed or searched.
 - **`1of2` postings are half a programme.** Parse the part marker before queueing or placing; ingest part 1 alone only with the part explicit in the title.
 - Same-series numbering differs by source: Classic Albums on TMDB (id 9048) stops at season 10, so seasons 14, 17 and 18 exist only in the library — take the year↔season mapping from the Wikipedia episode table (one row per year) and write the numbers yourself. S18 = the 2021 run (Who Sell Out, Soul II Soul, Suede, Gil Scott-Heron, Morrison Hotel, Freak Out); S17 = 2020; S14 = 2017.
@@ -254,6 +273,9 @@ Delete order matters: **verify a separate copy exists first** (compare inodes). 
 
 ## Pitfalls
 
+- **A concat script must exclude its own previous output from the part list.** A re-run (`--apply`, or a retry) finds the old output in the folder and ingests it as a bonus "part": the doubled total is self-consistent, so a duration gate passes, and a deleting apply then removes everything including the output — the only copies destroyed. Filter `names != out` before ordering, and pin it with a test; the gate cannot catch this class of error by construction.
+- **Classify a SAB failure before re-queueing.** `retry=True` with "RAR files failed to verify" usually clears on a second pass — retry it. "Repair failed, not enough repair blocks" never clears no matter how often it is retried; that title needs an alternate release (different group/indexer), not another attempt on the same NZB.
+- **NFO-only folders are husks, not holdings.** Folders containing `.nfo`/`.jpg`/`.txt` but no video mean the media never landed or already moved — verify zero video files, remove the folder, and let the rescan clear the row. Do not treat them as missing episodes to hunt; log them as gaps only if no copy exists anywhere else.
 - **Pagination bites.** `Limit=100` silently truncates the recursive item list — a path filter then matches nothing and you wrongly conclude "no items". Page with `Limit=500` + `StartIndex`, or loop until a short page.
 - **Counts and verification come from paginated `ParentId` listings, never `searchTerm`.** Search returns a relevance-ranked index subset (a series with 500 episode rows can return 3 hits), so a search-based recount fabricates both
   "all done" and "hundreds missing". Enumerate with `ParentId` (+`Recursive`, per-series for episodes) and reconcile against the series row's `ChildCount`/`RecursiveItemCount` before reporting.
