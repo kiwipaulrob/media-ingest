@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 367 tests · no external dependencies beyond
+**~4,400 lines of library code · 391 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -98,6 +98,10 @@ thinking, explicit targets, verify by reading back) covers four more verbs:
 | merge (cuts/encodes) | same alternate-version naming | — | `<primary> - <label>` merges; `- partN` does **not** (server-side, verified twice each way) |
 | concat (2-part film) | `scripts/concat_parts.py [--reencode]` (dry-run default) | `tests/test_concat_parts.py` | part-number ordering (never the year); output duration within 2% of the parts' sum or the parts stay |
 | series-convert (3+ parts) | `scripts/multipart_to_series.py` | guards, no dedicated tests yet | existing-series abort; provider-count match; per-episode runtime ratio 0.75–1.33; leftover-source hash check at the end |
+| series-shape scan | `scripts/scan_series_shapes.py [--from-stdin]` (read-only) | `tests/test_scan_series_shapes.py` | bare `e01` matches, bare `e 8` never does; remote listings via stdin (media is not local) |
+| hunt (plan) | `media_lib/hunt.py::plan` (read-only) | `tests/test_hunt.py` | token-set title matching (dotted = spaced); protocol/seeder/episode filters; seed+grab rank; queue takes one explicit candidate only |
+| fleet-health | `media_lib/fleet.py::check` (read-only) | `tests/test_fleet_wanted.py` | never raises; red rows are human decisions, never auto-repairs |
+| wanted sweep | `scripts/wanted.py` + `state/wanted.json` (read-only) | `tests/test_fleet_wanted.py` | watchlist hunts via hunt.plan; never queues |
 
 2-part films stay films (concat or nothing); 3+ parts default to series style.
 `migrate_series_between_libs.py` moves series between libraries on exact TMDB

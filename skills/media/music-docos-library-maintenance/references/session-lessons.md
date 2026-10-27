@@ -259,3 +259,15 @@ pattern), and a type filter (`-name '*.mp4'`) silently drops real files of other
 that returns nothing proves the pattern failed until a second spelling or an unfiltered listing
 confirms it. Verify against a known listing before concluding absence — and never treat absence as
 licence to download.
+
+## 30. Ad hoc shapes that survive a night get promoted to tested modules
+
+Fifteen hand-rolled hunt loops shared one shape (search, filter, rank, queue)
+with per-copy filter bugs; the suite had no series discovery until three
+series were found by eyeballing. Both are now tested modules (`media_lib/hunt.py`
+plan/queue, `scripts/scan_series_shapes.py`, `media_lib/fleet.py`,
+`scripts/wanted.py` + `state/wanted.json`). External surveys (admirarr,
+clawarr-suite, homelab-agent-skills) found nothing installable — all assume
+Sonarr/Radarr movie+TV flows, not an approval-gated documentary library —
+but contributed two stolen ideas: doctor-style fleet-health rows and a
+wanted-list-driven hunt sweep, both read-only.

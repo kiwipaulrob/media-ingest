@@ -19,6 +19,14 @@ takes explicit ids and has no "all" switch. Four hand-rolled hunt scripts were
 deleted because duplicating this logic produced three separate bugs in one
 session — a new one-off script will reproduce them.
 
+The current tested shape is `media_lib/hunt.py`: `plan()` (pure — token-set
+title matching so dotted and spaced names compare equal, protocol / seeder /
+episode filters, seed+grab ranking) and `queue()` (queues ONE explicit
+candidate, never bulk). Episode-gap hunting runs off `state/wanted.json` via
+`scripts/wanted.py` — read-only sweep, queuing stays a human pick. Fleet health
+(Jellyfin / Prowlarr / SAB / qB one line each, never raising, red rows are
+human decisions not auto-repairs) is `media_lib/fleet.py`.
+
 ## Prowlarr search
 
 - **Every hunt runs BOTH sources: torrents AND Usenet.** A torrent miss is
