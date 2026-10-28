@@ -311,3 +311,12 @@ single-purpose functions, pure flag/match logic with fixture tests, live
 proof before commit. The rule for tonight's leftovers: per-row Jellyfin
 writes stay manual (they are approval-gated by nature), everything
 read-only or repeated becomes a script.
+
+## 33. No series-level id does not mean no ids at all
+
+The Decline trilogy has no TMDB *series* entry, so the row went out with
+empty ProviderIds — but each part is a theatrical film with its own IMDb
+(Pt I tt0082252, Pt II tt0094980, Pt III tt0138393, all verified via TMDB
+movie external_ids, never from memory). Rule: for anthology/trilogy/series
+rows without a series id, drop a level and pin the *film-level* ids onto
+the episode rows before declaring "no ids by design".
