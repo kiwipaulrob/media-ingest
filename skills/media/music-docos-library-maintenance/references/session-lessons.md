@@ -329,7 +329,7 @@ via web search for the series and episode ids, verifying every id through
 TMDB movie `external_ids` or the IMDb page itself — never from memory. A
 TMDB series miss is the start of the hunt, not its end.
 
-## 34. Never stop at the first source that says nothing
+## 36. Never stop at the first source that says nothing
 
 Stopping at "no TMDB match" left The Devil's Music, Folk America and the
 Britannia strand unidentified for months while TVmaze, BBC pid.json, IMDb
@@ -338,3 +338,14 @@ chains TMDB -> TVmaze -> BBC -> local-nfo and records per-field provenance;
 `missing_fields()` says what is still open. IMDb has no API, so the agent
 web-searches IMDb directly as the final step (Folk America tt2200247 came
 that way) — that step is doctrine, not code.
+
+## 35. Virtual episode slots are not missing media
+
+Jellyfin materialises an empty row for every TMDB episode a series has, so
+a 326-file library reported 876 rows and I told Paul 833 episodes lacked
+artwork and 624 lacked ids. Almost all of it was placeholder rows with no
+Path. `scripts/audit_episodes.py` now returns ['virtual'] for any row
+without a Path and prints "N with media, M virtual slots ignored". Same
+class of bug in list_items: a comma-joined include_types string returned
+extra item kinds — always query one type at a time and check the count
+against a known figure before reporting it.

@@ -152,6 +152,18 @@ When TMDB shells on UK broadcast strands (Arena, Later... with Jools Holland, Cl
 
 Prefer the public `programmes/<pid>.json` payload over scraping HTML — but know its two shapes: version/clip PIDs return `{"version": {...}}` with no programme block, so resolve the parent episode PID and fetch that; and `display_title` can be a dict (use its subtitle), not a string. An empty title+synopsis from JSON means fall back to the HTML page, not to report empties.
 
+## Never stop at the first source that says nothing
+
+A TMDB miss is the START of an identification hunt, not its end. Work the whole chain before a row may be called unidentified — `media_lib/resolve.py` runs the first four automatically and records provenance per field:
+
+1. **TMDB** (`/search/tv`, then `/search/movie`) — ids, overview, poster, episode list.
+2. **TVmaze** (keyless) — the real episode list where TMDB shells as "Episode N" or 404s past its last season; also a show-level summary.
+3. **BBC programme catalogue** (`programmes/<pid>.json`) — synopsis, first broadcast, 16:9 artwork.
+4. **The media's own `tvshow.nfo` / container tags** — often carries `imdb_id` next to an empty plot.
+5. **IMDb by web search** — no API exists, so this step stays agent-side: search `"<title>" <year> imdb`, then verify the returned id through TMDB `external_ids` (or the IMDb page) before pinning it. Never pin an id from memory or from a title match alone.
+
+Two failures this rule exists to prevent, both of which reached the user as "why did you not look?": a trilogy shipped with empty `ProviderIds` because only the *series* namespace was checked (each part is a film with its own IMDb id), and a three-part folk series left blank while its IMDb entry sat one search away. When every source above returns nothing, report that per source with the evidence — that is a legitimate result. "No TMDB match" on its own is not.
+
 ## Never hand-build an ingest spec — the planner already decided
 
 The sanctioned path is `cli.scan` → `cli.plan` → `cli.ingest_new` / `cli.apply`. `cli.plan`
@@ -227,26 +239,27 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 
 ## Current tooling — `media-ops` (reach for this before writing a new script)
 
-`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and ~419 pytest tests. Prefer it over hand-rolling another sweep:
+`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and 420+ pytest tests. Prefer it over hand-rolling another sweep:
 
 | Need | Use |
 |---|---|
 | Find/replace higher-res downloads | `python3 -m cli.scan` → `cli.plan` → `cli.apply --ids 1,3` (id-gated, journaled, lockfile) |
 | **Hunt a missing episode/album** | `python3 -m cli.source plan --targets targets.json` → `cli.source queue --ids N` (plugin verbs `media_source_plan` / `media_source_queue`). Broad pool → normalised match → ranked; `1ofN` sets are refused unless `--allow-incomplete` |
 | 4-field exit gate | `python3 -m cli.verify --ids <itemIds>` |
-| Place a completed download as a NEW library item | `python3 -m cli.ingest_new --spec <json> --refresh-lib <id> [--wait-rows 200]` — copy → size → probe → min-height → duration → 3-span decode; a failed gate deletes the staged copy so a half-good file never lands. It now fires `/Library/Media/Updated` itself, so the row appears without a manual ping. `cli.plan`/`media_plan` is **REPLACE-only** by design, so genuinely NEW episodes always fall to its check list; do not read that as a rejection. |
+| Place a completed download as a NEW library item | `python3 -m cli.ingest_new --spec <json> --refresh-lib <id> [--wait-rows 200]` — copy → size → probe → min-height → duration → 3-span decode; a failed gate deletes the staged copy so a half-good file never lands. It now fires `/Library/Media/Updated` itself, so the row appears without a manual ping. `--from-plan <needs-your-check.json> --ids N,M --library '<name>'` builds the spec from approved NEW rows (film path only — episodic rows are refused because the slot needs a disk check, so hand-route those). `cli.plan`/`media_plan` is **REPLACE-only** by design, so genuinely NEW episodes always fall to its check list; do not read that as a rejection. |
 | Bios/portraits from providers | `media_lib.providers.chain.resolve(name, kind)` or `cli.meta plan` → `cli.meta apply` |
 | Identify a series/film row (replaces inline heredocs) | `python3 scripts/identify_series.py --library 'Docos Series' --frag tmdbid-123 --title 'Name' --year 2020 --tmdb-id 123` / `scripts/identify_movie.py` — find-by-path, pinned-id apply, read-back verify, exit 0 only on id match |
 | Discover series-shaped sets sitting in a flat library | `ssh <media-host> 'find <root> -type f ...' | python3 scripts/scan_series_shapes.py --from-stdin` — groups SxxEyy/part/ep/NofM filenames by stripped title, TMDB-matches each group, prints proposal JSON (read-only, moves nothing) |
 | Hunt the watchlist (read-only sweep) | `python3 scripts/wanted.py` — runs every `state/wanted.json` entry through `hunt.plan`, prints ranked candidates, queues nothing |
 | Fleet health (read-only) | `python3 -c "from media_lib import fleet; print(fleet.render(fleet.check()))"` — one ok/FAIL row per service; red rows are human decisions, never auto-repairs |
 | Enrichment gap report | `python3 -m cli.meta plan` (read-only: ready / thin / gap / no-row counts) |
-| Series 4-field audit (read-only shopping list) | `python3 scripts/audit_series.py --library 'Docos Series'` — flags no-tmdb/no-imdb/short-overview/no-img per Series row; enrichment stays explicit per row |
+| Series 4-field audit (read-only shopping list) | `python3 scripts/audit_series.py --library 'Docos Series'` — flags `no-ids` (only when NEITHER Tmdb nor Imdb exists — an Imdb-only UK strand is identified, not a gap), `ov<N>c`, `no-img` per Series row; enrichment stays explicit per row |
+| Resolve an unidentified title across every source | `python3 -c "from media_lib import resolve; print(resolve.resolve_series('<title>', '<year>'))"` — TMDB → TVmaze → BBC pid catalogue → local nfo with per-field provenance; `missing_fields()` lists what is still open |
 | A/B a sample against the library | `python3 -m scripts.meta_test_10 --seed N --sample 10` |
 
 Agent-side tools (when the plugins are loaded): `media_scan`, `media_plan`, `media_apply`, `media_verify`, `media_source_plan`, `media_source_queue`, `meta_search`, `meta_resolve`. The `meta_apply` write path lives in `cli.meta apply`, not yet as a tool.
 
-**One rule for all sourcing: extend `media_lib.source`, never write a hunt script.** Four hand-rolled hunt scripts were deleted because duplicating its logic produced three separate bugs in a single session (narrow-query zeros, dotted-name mismatches, blind seed trust).
+**One rule for all sourcing: never write a hunt script.** Pure search/filter/rank lives in `media_lib/hunt.py` (`plan()` ranks candidates read-only with token-set title matching, `queue()` takes ONE explicit candidate), and the queueing path stays `media_lib/source.py`. Four hand-rolled hunt scripts were deleted because duplicating that logic produced three separate bugs in a single session (narrow-query zeros, dotted-name mismatches, blind seed trust).
 
 **Promote a repeated inline flow to a tested script instead of re-typing it.** A heredoc run three times is a script that lacks tests: `identify_series.py` / `identify_movie.py` / `scan_series_shapes.py` all began as inline snippets and earned `--help`, `main()`-wrapping, fixture tests and a skill-table row. When the user asks whether a script is ad hoc or suite, the answer must be suite with tests — or say plainly that it is ad hoc and why it cannot go through the suite yet.
 
@@ -288,6 +301,7 @@ Delete order matters: **verify a separate copy exists first** (compare inodes). 
 
 ## Pitfalls
 
+- **Provider name matching must squash punctuation, and the QUERY must be a substring of the provider name.** Two failures in one conversion batch: the query `Oh You Pretty Things The Story of British Music` never matched TMDB's `Oh! You Pretty Things: …` because the normaliser stripped spaces/dots/dashes/colons but not `!` (squash to alphanumerics instead), and lengthening a query to "help" it does the opposite — `multipart_to_series` requires `_norm(KEY) in _norm(provider_name)`, so the query must be SHORTER than or equal to the provider title. A file count that differs from the provider's episode count is a partial set: pass `ALLOW_PARTIAL=1` only when the runtimes corroborate the held parts, never to force a count to match.
 - **A concat script must exclude its own previous output from the part list.** A re-run (`--apply`, or a retry) finds the old output in the folder and ingests it as a bonus "part": the doubled total is self-consistent, so a duration gate passes, and a deleting apply then removes everything including the output — the only copies destroyed. Filter `names != out` before ordering, and pin it with a test; the gate cannot catch this class of error by construction.
 - **Classify a SAB failure before re-queueing.** `retry=True` with "RAR files failed to verify" usually clears on a second pass — retry it. "Repair failed, not enough repair blocks" never clears no matter how often it is retried; that title needs an alternate release (different group/indexer), not another attempt on the same NZB.
 - **NFO-only folders are husks, not holdings.** Folders containing `.nfo`/`.jpg`/`.txt` but no video mean the media never landed or already moved — verify zero video files, remove the folder, and let the rescan clear the row. Do not treat them as missing episodes to hunt; log them as gaps only if no copy exists anywhere else.
@@ -337,6 +351,7 @@ A choose-between-many-rows decision is a **clickable, one-at-a-time** flow — n
 - Local episode NFOs are IGNORED on provider-matched series rows (rows carrying Tvdb/TMDB ids keep provider names even after FullRefresh+ReplaceAll). Set Name/Overview/PremiereDate/IndexNumber via `POST /Items/{id}` with the full item body and `LockedFields: ["Name", "Overview"]` — locks survive later refreshes.
 - NEVER run series-level `ReplaceAllMetadata=true` on a hand-built series: it re-fetches provider data and CLOBBERS episode names/overviews back to the (often wrong) upstream values. Use image-only refreshes (`ImageRefreshMode=FullRefresh`, no metadata replace) for artwork.
 - Every version file needs its own same-stem `.nfo` — Jellyfin associates an NFO with one basename, so a ` - 720p` copy without its own NFO falls back to provider data.
+- **Write a locked sidecar whenever you repair metadata out-of-band.** Repaired `Name`/`Overview`/`ProviderIds` live only in Jellyfin's SQLite, and a Tdarr container swap or a folder move drops the DB row and recreates it — wiping every lock. `media_lib/nfo.py` (`episode_nfo` / `movie_nfo` / `write_sidecar`) emits `<lockdata>true</lockdata>` plus `<uniqueid>` beside the file via base64 over the ssh helper; `cli.ingest_new` writes one automatically after a name repair. Sidecars do not override provider-matched rows while those rows exist — they restore the right values when the row is rebuilt.
 
 ## Post-ingest download sweep (standing user order)
 
