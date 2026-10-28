@@ -34,7 +34,7 @@ RELEASE_JUNK = set("""
 dvdrip dvdscr dvd5 dvd9 bluray brrip bdrip remux x264 x265 h264 h265 hevc avc xvid divx
 aac ac3 dts dd5 ddp5 flac mp3 mkv mp4 avi ts m2ts 10bit 8bit proper repack extended
 internal limited complete season multi sub subs eng english french ger ita spa hardcoded
-mvgroup org forum yts rarbg miserable eztv bigdoc megusta scene rip xpost
+mvgroup org forum yts rarbg miserable eztv bigdoc megusta scene rip xpost classics
 """.split())
 
 #: Broadcasters that prefix a title in release names but are not part of it.
@@ -132,7 +132,7 @@ def _slots_compatible(candidate: str, wanted: str) -> bool:
     return not (cs and ws) or cs == ws
 
 
-def title_matches(candidate: str, wanted: str) -> bool:
+def title_matches(candidate: str, wanted: str, *, max_extra: int = MAX_EXTRA_WORDS) -> bool:
     """Is `candidate` plausibly the same programme as `wanted`?
 
     Guards against an unrelated release ranking highly for a title the indexers lack.
@@ -166,12 +166,12 @@ def title_matches(candidate: str, wanted: str) -> bool:
     # A sequel is a different film: "Stairway To Heaven II" is not "Stairway to Heaven".
     if _SEQUEL_RE.search(_normalise(candidate)) and not _SEQUEL_RE.search(_normalise(wanted)):
         return False
-    return len(cand - want) <= MAX_EXTRA_WORDS
+    return len(cand - want) <= max_extra
 
 
 def verdict(candidate_title: str, held_height: Optional[int],
             held_state: str = "held", wanted_title: Optional[str] = None,
-            wanted_year: Optional[int] = None) -> Dict[str, object]:
+            wanted_year: Optional[int] = None, max_extra: int = MAX_EXTRA_WORDS) -> Dict[str, object]:
     """Decide whether `candidate_title` is worth downloading.
 
     held_state is what held_state_for() found:
@@ -182,7 +182,7 @@ def verdict(candidate_title: str, held_height: Optional[int],
 
     Only 'none', or a proven height increase, sets queue=True.
     """
-    if wanted_title and not title_matches(candidate_title, wanted_title):
+    if wanted_title and not title_matches(candidate_title, wanted_title, max_extra=max_extra):
         return {"candidate_height": release_height(candidate_title),
                 "held_height": held_height, "verdict": "different-title", "queue": False,
                 "reason": "not clearly the same programme — not a replacement"}
@@ -279,9 +279,10 @@ def held_height_for(term: str) -> Optional[int]:
 
 
 def decide(candidate_title: str, term: str,
-           wanted_year: Optional[int] = None) -> Dict[str, object]:
+           wanted_year: Optional[int] = None, max_extra: int = MAX_EXTRA_WORDS) -> Dict[str, object]:
     """verdict() against whatever the library actually holds for `term`."""
     st = held_state_for(term)
     height = st.get("height")
     return verdict(candidate_title, int(height) if isinstance(height, int) else None,
-                   str(st.get("state")), wanted_title=term, wanted_year=wanted_year)
+                   str(st.get("state")), wanted_title=term, wanted_year=wanted_year,
+                   max_extra=max_extra)

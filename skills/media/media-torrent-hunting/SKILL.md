@@ -586,6 +586,16 @@ SABnzbd is the Usenet half of the fetch role — full deploy + provider-server r
 - For region-locked sources (BBC iPlayer is UK-only), verify a matching-exit proxy/VPN first — catalogues list fine from outside the region but downloads fail without it. Absence from the iPlayer cache means nothing aired in the ~30-day window, not a fault — schedule a recurring exact-match grab for series between seasons.
 - Prefer get_iplayer manual install (binary to /usr/local/bin, profile in ~/.get_iplayer) over distro packages, which are not dev-endorsed; the snap build uses a different profile path, so do not mix them.
 
+## BBC iPlayer direct (CT112 vpn-iplayer)
+
+- **Reach:** `ssh root@192.168.214.130 "pct exec 112 -- <cmd>"`; iplayarr `:4404` (key in CT112 `/opt/iplayarr/apikey.txt`, sent as `X-API-Key`); output to `/mnt/zmedia/downloads/iplayarr-complete/`. Full topology in the `local-infrastructure` skill (`references/ct112-vpn-iplayer.md`) — read that before touching the container.
+- **For a current broadcast, BBC-direct is the FIRST source, not the last.** A programme that aired days ago has no swarm yet — zero Prowlarr hits on a brand-new broadcast is expected, not evidence of absence.
+- **Grab by PID, never via cache search.** `get_iplayer --pid=<PID> --get` fetches direct; the local cache only covers the ~30-day window and a full `--refresh` is slow and 429-prone — `0 matching programmes` in cache proves nothing about a known PID.
+- **Pre-flight must test the media path, not the homepage.** Tunnel `active` + GB egress + iPlayer homepage HTTP 200 is necessary but NOT sufficient: the BBC blocks some VPN exits at the mediaselector while metadata endpoints stay open, so pid.json and programme pages fetch fine while every stream URL 403s. Prove streams before promising a grab: `get_iplayer --pid=<pid> --verbose` and read which URL failed — `open.live.bbc.co.uk/mediaselector/... "Access to this resource was blocked"` means the exit IP is blocklisted, and the fix is a different UK exit, not retries. Metadata fetching while streams block is the signature — never report "BBC is reachable" from metadata alone.
+- **PID discovery is agent web search; code consumes PIDs** (see `bbc-programme-matching`). The suite's DuckDuckGo `search_programmes` is degraded — zero hits means unknown, never absent.
+- **Rotate UK exits when the BBC geoblocks one.** A `geolocation` error from the mediaselector (or `Access blocked`) names the exit IP, not the tunnel: deploy each new server as its own `openvpn-client@<name>` unit with its own auth file, keep the old tunnel up until the new exit proves streams, and test every exit against one known PID's mediaselector URL before trusting it — GeoIP country is not proof the BBC accepts the IP.
+- **NordVPN service credentials come from the account token, not the dashboard password.** `GET https://api.nordvpn.com/v1/users/services/credentials` with `Authorization: Token token:<account-token>` returns the `username`/`password` pair for `auth-user-pass`; write it mode 600 and never paste either value into chat.
+
 ## Relocating a read-only download dir
 
 - Probe writability with `touch` from INSIDE the downloader container —

@@ -95,8 +95,16 @@ def squash(s: str) -> str:
 
 
 def tokens(s: str) -> Set[str]:
-    """Lowercase alphanumeric tokens, filler words and pure numbers removed."""
-    s = re.sub(r"[^a-z0-9]+", " ", (s or "").lower())
+    """Lowercase alphanumeric tokens, filler words and pure numbers removed.
+
+    A hyphenated single letter joins its neighbour ("T-Men" -> "tmen", not
+    "men"): dropping the letter made "T-Men" and "Real Men" identical single
+    tokens, which scored a 1.0 MATCH and nearly overwrote a TV episode with
+    a noir film. Only the duration gate stood in the way.
+    """
+    s = (s or "").lower()
+    s = re.sub(r"\b([a-z])-([a-z0-9])", r"\1\2", s)
+    s = re.sub(r"[^a-z0-9]+", " ", s).strip()
     return {
         t
         for t in s.split()

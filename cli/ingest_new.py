@@ -200,7 +200,10 @@ def main(argv=None) -> int:
             # never a silent duplicate (uncertainty must not resolve to "ingest").
             label = Path(dest).parent.name
             try:
-                verdict = quality.decide(Path(src).name, label)
+                # Same-file check: the stem (never the extension — ".mkv" is
+                # not a title word) with room for release descriptors, since
+                # src and dest describe one file. Hunts keep the strict budget.
+                verdict = quality.decide(Path(src).stem, label, max_extra=6)
                 v = str(verdict.get("verdict"))
             except Exception as exc:  # noqa: BLE001
                 v = f"check-failed:{type(exc).__name__}"
