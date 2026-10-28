@@ -148,7 +148,7 @@ discovery happens agent-side via web search (`site:bbc.co.uk/programmes <title>`
 consumes PIDs — do not build a runtime path that depends on search-engine scraping from the box.
 A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt instead of failing it.
 
-When TMDB shells on UK broadcast strands (Arena, Later... with Jools Holland, Classic Albums past season 10), fall back to TVmaze before the BBC: `media_lib/tvmaze.py` (`by_name` first — doctrine is never-by-number-alone — then `by_number` on the broadcast slot) is keyless and returns the whole episode list in one call. It never overrides a TMDB hit, only a miss, and TVmaze-sourced rows skip TMDB-id pinning (there is no episode id to pin).
+When TMDB shells on UK broadcast strands (Arena, Later... with Jools Holland, Classic Albums past season 10), fall back to TVmaze before the BBC: `media_lib/tvmaze.py` (`by_name` first — doctrine is never-by-number-alone — then `by_number` on the broadcast slot) is keyless and returns the whole episode list in one call. It never overrides a TMDB hit, only a miss, and TVmaze-sourced rows skip TMDB-id pinning (there is no episode id to pin). Combine the sources when each is half-right: TVmaze's real episode names over TMDB's "Episode N" shells with real overviews, renaming files to the TVmaze names and identifying to the TMDB series id.
 
 Prefer the public `programmes/<pid>.json` payload over scraping HTML — but know its two shapes: version/clip PIDs return `{"version": {...}}` with no programme block, so resolve the parent episode PID and fetch that; and `display_title` can be a dict (use its subtitle), not a string. An empty title+synopsis from JSON means fall back to the HTML page, not to report empties.
 
@@ -227,7 +227,7 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 
 ## Current tooling — `media-ops` (reach for this before writing a new script)
 
-`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and ~140 pytest tests. Prefer it over hand-rolling another sweep:
+`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and ~419 pytest tests. Prefer it over hand-rolling another sweep:
 
 | Need | Use |
 |---|---|

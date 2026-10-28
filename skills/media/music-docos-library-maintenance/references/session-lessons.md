@@ -257,7 +257,9 @@ check and reading the search output as if the shelf were empty.
 Release names use dots and spaces unpredictably (`Gandhi.Ep1` on disk vs `Gandhi Ep1` in the
 pattern), and a type filter (`-name '*.mp4'`) silently drops real files of other containers. A find
 that returns nothing proves the pattern failed until a second spelling or an unfiltered listing
-confirms it. Verify against a known listing before concluding absence — and never treat absence as
+confirms it. Year-suffixed folders defeat exact-name probes too (`Mind the Gap London v the Rest`
+on disk vs `Mind the Gap London v the Rest (2014)` in Jellyfin's Path) — list the parent
+with a short distinctive fragment before declaring a row a ghost. Verify against a known listing before concluding absence — and never treat absence as
 licence to download.
 
 ## 30. Ad hoc shapes that survive a night get promoted to tested modules
@@ -302,7 +304,7 @@ synopsis are both empty, fall through to the HTML scrape — returning the empty
 result reports success with no data, which reads as "BBC has nothing" and ends
 a hunt that should have continued.
 
-## 32. No ad hoc inline sweeps — promote or perish
+## 34. No ad hoc inline sweeps — promote or perish
 
 Every inline heredoc that survives first contact gets promoted to a tested
 script the same night (`audit_series.py` for the 4-field series sweep,
@@ -312,7 +314,7 @@ proof before commit. The rule for tonight's leftovers: per-row Jellyfin
 writes stay manual (they are approval-gated by nature), everything
 read-only or repeated becomes a script.
 
-## 33. No series-level id does not mean no ids at all
+## 35. No series-level id does not mean no ids at all
 
 The Decline trilogy has no TMDB *series* entry, so the row went out with
 empty ProviderIds — but each part is a theatrical film with its own IMDb
@@ -320,3 +322,9 @@ empty ProviderIds — but each part is a theatrical film with its own IMDb
 movie external_ids, never from memory). Rule: for anthology/trilogy/series
 rows without a series id, drop a level and pin the *film-level* ids onto
 the episode rows before declaring "no ids by design".
+
+When TMDB has no record at all, work the gap in this order: the disc's own
+`tvshow.nfo` (it often carries `imdb_id` even with an empty plot), then IMDb
+via web search for the series and episode ids, verifying every id through
+TMDB movie `external_ids` or the IMDb page itself — never from memory. A
+TMDB series miss is the start of the hunt, not its end.
