@@ -63,6 +63,19 @@ def show_externals(show: str) -> Dict[str, Any]:
         return {}
 
 
+def by_imdb(imdb_id: str) -> Dict[str, Any]:
+    """TVmaze show for an IMDb id (name/premiered/externals), or {}. Never raises.
+
+    Closes the verification loop on search-discovered ids: the engine returns
+    evidence, this confirms the id resolves to the wanted title.
+    """
+    try:
+        data = _get_json(f"{API}/lookup/shows?imdb={urllib.parse.quote(imdb_id)}")
+        return data or {}
+    except Exception:  # noqa: BLE001 - fallback source, never a gate
+        return {}
+
+
 def strip_html(summary: Optional[str]) -> str:
     """TVmaze summaries are <p>-wrapped HTML. Pure."""
     if not summary:

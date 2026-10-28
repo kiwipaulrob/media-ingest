@@ -21,6 +21,16 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import re
+
+
+def _words(s: str) -> List[str]:
+    """Lowercase filler-free words for title agreement. Pure."""
+    from . import config  # deferred: light import for tests
+
+    return [t for t in re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).split()
+            if t not in config.STOPWORDS and len(t) >= 3]
+
 
 def resolve_series(title: str, year: Optional[str] = None,
                    local_nfo: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -98,6 +108,33 @@ def resolve_series(title: str, year: Optional[str] = None,
                 out["sources"].append("nfo")
             out["overview"] = local_nfo["plot"]
             out["overview_from"] = "nfo"
+    # 5. Search-engine IMDb discovery (last resort, verified before trust).
+    # The engine returns evidence (Bing's top IMDb hit); TVmaze's imdb lookup
+    # confirms it resolves to the wanted title. Soul Britannia proved the
+    # loop matters: the engine's first hit was Soul 2020 (tt2948372), which
+    # verification refused.
+    if "imdb_id" not in out:
+        try:
+            from media_lib import imdb_search  # deferred: slow, network-heavy
+
+            yr = int(year) if year and str(year).isdigit() else 0
+            found = imdb_search.discover_imdb(title, yr)
+            tt = found.get("imdb_id", "")
+            if tt:
+                back = tvmaze.by_imdb(tt)
+                want = _words(title)
+                got = set(_words(str(back.get("name") or "")))
+                # The longest distinctive word must agree: "Soul" alone must
+                # never license "Soul Britannia" (that pins Soul 2020).
+                anchor = max(want, key=len) if want else ""
+                ok = bool(anchor) and anchor in got
+                if ok and "search" not in out["sources"]:
+                    out["sources"].append("search")
+                if ok:
+                    out["imdb_id"] = tt
+                    out["imdb_from"] = "search"
+        except Exception:  # noqa: BLE001
+            pass
     return out
 
 
