@@ -70,7 +70,9 @@ def series_library_id(ids, lib):
 
 
 def _norm(t):
-    return str(t or "").lower().replace(" ", "").replace(".", "").replace("-", "").replace(":", "")
+    # Squash to alphanumerics: release punctuation ("Oh! You Pretty Things")
+    # must not defeat the substring match against the provider name.
+    return re.sub(r"[^a-z0-9]", "", str(t or "").lower())
 
 def _dur(path):
     out = sh('ffprobe -v error -show_entries format=duration -of csv=p=0 {p} 2>/dev/null'

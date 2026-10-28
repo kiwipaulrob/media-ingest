@@ -282,3 +282,22 @@ a `docs/REVIEW-RESPONSE.md` verdict table so the re-review skips to what is
 genuinely new. Real gains from that review: bio locks, playing-guard,
 --from-plan, 4-field pinning, .nfo sidecars, TVmaze fallback, url-rels,
 container-tag synopsis.
+
+## 32. Compare episode markers as parsed slots, never as word tokens
+
+A release's `S01E02` and a folder label's `E02` are the same slot, but word-set
+comparison sees two different tokens and calls them different programmes — which
+refused every episodic NEW placement at the ingest gate. Strip episode-marker
+tokens from both sides before comparing words, then enforce slot compatibility
+separately: equal episode numbers match with season 0 as wildcard (a bare `E02`
+carries no season), different episode numbers never match. Parse the bare `Exx`
+form too, or the label side has no slot to compare with.
+
+## 33. BBC pid.json has two shapes — version PIDs carry no programme block
+
+`programmes/<pid>.json` returns `{"programme": {...}}` for episode/series PIDs
+but `{"version": {...}}` for version/clip PIDs. Resolve those via
+`version.parent.programme.pid` and fetch again. And when the parsed title and
+synopsis are both empty, fall through to the HTML scrape — returning the empty
+result reports success with no data, which reads as "BBC has nothing" and ends
+a hunt that should have continued.

@@ -146,8 +146,9 @@ is a gap-filler, not an appeals court; an ambiguous hit stays ambiguous. Second,
 search from the media box is bot-walled** (DDG serves a consent page, Bing serves junk), so PID
 discovery happens agent-side via web search (`site:bbc.co.uk/programmes <title>`) and the code
 consumes PIDs — do not build a runtime path that depends on search-engine scraping from the box.
-A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt
-instead of failing it.
+A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt instead of failing it.
+
+Prefer the public `programmes/<pid>.json` payload over scraping HTML — but know its two shapes: version/clip PIDs return `{"version": {...}}` with no programme block, so resolve the parent episode PID and fetch that; and `display_title` can be a dict (use its subtitle), not a string. An empty title+synopsis from JSON means fall back to the HTML page, not to report empties.
 
 ## Never hand-build an ingest spec — the planner already decided
 
@@ -206,6 +207,7 @@ Two traps this closes:
 - **"Could not measure the held copy" is not "we hold nothing".** That conflation produced a
   dozen needless downloads before; the same rule applies at ingest, where the cost is a
   duplicate instead of wasted bandwidth.
+- **Episode slots must match symmetrically — a release's `S01E02` is a folder label's `E02`.** Title comparison that strips episode markers on one side only refuses every episodic NEW placement as `different-title`. Compare slot-to-slot with a bare `E##` counting as season-unknown (wildcard), and refuse only on genuinely different episode numbers.
 
 
 ## The two libraries
