@@ -301,3 +301,13 @@ but `{"version": {...}}` for version/clip PIDs. Resolve those via
 synopsis are both empty, fall through to the HTML scrape — returning the empty
 result reports success with no data, which reads as "BBC has nothing" and ends
 a hunt that should have continued.
+
+## 32. No ad hoc inline sweeps — promote or perish
+
+Every inline heredoc that survives first contact gets promoted to a tested
+script the same night (`audit_series.py` for the 4-field series sweep,
+`slot_check.py`, `hunt.plan/queue`, `scan_series_shapes.py`). Importable
+single-purpose functions, pure flag/match logic with fixture tests, live
+proof before commit. The rule for tonight's leftovers: per-row Jellyfin
+writes stay manual (they are approval-gated by nature), everything
+read-only or repeated becomes a script.

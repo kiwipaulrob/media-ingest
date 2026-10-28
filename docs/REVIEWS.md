@@ -19,7 +19,7 @@ plugins/media-ingest/tools.py:  MEDIA_OPS = /root/.hermes/profiles/media-maintai
 So there is no build or deploy step — a change merged to `master` here is what
 the next tool call runs. Two consequences:
 
-1. **Test before merge**, always. `python3 -m pytest tests/ -q` (417 tests), and
+1. **Test before merge**, always. `python3 -m pytest tests/ -q` (419 tests), and
    CI (`.github/workflows/tests.yml`) runs the same suite on the PR.
 2. A change to the **plugin's own** `tools.py` / `plugin.yaml` additionally needs
    a gateway restart, because the plugin is imported at start-up:

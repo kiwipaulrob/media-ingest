@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 417 tests · no external dependencies beyond
+**~4,400 lines of library code · 419 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -107,6 +107,7 @@ thinking, explicit targets, verify by reading back) covers four more verbs:
 | wikidata claims | `media_lib/wikidata_claims.py` + `bio portrait-search` | `tests/test_wikidata_claims.py` | P345/P569/P106/P18 bridge; URLs printed, attaching stays approved |
 | bbc pid.json | `media_lib/bbc.py::programme` | `tests/test_bbc.py` | version PIDs resolve via parent; empty json falls back to HTML |
 | nfo sidecars | `media_lib/nfo.py` (written on repair) | `tests/test_nfo.py` | lockdata survives Tdarr swaps and row recreation |
+| series audit | `scripts/audit_series.py --library` (read-only) | `tests/test_audit_series.py` | flags no-tmdb/no-imdb/short-overview/no-img per series row |
 
 2-part films stay films (concat or nothing); 3+ parts default to series style.
 `migrate_series_between_libs.py` moves series between libraries on exact TMDB
