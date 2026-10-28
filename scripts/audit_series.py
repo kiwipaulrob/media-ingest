@@ -17,15 +17,18 @@ from media_lib import jellyfin  # noqa: E402
 
 
 def flags(row: Dict[str, Any]) -> List[str]:
-    """Missing-field flags for one Series row. Pure."""
+    """Missing-field flags for one Series row. Pure.
+
+    Identity is satisfied by EITHER Tmdb or Imdb: many UK strands exist in
+    IMDb with no TMDB series entry (Folk America, Soul Britannia, the
+    Decline trilogy). Flagging those as gaps buried real ones under noise.
+    """
     prov = row.get("ProviderIds") or {}
     ov = row.get("Overview") or ""
     tags = row.get("ImageTags") or {}
     out = []
-    if not prov.get("Tmdb"):
-        out.append("no-tmdb")
-    if not prov.get("Imdb"):
-        out.append("no-imdb")
+    if not prov.get("Tmdb") and not prov.get("Imdb"):
+        out.append("no-ids")
     if len(ov) < 50:
         out.append(f"ov{len(ov)}c")
     if not tags.get("Primary"):
