@@ -44,3 +44,19 @@ def test_dead_source_never_stops_chain(monkeypatch):
     out = resolve.resolve_series("Show")
     assert out["sources"] == []
     assert resolve.missing_fields(out) == ["tmdb_id", "imdb_id", "overview", "episodes"]
+
+
+def test_tvmaze_externals_discover_imdb(monkeypatch):
+    import media_lib.tvmaze as tvmaze
+    from media_lib import resolve
+
+    def fake_get_json(url, params=None, timeout=20):
+        if "singlesearch" in url:
+            return {"externals": {"imdb": "tt1717474", "tvdb": 1},
+                    "summary": "<p>x</p>"}
+        return {"results": []} if "search" in url else []
+    monkeypatch.setattr(tvmaze, "_get_json", fake_get_json)
+    ext = tvmaze.show_externals("Syrian School")
+    assert ext["imdb"] == "tt1717474"
+    r = resolve.resolve_series("Syrian School NC")
+    assert isinstance(r, dict) and "sources" in r

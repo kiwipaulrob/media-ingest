@@ -50,6 +50,19 @@ def show_summary(show: str) -> str:
         return ""
 
 
+def show_externals(show: str) -> Dict[str, Any]:
+    """External ids (tvdb, imdb, tvrage) for a show, or {}. Never raises.
+
+    The IMDb-discovery step the chain was missing: TVmaze curates the IMDb
+    id per show, keyless, where TMDB publishes none.
+    """
+    try:
+        data = _get_json(f"{API}/singlesearch/shows?q={urllib.parse.quote(show)}")
+        return (data or {}).get("externals") or {}
+    except Exception:  # noqa: BLE001 - fallback source, never a gate
+        return {}
+
+
 def strip_html(summary: Optional[str]) -> str:
     """TVmaze summaries are <p>-wrapped HTML. Pure."""
     if not summary:

@@ -62,6 +62,11 @@ def resolve_series(title: str, year: Optional[str] = None,
              "overview": tvmaze.strip_html(e.get("summary"))}
             for e in eps
         ]
+        if "imdb_id" not in out:
+            ext = tvmaze.show_externals(title)
+            if ext.get("imdb"):
+                out["imdb_id"] = ext["imdb"]
+                out["imdb_from"] = "tvmaze"
         if "overview" not in out:
             summ = tvmaze.show_summary(title)
             if summ:
