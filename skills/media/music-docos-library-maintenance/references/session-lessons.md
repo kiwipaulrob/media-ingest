@@ -336,3 +336,20 @@ without a Path and prints "N with media, M virtual slots ignored". Same
 class of bug in list_items: a comma-joined include_types string returned
 extra item kinds — always query one type at a time and check the count
 against a known figure before reporting it.
+
+## 37. Same stem + different year is a different film
+
+Refusing "D.O.A. (1949)" because the 1980 punk doc is held blocked a genuine
+gap fill. `held_state_for()` now drops items whose path-year disagrees with
+the wanted year beyond tolerance, and returns none (a gap) when nothing
+same-year remains. Year-blind stem matching is how the T-Men/Real Men
+near-miss nearly overwrote a TV episode — the year is part of identity.
+
+## 38. Initialisms are one word, and exact years widen the budget
+
+"D.O.A." normalised to an empty word-set (single letters dropped) so the
+title could never match; "T-Men" collapsed to "men". `_normalise()` now joins
+initialisms (`doa`, `tmen`). Separately, verbose-but-legit release names (aka
+titles like "[Dead on Arrival]", encoder credits) blew the extras budget, so
+exact candidate/wanted year agreement doubles it via `same_year` — the subset
+rule still holds, so a wrong film fails regardless of year.

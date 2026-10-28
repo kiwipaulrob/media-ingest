@@ -161,7 +161,7 @@ A TMDB miss is the START of an identification hunt, not its end. Work the whole 
 2. **TVmaze** (keyless) — the real episode list where TMDB shells as "Episode N" or 404s past its last season; also a show-level summary.
 3. **BBC programme catalogue** (`programmes/<pid>.json`) — synopsis, first broadcast, 16:9 artwork.
 4. **The media's own `tvshow.nfo` / container tags** — often carries `imdb_id` next to an empty plot.
-5. **IMDb by web search** — no API exists, so this step stays agent-side: search `"<title>" <year> imdb`, then verify the returned id through TMDB `external_ids` (or the IMDb page) before pinning it. Never pin an id from memory or from a title match alone.
+5. **IMDb discovery is code now, agent search is the fallback** — `media_lib/imdb_search.py` (`discover_imdb`) runs a keyless Bing search, decodes the wrapped result target to a tt id, and `resolve.py` verifies it through TVmaze's imdb lookup (`tvmaze.by_imdb`) before pinning: the longest distinctive word of the wanted title must appear in the looked-up name. A bare search hit is evidence, not proof — the top hit for a strand title can be a same-name film, and the anchor refuses it. Engine reality from the media box: DDG serves a JS shell with no parseable results, Brave rate-limits; Bing HTML parses with stdlib. Never pin an id from memory or from a title match alone.
 
 Two failures this rule exists to prevent, both of which reached the user as "why did you not look?": a trilogy shipped with empty `ProviderIds` because only the *series* namespace was checked (each part is a film with its own IMDb id), and a three-part folk series left blank while its IMDb entry sat one search away. When every source above returns nothing, report that per source with the evidence — that is a legitimate result. "No TMDB match" on its own is not.
 
@@ -240,7 +240,7 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 
 ## Current tooling — `media-ops` (reach for this before writing a new script)
 
-`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and 420+ pytest tests. Prefer it over hand-rolling another sweep:
+`/root/.hermes/profiles/media-maintainer/media-ops` is a tested package with git history and 449 pytest tests. Prefer it over hand-rolling another sweep:
 
 | Need | Use |
 |---|---|
@@ -257,7 +257,8 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 | Series 4-field audit (read-only shopping list) | `python3 scripts/audit_series.py --library 'Docos Series'` — flags `no-ids` (only when NEITHER Tmdb nor Imdb exists — an Imdb-only UK strand is identified, not a gap), `ov<N>c`, `no-img` per Series row; enrichment stays explicit per row |
 | Episode audit (read-only, counts-first) | `python3 scripts/audit_episodes.py --library 'Music Docos Series' [--detail N] [--out path]` — rows WITHOUT a `Path` are virtual TMDB placeholder slots, reported as `virtual` and never counted as gaps; prints `N with media, M virtual slots ignored` plus flag combos, detail to JSON |
 | Pin episode ids by name (bulk, dry-run default) | `python3 scripts/pin_episode_ids.py --library 'Music Docos Series' --all [--apply] [--with-overview]` — matches library episodes to TMDB episode titles on distinctive words, ties refused, never by episode number; one summary line per series |
-| Resolve an unidentified title across every source | `python3 -c "from media_lib import resolve; print(resolve.resolve_series('<title>', '<year>'))"` — TMDB → TVmaze → BBC pid catalogue → local nfo with per-field provenance; `missing_fields()` lists what is still open |
+| Prune finished torrents that duplicate the shelf | `python3 scripts/prune_lateral_dupes.py [--apply --ids <hashes>]` (dry-run default) | `tests/test_prune_dupes.py` | triple proof per torrent (shelf title match, no-upgrade on res tag, held copy probes healthy right now); multi-file and unmatched rows always skip; `--apply` requires explicit ids, no bulk switch |
+| Resolve an unidentified title across every source | `python3 -c "from media_lib import resolve; print(resolve.resolve_series('<title>', '<year>'))"` — TMDB → TVmaze (+externals IMDb) → BBC pid catalogue → local nfo → search-engine IMDb discovery (verified) with per-field provenance; `missing_fields()` lists what is still open |
 | A/B a sample against the library | `python3 -m scripts.meta_test_10 --seed N --sample 10` |
 
 Agent-side tools (when the plugins are loaded): `media_scan`, `media_plan`, `media_apply`, `media_verify`, `media_source_plan`, `media_source_queue`, `meta_search`, `meta_resolve`. The `meta_apply` write path lives in `cli.meta apply`, not yet as a tool.
@@ -313,6 +314,8 @@ Delete order matters: **verify a separate copy exists first** (compare inodes). 
   "all done" and "hundreds missing". Enumerate with `ParentId` (+`Recursive`, per-series for episodes) and reconcile against the series row's `ChildCount`/`RecursiveItemCount` before reporting.
 - **Rows without a `Path` are virtual TMDB slots, not missing media.** Jellyfin materialises an empty row for every episode the provider lists, so a 326-file library reported 876 rows and most of them read as imageless gaps. Always filter `Path`-less rows out of gap counts (`scripts/audit_episodes.py` returns them as `virtual`), and report "N with media, M virtual slots ignored" — never the raw row count.
 - **Query one `IncludeItemTypes` value per call.** A comma-joined `"Episode,Movie,Video"` string silently returns extra item kinds (seasons/folders) — a 109-episode strand reported as 1,011 rows. Loop one type at a time, and sanity-check any count against a known figure (the series row's `RecursiveItemCount`) before reporting it.
+- **Join hyphenated single letters before tokenising.** `tokens()` must map `T-Men` → `tmen`, never drop the `T` and leave `men` — the dropped letter collapsed two distinct titles onto one identical token and scored a 1.0 MATCH that queued a film over a same-named TV episode (only a duration gate refused). The same fix improves every `X-Men`-class title.
+- **Title gates compare stems, not filenames, with headroom for release descriptors.** The `.mkv` extension counted as an unmatched "word", and a hunt-tuned extras budget refused genuine same-file placements as `different-title`. Hunts keep the strict budget; the ingest same-file check compares the stem and allows room for group/edition tags.
 - **Token matching produces false positives.** Generic shared words (music, story, rock, a year, a month) pair unrelated titles — "Johnny Cash: American Rebel" is not a *Later... with Jools Holland* episode that happens to feature Johnny Cash. Confirm with a literal phrase search on the series name, an exact byte-size match, and only then ffprobe.
 - An AVI container can hold h264; check the codec, not the extension.
 - **Two rows sharing one display Name on different Paths is a misidentification, not a duplicate.** A wrong-name write can land the same title on two unrelated files — deleting either as a "dupe" destroys a unique programme. Read both Paths, resolve each file's true identity from filename and providers, and rename; nothing gets deleted.

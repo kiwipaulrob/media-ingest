@@ -185,3 +185,19 @@ def test_episode_slot_markers_match_across_forms():
     assert quality.title_matches("Show S01E02 720p", "Show S01E03") is False
     # episodic release still cannot stand in for a standalone film
     assert quality.title_matches("Show S01E02 720p", "Show") is False
+
+
+def test_initialism_stays_one_word():
+    from media_lib import quality
+    assert quality._title_words("D.O.A. (1949)", strip_junk=False) == {"doa"}
+    assert quality.title_matches(
+        "D.O.A.1949.Upscale.1080p.DVD.x265.HEVC.AC3-SARTRE.Dead.on.Arrival",
+        "D.O.A. (1949)", max_extra=6)  # ingest same-file budget
+
+
+def test_same_year_widens_extras_but_subset_still_rules():
+    from media_lib import quality
+    assert quality.title_matches("Film.1949." + ".".join(f"w{i}" for i in range(10)),
+                                 "Film (1949)")
+    assert not quality.title_matches("Other.1949." + ".".join(f"w{i}" for i in range(10)),
+                                     "Film (1949)")

@@ -96,7 +96,13 @@ _TMDB_TAG = re.compile(r"[\[{]\s*tmdb(?:id)?[-_ ]?\d+\s*[\]}]", re.I)
 
 def _normalise(text: str) -> str:
     text = _TMDB_TAG.sub(" ", str(text or ""))
-    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    text = text.lower()
+    # Initialisms stay one word ("D.O.A." -> "doa", "T-Men" -> "tmen"): dropping
+    # the letters made D.O.A. an empty word-set that matched nothing, and once
+    # made T-Men identical to "Real Men".
+    text = re.sub(r"\b([a-z])-([a-z0-9])", r"\1\2", text)
+    text = re.sub(r"(?<=[a-z])\.(?=[a-z]\b|\.(?:\s|$))", "", text)
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
 def _title_words(text: str, *, strip_junk: bool) -> set:
@@ -132,7 +138,8 @@ def _slots_compatible(candidate: str, wanted: str) -> bool:
     return not (cs and ws) or cs == ws
 
 
-def title_matches(candidate: str, wanted: str, *, max_extra: int = MAX_EXTRA_WORDS) -> bool:
+def title_matches(candidate: str, wanted: str, *, max_extra: int = MAX_EXTRA_WORDS,
+                    same_year: bool = False) -> bool:
     """Is `candidate` plausibly the same programme as `wanted`?
 
     Guards against an unrelated release ranking highly for a title the indexers lack.
@@ -143,6 +150,11 @@ def title_matches(candidate: str, wanted: str, *, max_extra: int = MAX_EXTRA_WOR
     Loose word overlap is not enough — those all passed it. So: every wanted word must
     appear, the candidate may add at most MAX_EXTRA_WORDS of its own, and an episodic
     release cannot stand in for a standalone film (or the reverse).
+
+    same_year: the candidate and wanted years agree exactly. Year agreement is
+    strong corroboration, so verbose-but-legit release names (aka titles like
+    "[Dead on Arrival]", encoder credits) get double the extras budget. The
+    subset rule still holds — a wrong film fails there regardless of year.
     """
     want = _title_words(wanted, strip_junk=False)
     if not want:
@@ -166,7 +178,22 @@ def title_matches(candidate: str, wanted: str, *, max_extra: int = MAX_EXTRA_WOR
     # A sequel is a different film: "Stairway To Heaven II" is not "Stairway to Heaven".
     if _SEQUEL_RE.search(_normalise(candidate)) and not _SEQUEL_RE.search(_normalise(wanted)):
         return False
-    return len(cand - want) <= max_extra
+    budget = max_extra * 2 + 2 if same_year else max_extra
+    return len(cand - want) <= budget
+
+
+def _years_agree(candidate_title: str, wanted_title: str,
+                 wanted_year: Optional[int] = None) -> bool:
+    """Exact year agreement between candidate and wanted. Pure.
+
+    Compares release_year() both sides, falling back to the explicit
+    wanted_year (the destination folder's year). Exact match only — ±1
+    stays strict here because this widens the extras budget.
+    """
+    cy, wy = release_year(candidate_title), release_year(wanted_title)
+    if wanted_year and str(wanted_year).isdigit():
+        wy = wy or int(wanted_year)
+    return bool(cy and wy and cy == wy)
 
 
 def verdict(candidate_title: str, held_height: Optional[int],
@@ -182,7 +209,11 @@ def verdict(candidate_title: str, held_height: Optional[int],
 
     Only 'none', or a proven height increase, sets queue=True.
     """
-    if wanted_title and not title_matches(candidate_title, wanted_title, max_extra=max_extra):
+    if wanted_title and not title_matches(candidate_title, wanted_title,
+                                           max_extra=max_extra,
+                                           same_year=_years_agree(candidate_title,
+                                                                  wanted_title,
+                                                                  wanted_year)):
         return {"candidate_height": release_height(candidate_title),
                 "held_height": held_height, "verdict": "different-title", "queue": False,
                 "reason": "not clearly the same programme — not a replacement"}
@@ -252,6 +283,20 @@ def held_state_for(term: str) -> Dict[str, object]:
              if i.get("Type") in ("Movie", "Episode") and i.get("Path")]
     if not items:
         return {"state": "none", "height": None, "matched": None}
+
+    # Year-aware: a same-stem different-year item is a different programme.
+    # "D.O.A. (1949)" must not match the 1980 punk doc — that refusal blocked
+    # a genuine gap fill. Items whose path-year disagrees are not the same film.
+    want_year = release_year(term)
+    if want_year:
+        same = [i for i in items
+                if (release_year(str(i.get("Path") or "")) or want_year) == want_year
+                or abs((release_year(str(i.get("Path") or "")) or want_year)
+                       - want_year) <= YEAR_TOLERANCE]
+        if same:
+            items = same
+        else:
+            return {"state": "none", "height": None, "matched": None}
 
     paths = {i["Path"] for i in items}
     if len(paths) > 3:
