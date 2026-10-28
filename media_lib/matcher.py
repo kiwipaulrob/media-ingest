@@ -40,12 +40,26 @@ _TAGS = re.compile(
     r"aac|ac3|eac3|dts(?:[- ]?hd)?|truehd|atmos|ddp?[257][._]?[01]|flac|mp3|opus|vorbis|"
     r"x264|x265|h264|h265|hevc|av1|xvid|divx|vp9|10bit|8bit|hi10p|"
     r"proper|repack|rerip|real|extended|unrated|uncut|remastered|remux|"
-    r"multi|dual|subbed|dubbed|internal|limited|retail|complete"
+    r"multi|dual|subbed|dubbed|internal|limited|retail|complete|"
+    # Edition/brand labels: they name the RELEASE, never the film, and left in
+    # place they poison the TMDB query ('Leave Her to Heaven Criterion' = no match).
+    r"criterion|eureka|arrow|kino|shout|scream[- ]?factory|olive|bfi|"
+    r"warner[- ]?archive|wac|masters[- ]of[- ]cinema|janus|"
+    r"collectors?[- ]?edition|special[- ]?edition|anniversary|"
+    r"director'?s[- ]?cut|theatrical[- ]?cut|extras"
     r")\b"
 )
 #: A trailing '-GROUP' only when it follows whitespace, so hyphenated titles
 #: ('Spider-Man', 'K-pop') are never eaten.
 _TRAILING_GROUP = re.compile(r"(?<=\s)-\s*[A-Za-z0-9]{2,12}$")
+#: Empty or tag-emptied bracket groups left behind by the tag strip —
+#: 'Sudden Fear (1952) [BluRay] [1080p]' loses its tags and keeps '[( )] [ ]'.
+_EMPTY_BRACKETS = re.compile(r"[\[\{]\s*[\]\}]|\(\s*\)")
+#: Square-bracket groups (release site/group tags) — safe to drop wholesale.
+_BRACKET_GROUP = re.compile(r"\[[^\]]*\]|\{[^\}]*\}")
+#: Parenthesised groups that hold NO year: '(YTS)', '(Extended)'. A year is the
+#: one thing that must survive, so those parens are kept.
+_PAREN_NON_YEAR = re.compile(r"\((?!\s*(?:19|20)\d{2}\s*\))[^)]*\)")
 _EXT_TAIL = re.compile(
     r"(?i)(" + "|".join(re.escape(e) for e in sorted(config.VIDEO_EXTS)) + r")$"
 )
@@ -66,6 +80,11 @@ def clean_release(name: str) -> str:
     s = strip_extension(name or "")
     s = re.sub(r"[._]+", " ", s)  # separators to spaces BEFORE tag strip
     s = _TAGS.sub(" ", s)
+    # Bracket droppings must go AFTER the tag strip, or '[BluRay]' would still
+    # be bracketed when we look for bracket groups. Years in parens stay.
+    s = _BRACKET_GROUP.sub(" ", s)
+    s = _PAREN_NON_YEAR.sub(" ", s)
+    s = _EMPTY_BRACKETS.sub(" ", s)
     s = _TRAILING_GROUP.sub("", s)
     return re.sub(r"\s+", " ", s).strip()
 

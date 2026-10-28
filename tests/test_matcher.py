@@ -6,7 +6,7 @@ library) or a real false negative measured against the production matcher on
 """
 import pytest
 
-from media_lib import matcher
+from media_lib import matcher, tmdb
 
 
 def lib(*names, lib_name='Films'):
@@ -103,6 +103,18 @@ def test_clean_release_keeps_hyphenated_titles():
 def test_clean_release_does_not_use_splitext_on_dotted_names():
     # os.path.splitext('Good.Hair') == ('Good', '.Hair') — the bug.
     assert matcher.clean_release('Good.Hair') == 'Good Hair'
+
+
+def test_clean_release_strips_brand_abbreviations():
+    # 'WAC' (Warner Archive Collection) as a bare token poisoned the TMDB query
+    # to 'The Set-Up WAC' = no-match, so a new film never got a gate candidate.
+    assert matcher.clean_release(
+        'The.Set-Up.1949.WAC.1080p.BluRay.x265.HEVC.AAC-SARTRE'
+    ) == 'The Set-Up 1949'
+    assert tmdb.title_year('The.Set-Up.1949.WAC.1080p.BluRay.x265.HEVC.AAC-SARTRE') == (
+        'The Set-Up',
+        '1949',
+    )
 
 
 def test_strip_extension_only_removes_real_video_extensions():

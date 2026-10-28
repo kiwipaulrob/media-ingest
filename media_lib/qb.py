@@ -211,6 +211,79 @@ def set_force(hashes: List[str], value: bool, op=None) -> int:
         return exc.code
 
 
+#: Public announce URLs used when a queued magnet carries NO tracker at all.
+#: A hash-only magnet (synthesised from an indexer's infohash) arrives with just
+#: DHT/PeX/LSD, and DHT alone frequently never retrieves metadata — the torrent
+#: then sits in forcedMetaDL at 0 peers forever and reads as a dead release.
+PUBLIC_TRACKERS = (
+    "udp://tracker.opentrackr.org:1337/announce",
+    "udp://open.demonii.com:1337/announce",
+    "udp://tracker.torrent.eu.org:451/announce",
+    "udp://exodus.desync.com:6969/announce",
+    "udp://tracker.openbittorrent.com:6969/announce",
+    "http://tracker.openbittorrent.com:80/announce",
+)
+
+
+def trackers(hash_: str, op=None) -> List[Dict[str, Any]]:
+    """Announce entries for one torrent (status 2 = working, 4 = not working)."""
+    op = op or _opener()
+    with op.open(f"{_base()}/api/v2/torrents/trackers?hash={hash_}", timeout=40) as r:
+        return json.load(r)
+
+
+def add_trackers(hash_: str, urls=PUBLIC_TRACKERS, op=None) -> int:
+    """Append announce URLs. Answers HTTP 204 on success — not 200."""
+    op = op or _opener()
+    body = urllib.parse.urlencode(
+        {"hash": hash_, "urls": "\n".join(urls)}
+    ).encode()
+    req = urllib.request.Request(
+        f"{_base()}/api/v2/torrents/addTrackers",
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with op.open(req, timeout=60) as r:
+            return r.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+def reannounce(hashes: List[str], op=None) -> int:
+    """Reannounce one or more torrents. There is no reannounceAll endpoint."""
+    hashes = [h for h in hashes if h]
+    if not hashes:
+        return 0
+    op = op or _opener()
+    body = urllib.parse.urlencode({"hashes": "|".join(hashes)}).encode()
+    req = urllib.request.Request(f"{_base()}/api/v2/torrents/reannounce", data=body)
+    try:
+        with op.open(req, timeout=60) as r:
+            return r.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+def ensure_trackers(hash_: str, op=None) -> Dict[str, Any]:
+    """Give a tracker-less torrent public announces, then reannounce.
+
+    Only ever ADDS trackers — an existing swarm's own announce is never replaced,
+    so this cannot move a torrent off its private tracker.
+    """
+    op = op or _opener()
+    try:
+        rows = trackers(hash_, op=op)
+    except Exception:  # noqa: BLE001 - verification must not fail the add
+        return {"injected": 0, "reason": "tracker-read-failed"}
+    real = [t for t in rows if not str(t.get("url", "")).startswith("**")]
+    if real:
+        return {"injected": 0, "existing": len(real)}
+    status = add_trackers(hash_, op=op)
+    reannounce([hash_], op=op)
+    return {"injected": len(PUBLIC_TRACKERS), "addTrackers": status}
+
+
 def add_file(content: bytes, filename: str = "release.torrent",
              category: str = "") -> int:
     """Add a .torrent by uploading its BYTES.

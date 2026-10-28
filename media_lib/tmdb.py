@@ -41,6 +41,9 @@ def title_year(name: str) -> tuple[str, Optional[str]]:
     m = _YEAR.search(cleaned)
     year = m.group(1) if m else None
     title = _YEAR.sub(" ", cleaned)
+    # Removing the year leaves an empty paren pair ('Sudden Fear (1952)' ->
+    # 'Sudden Fear ( )'), which TMDB's search treats as a different string.
+    title = re.sub(r"\(\s*\)|\[\s*\]", " ", title)
     return re.sub(r"\s+", " ", title).strip(), year
 
 

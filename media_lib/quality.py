@@ -87,8 +87,16 @@ def release_year(title: str) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
+#: Jellyfin's provider-id folder tag — 'Ace in the Hole (1951) [tmdbid-25364]'.
+#: It is library METADATA, not part of the title, and left in it makes every
+#: comparison fail: the word 'tmdbid' joins the wanted set and the gate answers
+#: 'different-title' for the exact film it was asked about.
+_TMDB_TAG = re.compile(r"[\[{]\s*tmdb(?:id)?[-_ ]?\d+\s*[\]}]", re.I)
+
+
 def _normalise(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+    text = _TMDB_TAG.sub(" ", str(text or ""))
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
 def _title_words(text: str, *, strip_junk: bool) -> set:

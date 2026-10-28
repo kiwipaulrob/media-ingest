@@ -146,7 +146,8 @@ is a gap-filler, not an appeals court; an ambiguous hit stays ambiguous. Second,
 search from the media box is bot-walled** (DDG serves a consent page, Bing serves junk), so PID
 discovery happens agent-side via web search (`site:bbc.co.uk/programmes <title>`) and the code
 consumes PIDs — do not build a runtime path that depends on search-engine scraping from the box.
-A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt instead of failing it.
+Do not rewire it to the RMS API either: its `search=` parameter is ignored server-side (any term
+returns the same global-newest list), and the programme-search routes 404. A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt instead of failing it.
 
 When TMDB shells on UK broadcast strands (Arena, Later... with Jools Holland, Classic Albums past season 10), fall back to TVmaze before the BBC: `media_lib/tvmaze.py` (`by_name` first — doctrine is never-by-number-alone — then `by_number` on the broadcast slot) is keyless and returns the whole episode list in one call. It never overrides a TMDB hit, only a miss, and TVmaze-sourced rows skip TMDB-id pinning (there is no episode id to pin). Combine the sources when each is half-right: TVmaze's real episode names over TMDB's "Episode N" shells with real overviews, renaming files to the TVmaze names and identifying to the TMDB series id.
 
@@ -254,6 +255,8 @@ Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes
 | Fleet health (read-only) | `python3 -c "from media_lib import fleet; print(fleet.render(fleet.check()))"` — one ok/FAIL row per service; red rows are human decisions, never auto-repairs |
 | Enrichment gap report | `python3 -m cli.meta plan` (read-only: ready / thin / gap / no-row counts) |
 | Series 4-field audit (read-only shopping list) | `python3 scripts/audit_series.py --library 'Docos Series'` — flags `no-ids` (only when NEITHER Tmdb nor Imdb exists — an Imdb-only UK strand is identified, not a gap), `ov<N>c`, `no-img` per Series row; enrichment stays explicit per row |
+| Episode audit (read-only, counts-first) | `python3 scripts/audit_episodes.py --library 'Music Docos Series' [--detail N] [--out path]` — rows WITHOUT a `Path` are virtual TMDB placeholder slots, reported as `virtual` and never counted as gaps; prints `N with media, M virtual slots ignored` plus flag combos, detail to JSON |
+| Pin episode ids by name (bulk, dry-run default) | `python3 scripts/pin_episode_ids.py --library 'Music Docos Series' --all [--apply] [--with-overview]` — matches library episodes to TMDB episode titles on distinctive words, ties refused, never by episode number; one summary line per series |
 | Resolve an unidentified title across every source | `python3 -c "from media_lib import resolve; print(resolve.resolve_series('<title>', '<year>'))"` — TMDB → TVmaze → BBC pid catalogue → local nfo with per-field provenance; `missing_fields()` lists what is still open |
 | A/B a sample against the library | `python3 -m scripts.meta_test_10 --seed N --sample 10` |
 
@@ -302,12 +305,14 @@ Delete order matters: **verify a separate copy exists first** (compare inodes). 
 ## Pitfalls
 
 - **Provider name matching must squash punctuation, and the QUERY must be a substring of the provider name.** Two failures in one conversion batch: the query `Oh You Pretty Things The Story of British Music` never matched TMDB's `Oh! You Pretty Things: …` because the normaliser stripped spaces/dots/dashes/colons but not `!` (squash to alphanumerics instead), and lengthening a query to "help" it does the opposite — `multipart_to_series` requires `_norm(KEY) in _norm(provider_name)`, so the query must be SHORTER than or equal to the provider title. A file count that differs from the provider's episode count is a partial set: pass `ALLOW_PARTIAL=1` only when the runtimes corroborate the held parts, never to force a count to match.
-- **A concat script must exclude its own previous output from the part list.** A re-run (`--apply`, or a retry) finds the old output in the folder and ingests it as a bonus "part": the doubled total is self-consistent, so a duration gate passes, and a deleting apply then removes everything including the output — the only copies destroyed. Filter `names != out` before ordering, and pin it with a test; the gate cannot catch this class of error by construction.
+- **A batch script must exclude its own output from its input glob.** Any script that scans a folder for inputs and writes its output into the same folder will, on re-run, ingest the previous output as a bonus input — proven on concat (`--apply` found the old output as a bonus "part", the doubled total verified against itself, and the deleting apply destroyed the only copies). Filter `names != out` before ordering, pin it with a test, and treat every same-folder input glob as suspect until it carries the exclusion; a self-consistent gate cannot catch this class of error by construction.
 - **Classify a SAB failure before re-queueing.** `retry=True` with "RAR files failed to verify" usually clears on a second pass — retry it. "Repair failed, not enough repair blocks" never clears no matter how often it is retried; that title needs an alternate release (different group/indexer), not another attempt on the same NZB.
 - **NFO-only folders are husks, not holdings.** Folders containing `.nfo`/`.jpg`/`.txt` but no video mean the media never landed or already moved — verify zero video files, remove the folder, and let the rescan clear the row. Do not treat them as missing episodes to hunt; log them as gaps only if no copy exists anywhere else.
 - **Pagination bites.** `Limit=100` silently truncates the recursive item list — a path filter then matches nothing and you wrongly conclude "no items". Page with `Limit=500` + `StartIndex`, or loop until a short page.
 - **Counts and verification come from paginated `ParentId` listings, never `searchTerm`.** Search returns a relevance-ranked index subset (a series with 500 episode rows can return 3 hits), so a search-based recount fabricates both
   "all done" and "hundreds missing". Enumerate with `ParentId` (+`Recursive`, per-series for episodes) and reconcile against the series row's `ChildCount`/`RecursiveItemCount` before reporting.
+- **Rows without a `Path` are virtual TMDB slots, not missing media.** Jellyfin materialises an empty row for every episode the provider lists, so a 326-file library reported 876 rows and most of them read as imageless gaps. Always filter `Path`-less rows out of gap counts (`scripts/audit_episodes.py` returns them as `virtual`), and report "N with media, M virtual slots ignored" — never the raw row count.
+- **Query one `IncludeItemTypes` value per call.** A comma-joined `"Episode,Movie,Video"` string silently returns extra item kinds (seasons/folders) — a 109-episode strand reported as 1,011 rows. Loop one type at a time, and sanity-check any count against a known figure (the series row's `RecursiveItemCount`) before reporting it.
 - **Token matching produces false positives.** Generic shared words (music, story, rock, a year, a month) pair unrelated titles — "Johnny Cash: American Rebel" is not a *Later... with Jools Holland* episode that happens to feature Johnny Cash. Confirm with a literal phrase search on the series name, an exact byte-size match, and only then ffprobe.
 - An AVI container can hold h264; check the codec, not the extension.
 - **Two rows sharing one display Name on different Paths is a misidentification, not a duplicate.** A wrong-name write can land the same title on two unrelated files — deleting either as a "dupe" destroys a unique programme. Read both Paths, resolve each file's true identity from filename and providers, and rename; nothing gets deleted.
@@ -326,7 +331,7 @@ Delete order matters: **verify a separate copy exists first** (compare inodes). 
 | `python3 -m cli.bio worklist [--limit N]` | read-only gap list (ready / thin / suspect / gap / no-row) |
 | `python3 -m cli.bio fill [--ids 1,4] [--limit N]` | write planned bios — never-clobber, locks `Name`+`Overview`, journals; **`suspect` is never applied** |
 | `python3 -m cli.bio alias [--file state/alias-approved.json]` | write user-approved alias bios (prose only for band pages) |
-| `python3 -m cli.bio portrait --id <personId> --url <img>` | attach a portrait to an imageless row (rejects SVG, <15 KB placeholders; byte-verifies) |
+| `python3 -m cli.bio portrait --id <personId> --url <img>` | attach a portrait to an imageless row (rejects SVG, <15 KB placeholders; verifies by `ImageTags.Primary` present + served image non-empty and plausibly sized, never by exact byte equality — Jellyfin re-encodes uploads so served bytes are larger than sent) |
 | `python3 -m cli.bio portrait-search --names "A,B"` | read-only exact Commons portrait URLs via Wikidata P18 (editor-curated, no search gamble); attaching stays approval-gated |
 | `python3 -m cli.bio wikidata --names "A,B"` | honest one-liners where no prose exists |
 
@@ -344,6 +349,7 @@ A choose-between-many-rows decision is a **clickable, one-at-a-time** flow — n
 - Use the `clarify` tool: one question per person, ≤5 per call, each quoting the **actual current text** (the bio verbatim, trimmed) plus the credit that makes it suspect, choices ordered with the recommendation first (e.g. "Clear (wrong person)" / "Keep as is" / "Leave for later").
 - Never ask for typed `[n CLEAR]`-style codes, and never present a 40-row table whose row numbers the user must transcribe. The user reviews on a **phone**, cannot open files, and will not type row IDs.
 - Files (`state/*.json`, `*.md`) are the secondary record for auditability, not the presentation.
+- Big sweeps report counts-first: flag combos and worst-series tallies in chat (hundreds of tokens), full row detail to a JSON file for drilling in — never a thousands-line dump.
 
 ## Hand metadata: API writes beat NFOs on matched rows
 

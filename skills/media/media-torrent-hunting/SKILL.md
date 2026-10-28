@@ -262,6 +262,22 @@ client for the first time.
 - **Survey torrent contents with legacy containers included.** A video
   filter of only `.mkv/.mp4/.avi` misfiles DivX-era rips (`.divx`, plus
   `.ogm`/`.rmvb`/`.vob`) as audio-only and real episodes get skipped.
+- **A magnet built from a bare infohash carries NO trackers — inject publics
+  BEFORE judging the swarm.** `source.queue_url()` synthesises
+  `magnet:?xt=urn:btih:<hash>&dn=<title>` when an indexer offers no magnet, and
+  that torrent arrives with only DHT/PeX/LSD: it sits in `forcedMetaDL` at 0
+  peers forever and reads as a dead release. Measured Oct 2026: a 148-torrent
+  queue sat at **0.06 MB/s aggregate** entirely for this reason; one
+  `addTrackers` + `reannounce` took a film from 0% to 94% at **29 MB/s**.
+  `qb.ensure_trackers(hash)` now runs inside `source.queue()`, so an add
+  self-heals — never call a tracker-less magnet a dead swarm. Diagnose with
+  `GET /torrents/trackers`: an entry list of only `** [DHT] **` / `** [PeX] **`
+  / `** [LSD] **` means no announce exists at all, which is a config fault.
+- **Un-force the old backlog when a new batch must download now.** 100+ forced
+  torrents bypass `max_active_downloads`, so the batch's `queuedDL` never starts
+  and everything shares a 40 KB/s trickle; un-forcing every non-batch torrent
+  (reversible, deletes nothing) hands the whole pipe to the new batch, and the
+  old items resume when the cap frees up.
 - **Dead-tracker bypass via public tracker injection.** A torrent stuck at
   metadata whose only tracker is dead (port closed) or rejects announces
   from the server can still resolve if any peer announces publicly: POST its

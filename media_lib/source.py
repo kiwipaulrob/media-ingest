@@ -433,10 +433,15 @@ def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[
         # lookup is a second network call and can fail on its own. Degrade to
         # verified=False and let the caller decide.
         entry = None
+        injected = None
         try:
             entry = qb.by_title(title) if ok else None
             if ok and force and entry:
                 qb.force_start([entry.get("hash") or ""])
+                # A magnet synthesised from a bare infohash carries only DHT/PeX/LSD:
+                # it then sits in forcedMetaDL forever with 0 peers. Give it public
+                # announces before judging the release dead.
+                injected = qb.ensure_trackers(entry.get("hash") or "")
                 entry = qb.by_title(title) or entry
         except Exception:  # noqa: BLE001
             entry = None
@@ -447,6 +452,7 @@ def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[
             "title": title,
             "hash": (entry or {}).get("hash") or pick.get("hash") or "",
             "state": (entry or {}).get("state") or "",
+            "trackers": injected,
             # An add that is not in the queue is not a queued download.
             "verified": bool(entry),
         }

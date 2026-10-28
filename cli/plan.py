@@ -113,7 +113,14 @@ def main(argv=None) -> int:
         )
 
         if v["decision"] != matcher.MATCH or not item:
-            if item and base.get("new_h") and item.get("h"):
+            # A REJECT means the library does NOT hold this release: `item` is
+            # only the closest of everything scanned, and calling that a "weak
+            # match" hid every genuinely-new film behind a review row (three
+            # new noir titles scored 0.60-0.75 against an episode, a TV movie
+            # and 'Stranded' and never reached NEW, so tmdb.gate never ran and
+            # the film loop could not fire). Only REVIEW — the matcher's own
+            # "a human must look" verdict — keeps the review branch.
+            if v["decision"] == matcher.REVIEW and item and base.get("new_h") and item.get("h"):
                 if base["new_h"] == item["h"]:
                     base["recommend"] = "REVIEW-equal-res"
                 elif base["new_h"] < item["h"]:
