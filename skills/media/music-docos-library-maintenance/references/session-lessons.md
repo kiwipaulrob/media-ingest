@@ -328,3 +328,13 @@ When TMDB has no record at all, work the gap in this order: the disc's own
 via web search for the series and episode ids, verifying every id through
 TMDB movie `external_ids` or the IMDb page itself — never from memory. A
 TMDB series miss is the start of the hunt, not its end.
+
+## 34. Never stop at the first source that says nothing
+
+Stopping at "no TMDB match" left The Devil's Music, Folk America and the
+Britannia strand unidentified for months while TVmaze, BBC pid.json, IMDb
+and the disks' own nfo files held the answers. `media_lib/resolve.py`
+chains TMDB -> TVmaze -> BBC -> local-nfo and records per-field provenance;
+`missing_fields()` says what is still open. IMDb has no API, so the agent
+web-searches IMDb directly as the final step (Folk America tt2200247 came
+that way) — that step is doctrine, not code.

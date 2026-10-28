@@ -1,0 +1,102 @@
+"""Exhaustive metadata resolution (the never-stop-at-TMDB rule).
+
+Every resolver before this one stopped at the first source that said
+nothing: no TMDB hit meant "unidentified", and the row sat flag-less for
+months (The Devil's Music, Folk America). The rule now: try EVERY source
+before giving up, and record which source each field came from so a later
+pass knows what is still missing.
+
+Order (cheapest + most structured first):
+  1. TMDB (ids, overview, poster, episodes)
+  2. TVmaze (episode names/overviews where TMDB shells or 404s)
+  3. BBC pid catalogue (synopsis, first broadcast, artwork)
+  4. Local evidence (tvshow.nfo imdb_id/plot, container tags)
+A field keeps the FIRST source that provides it; sources never overwrite.
+
+IMDb-direct has no API and is not suite-able — that step stays an
+agent-level web search (skill rule), not code.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
+
+def resolve_series(title: str, year: Optional[str] = None,
+                   local_nfo: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """Best metadata from every source. Never raises, never writes."""
+    from . import bbc, tmdb, tvmaze  # deferred: light import for tests
+
+    out: Dict[str, Any] = {"title": title, "sources": [], "episodes": []}
+    # 1. TMDB
+    try:
+        hit = (tmdb.search(title, year, "tv") or tmdb.search(title, None, "tv"))
+    except Exception:  # noqa: BLE001 - one source down never stops the chain
+        hit = None
+    if hit:
+        out["sources"].append("tmdb")
+        out["tmdb_id"] = hit.get("id")
+        if (hit.get("overview") or ""):
+            out["overview"] = hit["overview"]
+            out["overview_from"] = "tmdb"
+        try:
+            det = tmdb._get(f"/tv/{hit['id']}", {"append_to_response": "external_ids"}) or {}
+            imdb = ((det.get("external_ids") or {}).get("imdb_id") or "")
+            if imdb:
+                out["imdb_id"] = imdb
+                out["imdb_from"] = "tmdb"
+            if det.get("poster_path"):
+                out["poster_path"] = det["poster_path"]
+        except Exception:  # noqa: BLE001
+            pass
+    # 2. TVmaze (names + overviews, especially where TMDB shelled)
+    try:
+        eps = tvmaze.show_episodes(title)
+    except Exception:  # noqa: BLE001
+        eps = []
+    if eps:
+        out["sources"].append("tvmaze")
+        out["episodes"] = [
+            {"season": e.get("season"), "number": e.get("number"),
+             "name": e.get("name") or "",
+             "overview": tvmaze.strip_html(e.get("summary"))}
+            for e in eps
+        ]
+        if "overview" not in out:
+            summ = tvmaze.show_summary(title)
+            if summ:
+                out["overview"] = summ
+                out["overview_from"] = "tvmaze"
+    # 3. BBC catalogue
+    if "overview" not in out:
+        try:
+            hits = bbc.search_programmes(f"{title} BBC", limit=4)
+            pid = (hits[0].get("pid") if hits else "")
+            if pid:
+                prog = bbc.programme(pid)
+                if (prog.get("synopsis") or ""):
+                    out["sources"].append("bbc")
+                    out["overview"] = prog["synopsis"]
+                    out["overview_from"] = f"bbc:{pid}"
+                    if prog.get("image"):
+                        out["image_url"] = prog["image"]
+        except Exception:  # noqa: BLE001
+            pass
+    # 4. Local evidence (sidecar truth outranks nothing, but beats a gap)
+    if local_nfo:
+        if local_nfo.get("imdb_id") and "imdb_id" not in out:
+            out["sources"].append("nfo")
+            out["imdb_id"] = local_nfo["imdb_id"]
+            out["imdb_from"] = "nfo"
+        if local_nfo.get("plot") and "overview" not in out:
+            if "nfo" not in out["sources"]:
+                out["sources"].append("nfo")
+            out["overview"] = local_nfo["plot"]
+            out["overview_from"] = "nfo"
+    return out
+
+
+def missing_fields(resolved: Dict[str, Any]) -> List[str]:
+    """What the chain still could not find. Pure."""
+    return [f for f in ("tmdb_id", "imdb_id", "overview", "episodes")
+            if not resolved.get(f)]

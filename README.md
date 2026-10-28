@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 419 tests · no external dependencies beyond
+**~4,400 lines of library code · 422 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -108,6 +108,7 @@ thinking, explicit targets, verify by reading back) covers four more verbs:
 | bbc pid.json | `media_lib/bbc.py::programme` | `tests/test_bbc.py` | version PIDs resolve via parent; empty json falls back to HTML |
 | nfo sidecars | `media_lib/nfo.py` (written on repair) | `tests/test_nfo.py` | lockdata survives Tdarr swaps and row recreation |
 | series audit | `scripts/audit_series.py --library` (read-only) | `tests/test_audit_series.py` | flags no-tmdb/no-imdb/short-overview/no-img per series row |
+| exhaustive resolve | `media_lib/resolve.py` (read-only chain) | `tests/test_resolve.py` | TMDB -> TVmaze -> BBC -> local-nfo with per-field provenance; dead sources never stop the chain |
 
 2-part films stay films (concat or nothing); 3+ parts default to series style.
 `migrate_series_between_libs.py` moves series between libraries on exact TMDB

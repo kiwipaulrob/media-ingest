@@ -41,6 +41,15 @@ def show_episodes(show: str) -> List[Dict[str, Any]]:
         return []
 
 
+def show_summary(show: str) -> str:
+    """Show-level summary text, or "". Never raises."""
+    try:
+        data = _get_json(f"{API}/singlesearch/shows?q={urllib.parse.quote(show)}")
+        return strip_html((data or {}).get("summary"))
+    except Exception:  # noqa: BLE001 - fallback source, never a gate
+        return ""
+
+
 def strip_html(summary: Optional[str]) -> str:
     """TVmaze summaries are <p>-wrapped HTML. Pure."""
     if not summary:
