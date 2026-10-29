@@ -118,6 +118,7 @@ def _stats(blob: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         "codec": s.get("codec_name"),
         "duration": dur,
         "title": (fmt.get("tags") or {}).get("title") or "",
+        "dar": s.get("display_aspect_ratio"),
     }
 
 
@@ -126,7 +127,8 @@ def _stage_script(src_d: str, dst_d: str) -> str:
     ffp = probe.probe_wrap(config.FFPROBE_ENTRY)
     probe_expr = (
         "-v error -select_streams v:0 "
-        "-show_entries stream=width,height,codec_name:format=duration:format_tags=title "
+        "-show_entries stream=width,height,codec_name,display_aspect_ratio"
+        ":format=duration:format_tags=title "
         "-of json"
     )
     return f"""
@@ -269,6 +271,20 @@ def place_new(
             "dest": dest,
         }
 
+    # Ingest-time aspect flag (aspect audit): warn, never refuse — a miscoded
+    # flag plays squeezed but the file is fine and repair is a follow-up.
+    aspect_note = ""
+    try:
+        from . import aspect as _aspect
+
+        verdict, reason = _aspect.classify(str(dst_s.get("dar") or "?"),
+                                           int(dst_s.get("w") or 0),
+                                           int(dst_s.get("h") or 0))
+        if verdict.startswith("suspect"):
+            aspect_note = f"ASPECT-FLAG {verdict}: {reason}"
+    except Exception:  # noqa: BLE001 - advisory only, never gates placement
+        pass
+
     try:
         dec = probe.on_media(_decode_script(dst_d, dst_s["duration"]), timeout=600)
     except Exception as exc:  # noqa: BLE001
@@ -355,4 +371,5 @@ def place_new(
         "av_sync": sync_stage,
         "index_health": (sync.get("index_health") or {}).get("verdict"),
         "needs_rebuild": (sync.get("index_health") or {}).get("verdict") == "unreliable",
+        "aspect_note": aspect_note,
     }

@@ -138,13 +138,26 @@ Tdarr's own state is worth checking every time, because "installed" is not
 ## Miscoded aspect (plays too narrow) — SAR repair
 
 XviD-era files often carry a bogus pixel aspect (proven: `SAR 25:36 → DAR 5:4`
-on 720x400 widescreen content — plays narrow; fix is `setsar=1` → DAR 9:5).
-Diagnose with ffprobe `sample_aspect_ratio`/`display_aspect_ratio` before
-assuming the pixels are wrong. Repair (after Paul's go-ahead): re-encode with
-`-vf setsar=1` + libx264 CRF 20 (audio to AAC if the source is MP3), verify
-SAR 1:1 on the output, swap via the ingest pipeline. A Tdarr flow step for
-this is wanted (custom plugin applying setsar to 5:4-flagged WS content) —
-until it exists this is the approved direct-repair exception.
+on 720x400 widescreen content — plays narrow). Diagnose with ffprobe
+`sample_aspect_ratio`/`display_aspect_ratio` before assuming the pixels are
+wrong. Detector: `scripts/scan_aspect_flags.py` flags wide rasters with
+narrow DAR flags (legit anamorphic DVDs never flag).
+
+When the pixels are right, repair is a LOSSLESS stream-copy remux, not a
+re-encode: `ffmpeg -fflags +genpts -i SRC -map 0 -c copy -aspect 16:9 OUT.mkv`
+(`+genpts` because these old muxes carry broken timestamps that kill a plain
+copy). Gate the output on DAR ≈ 16:9 (1.70–1.86) — never on SAR == 1:1: a
+640x352 raster is already 16:9-proportioned, so the correct output reads SAR
+44:45, and a 1:1 gate rejects good files. Swap via the ingest pipeline
+(same filename for MKV sources keeps the Jellyfin row; AVI→MKV mints a new
+row, so wrap with the userdata snapshot/restore above). A Tdarr flow step for
+this is wanted (custom plugin applying the 16:9 flag to narrow-flagged WS
+content) — until it exists this is the approved direct-repair exception.
+
+Run ffmpeg on the pool-local host (the share's native server), never inside
+the media container — it has no ffmpeg binary. Emit full untruncated paths
+from any scan feeding a repair script: a 70-char-truncated Jellyfin path
+produces fake filenames and a whole batch of 'file not found'.
 
 ## Playback-confidence gate (before deleting ANY original)
 

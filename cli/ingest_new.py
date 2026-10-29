@@ -241,6 +241,8 @@ def main(argv=None) -> int:
             flag = "PLACED" if res["ok"] else "FAILED"
             extra = res.get("res") or res.get("detail") or res.get("stage")
             print(f"{flag:<7}{Path(dest).name[:58]:<59} {str(extra)[:40]}", flush=True)
+            if res.get("aspect_note"):
+                print(f"         {res['aspect_note'][:100]}", flush=True)
 
     placed = [r for r in results if r.get("ok")]
     unverified = 0

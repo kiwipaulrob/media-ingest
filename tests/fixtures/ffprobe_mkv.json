@@ -5,7 +5,9 @@
   {
    "codec_name": "h264",
    "width": 720,
-   "height": 576
+   "height": 576,
+   "sample_aspect_ratio": "1:1",
+   "display_aspect_ratio": "16:9"
   }
  ],
  "format": {

@@ -361,3 +361,16 @@ targeted HEAD itself, so every item got verified: 6 adopted (per-hash POSTs,
 nlink-guarded deletes, tolerant SAB JSON, episode cache rows, watch-state
 restore, env-based plugin paths), 5 already-done, 1 declined (tidy merge).
 Stale-clone is a hypothesis, never a presumption — check the tree first.
+
+## 40. Aspect flags are metadata, and metadata lies — verify the fault class
+
+A 720x400 file playing narrow was not a bad encode but a bogus SAR (25:36).
+The detector (`media_lib/aspect.py` + `scripts/scan_aspect_flags.py`) flags
+only the contradictory direction (wide raster + narrow DAR); legit
+anamorphic (720x576->16:9) never flags. Two traps hit building it: scan
+output truncated paths at 70 chars so the fixer received fake filenames
+(full paths + ids now), and CT105 has neither ffmpeg nor bare ffprobe —
+pool-side ssh + `probe_wrap()` only. `fix_aspect_remux.py` is stream-copy
+(`+genpts` for broken timestamps), gated on output DAR ~16:9, and the
+ingest pipeline now warns ASPECT-FLAG at placement time (probe carries
+sar/dar). 24 files repaired lossless in one batch.

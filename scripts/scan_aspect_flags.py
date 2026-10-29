@@ -12,41 +12,12 @@ flags.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
-from typing import Optional, Tuple
 
 sys.path.insert(0, ".")
 
-
-def parse_ratio(ar: str) -> Optional[float]:
-    """'16:9' -> 1.778, '1.85:1' -> 1.85. None when unparseable. Pure."""
-    m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)\s*$", ar or "")
-    if not m or float(m.group(2)) == 0:
-        return None
-    return float(m.group(1)) / float(m.group(2))
-
-
-def classify(ar: str, w: int, h: int) -> Tuple[str, str]:
-    """(verdict, reason) for one file. Pure.
-
-    Verdicts: 'ok' | 'suspect-narrow' | 'suspect-wide' | 'unknown'.
-    Thresholds: raster-wide means w/h >= 1.7; flag-narrow means DAR < 1.5.
-    """
-    dar = parse_ratio(ar)
-    if not dar or not w or not h:
-        return "unknown", f"ar={ar} raster={w}x{h}"
-    raster = w / h
-    if raster >= 1.7 and dar < 1.5:
-        return ("suspect-narrow",
-                f"wide raster {w}x{h} ({raster:.2f}) flagged DAR {ar} — "
-                f"plays squeezed; SAR repair candidate")
-    if raster < 1.2 and dar >= 1.7:
-        # Below anamorphic territory (720x576 = 1.25 is legit): a near-square
-        # raster flagged widescreen is almost never correct.
-        return ("suspect-wide",
-                f"near-square raster {w}x{h} ({raster:.2f}) flagged DAR {ar}")
-    return "ok", f"raster {raster:.2f} vs DAR {dar:.2f}"
+from media_lib.aspect import classify  # noqa: E402 — suite logic lives in media_lib
+from media_lib.aspect import parse_ratio  # noqa: F401 — re-exported for callers
 
 
 def main(argv=None) -> int:
@@ -88,10 +59,11 @@ def main(argv=None) -> int:
                 n_unknown += 1
             else:
                 suspects.append((verdict, str(r.get("Name"))[:56],
-                                 f"{w}x{h}", ar, str(r.get("Path"))[:70], reason))
+                                 f"{w}x{h}", ar, str(r.get("Path") or ""),
+                                 str(r.get("Id") or ""), reason))
     print(f"ok: {n_ok}  unknown: {n_unknown}  suspects: {len(suspects)}")
-    for v, name, res, ar, path, why in sorted(suspects):
-        print(f"  [{v}] {res} DAR={ar} {name}\n        {path}\n        {why}")
+    for v, name, res, ar, path, iid, why in sorted(suspects):
+        print(f"  [{v}] {res} DAR={ar} {name}\n        {path}\n        id={iid}\n        {why}")
     return 0
 
 

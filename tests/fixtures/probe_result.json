@@ -1,10 +1,12 @@
 {
-  "w": 720,
-  "h": 576,
-  "codec": "h264",
-  "dur": 2738.815,
-  "size": 680614569,
-  "title": null,
-  "synopsis": null,
-  "aired": null
+ "w": 720,
+ "h": 576,
+ "codec": "h264",
+ "dur": 2738.815,
+ "size": 680614569,
+ "title": null,
+ "synopsis": null,
+ "aired": null,
+ "sar": "1:1",
+ "dar": "16:9"
 }

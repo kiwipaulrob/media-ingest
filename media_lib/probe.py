@@ -97,7 +97,7 @@ def probe_wrap(binary: str) -> str:
 def ffprobe_cmd(path: str) -> str:
     return (
         f"{probe_wrap(config.FFPROBE_ENTRY)} -v error -select_streams v:0 "
-        f"-show_entries stream=width,height,codec_name:format=duration,size:format_tags=title,description,synopsis,comment,date "  # noqa: E501 - Review-P3.5a tags
+        f"-show_entries stream=width,height,codec_name,sample_aspect_ratio,display_aspect_ratio:format=duration,size:format_tags=title,description,synopsis,comment,date "  # noqa: E501 - Review-P3.5a tags
         f"-of json {shlex.quote(path)}"
     )
 
@@ -162,6 +162,10 @@ class ProbeResult(TypedDict):
     # date) — an offline overview when external providers have nothing.
     synopsis: Optional[str]
     aired: Optional[str]
+    # Aspect flags straight from the video stream (aspect audit): a wrong SAR
+    # plays squeezed while the pixels are fine — "5:4", "16:9", or None.
+    sar: Optional[str]
+    dar: Optional[str]
 
 
 def probe(remote_path: str) -> ProbeResult:
@@ -176,7 +180,7 @@ def probe(remote_path: str) -> ProbeResult:
         # violates the declared contract and made "could not measure" indistinguishable
         # from a type that was never meant to carry the key.
         return {"w": None, "h": None, "codec": None, "dur": None, "size": 0, "title": None,
-                "synopsis": None, "aired": None}
+                "synopsis": None, "aired": None, "sar": None, "dar": None}
     streams = data.get("streams") or [{}]
     fmt = data.get("format") or {}
     s = streams[0] if streams else {}
@@ -206,6 +210,8 @@ def probe(remote_path: str) -> ProbeResult:
         "title": tags.get("title"),
         "synopsis": synopsis,
         "aired": str(tags.get("date") or "").strip() or None,
+        "sar": s.get("sample_aspect_ratio"),
+        "dar": s.get("display_aspect_ratio"),
     }
 
 

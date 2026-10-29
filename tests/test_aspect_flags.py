@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
 
-from scan_aspect_flags import classify, parse_ratio  # noqa: E402
+from media_lib.aspect import classify, parse_ratio  # noqa: E402
 
 
 def test_gilbert_signature_flags_narrow():
@@ -37,3 +37,15 @@ def test_parse_ratio():
     assert abs(parse_ratio("16:9") - 1.7778) < 0.001
     assert parse_ratio("1.85:1") == 1.85
     assert parse_ratio("bogus") is None
+
+
+def test_ingest_warns_not_refuses():
+    from media_lib import aspect
+    v, reason = aspect.classify("5:4", 720, 400)
+    assert v == "suspect-narrow" and "SAR" in reason or "squeezed" in reason
+
+
+def test_probe_declares_sar_dar():
+    from media_lib import probe
+    assert "sar" in probe.ProbeResult.__annotations__
+    assert "dar" in probe.ProbeResult.__annotations__
