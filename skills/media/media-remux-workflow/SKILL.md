@@ -79,11 +79,17 @@ Two traps that produce FALSE dead rows, both hit on 23 Oct 2026:
 Check the verdict against the disk before reporting it: a "dead" item whose file is
 plainly present in `ls` means the checker is wrong, not Jellyfin.
 
-## STOP — recoding is Tdarr's job (standing order, Paul, 23 Oct 2026)
+## STOP — recoding needs Paul's go-ahead each time (standing order, 29 Oct 2026)
 
-**Never hand-roll an ffmpeg recode batch.** Tdarr is installed and is the only
-sanctioned transcoder: CT114 on proxmox2, `http://192.168.214.23:8265`, media
-mounted `/mnt/zmedia -> /media` (same CIFS share Jellyfin reads — verified
+**Never recode on your own initiative — always ask first via clickable options.**
+Recoding is CPU-heavy and time-boxed: the default is Tdarr in its 23:00–05:00
+window, but a repair can run outside hours on the pool-local host when Paul
+approves it. Present the choice (Tdarr in-window vs direct repair now) with
+size/CPU estimate and wait for the pick. A recode done without asking is a
+process failure even when the encode is correct.
+
+Tdarr is installed and is the default transcoder when approved: CT114 on
+proxmox2, `http://192.168.214.23:8265`, media mounted `/mnt/zmedia -> /media` (same CIFS share Jellyfin reads — verified
 identical bytes+mtime, not the stale view the older topology note warns about).
 Procedure, API and pitfalls: `references/tdarr-cluster.md`.
 
@@ -128,6 +134,17 @@ Tdarr's own state is worth checking every time, because "installed" is not
   (keeps the name, zero pixel loss), rename + repoint the single DB row
   (approval required), or delete the duplicate. Never re-encode to fix a
   container label.
+
+## Miscoded aspect (plays too narrow) — SAR repair
+
+XviD-era files often carry a bogus pixel aspect (proven: `SAR 25:36 → DAR 5:4`
+on 720x400 widescreen content — plays narrow; fix is `setsar=1` → DAR 9:5).
+Diagnose with ffprobe `sample_aspect_ratio`/`display_aspect_ratio` before
+assuming the pixels are wrong. Repair (after Paul's go-ahead): re-encode with
+`-vf setsar=1` + libx264 CRF 20 (audio to AAC if the source is MP3), verify
+SAR 1:1 on the output, swap via the ingest pipeline. A Tdarr flow step for
+this is wanted (custom plugin applying setsar to 5:4-flagged WS content) —
+until it exists this is the approved direct-repair exception.
 
 ## Playback-confidence gate (before deleting ANY original)
 
