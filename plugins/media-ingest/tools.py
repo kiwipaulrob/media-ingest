@@ -21,7 +21,7 @@ except Exception:  # pragma: no cover - older core
     def get_secret(name: str, default: str = '') -> str:
         return os.environ.get(name, default)
 
-MEDIA_OPS = '/root/.hermes/profiles/media-maintainer/media-ops'
+MEDIA_OPS = os.environ.get('MEDIA_OPS_HOME') or '/root/.hermes/profiles/media-maintainer/media-ops'
 TOOLSET = 'media'
 
 

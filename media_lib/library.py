@@ -41,8 +41,9 @@ def _row(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         break
     video = next((s for s in streams if s.get("Type") == "Video"), {})
     name = item["Name"]
-    return {
+    row = {
         "id": item.get("Id"),
+        "type": item.get("Type"),
         "Name": name,
         "path": path,
         "lib": lib_path,
@@ -54,17 +55,29 @@ def _row(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "codec": video.get("Codec"),
         "nsrc": len(item.get("MediaSources") or []) or 1,
     }
+    # Series identity for episodic rows (review-3): without these, plan.py
+    # cannot match an episodic upgrade to its row and files it as NEW.
+    if item.get("Type") == "Episode":
+        row["series"] = item.get("SeriesName")
+        row["season"] = item.get("ParentIndexNumber")
+        row["episode"] = item.get("IndexNumber")
+    return row
 
 
 def build(uid: Optional[str] = None) -> Dict[str, Any]:
     """Dump every video item, grouped by library root."""
     uid = uid or jellyfin.user_id()
-    items = jellyfin.list_items(
-        uid,
-        recursive=True,
-        include_types="Movie,Video",
-        fields="Path,MediaSources,ProductionYear",
-    )
+    # One query per type: a comma-joined IncludeItemTypes returned extra item
+    # kinds on this build (lesson 35) — never trust the joined form.
+    # Video stays: extras/featurettes live under it.
+    items = []
+    for itype in ("Movie", "Episode", "Video"):
+        items.extend(jellyfin.list_items(
+            uid,
+            recursive=True,
+            include_types=itype,
+            fields="Path,MediaSources,ProductionYear,SeriesName,ParentIndexNumber,IndexNumber",
+        ) or [])
     libs: Dict[str, List[Dict[str, Any]]] = {p: [] for p in config.JF_TO_DISK}
     for it in items:
         r = _row(it)

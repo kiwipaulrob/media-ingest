@@ -48,3 +48,21 @@ Part 2–4 triaged item by item:
 - Deferred with reason: transcript-mining CLI (needs CT110 GPU time, not
   code); ffmpeg frame-extract Primary fallback (still_path covers the common
   case; frame-pick needs a quality heuristic or it pins blurry frames).
+
+## Review-3 (email 2133, vs 9f9e0a1 — current HEAD, no staleness)
+
+| # | Claim | Verdict |
+|---|-------|---------|
+| P1.1a | pipe-joined hashes rejected by v5.x | ADOPTED: `_post_hashes()` one POST per hash; delete/setForceStart/reannounce routed through it |
+| P1.1b | no nlink guard before delete_files | ADOPTED: `_hardlinked_hashes()` stats payload nlink via `place.remote_nlink()`; linked → entry-only delete (fail-open keeps files) |
+| P1.2 | strict json.loads crashes | ADOPTED: sab `strict=False` + replace-decode |
+| P1.3 | library cache omits Episode | ADOPTED: per-type Movie/Episode/Video queries (joined form distrusted per lesson 35); episode rows carry series/season/episode. Live: 2454 rows, 668 episodes |
+| P1.4a | swap while playing | ALREADY DONE: `is_playing` skip in apply.py:114 |
+| P1.4b | extension change wipes watch state | ADOPTED: pre-swap snapshot + post-refresh restore via set_played/set_playback_position when the row id changes |
+| P1.5a | sync skips plugin tests | ALREADY DONE: sync.py:59 runs both suites |
+| P1.5b | tools.py hardcoded paths | ADOPTED: MEDIA_OPS from env with fallback |
+| P2.1 nfo sidecars | ALREADY DONE: media_lib/nfo.py |
+| P2.2 4/4 exit gate | ALREADY DONE: _fix_row_name pins Imdb/Primary/People (ingest_new.py:466+) |
+| P2.3 slot audit | ALREADY DONE: slot_check SLOT-COLLISION |
+| P2.4 tvmaze/bbc/wikidata/url-rels | ALREADY DONE (+ resolve chain + imdb_search step 5) |
+| P2.5 tidy consolidation | DECLINED: 57 scripts, each tested and reviewed; a merge adds risk for no gate benefit |

@@ -37,7 +37,10 @@ def _call(mode: str, **params: Any) -> Dict[str, Any]:
     url = f"{_base()}/api?" + urllib.parse.urlencode(qs)
     try:
         with urllib.request.urlopen(url, timeout=90) as fh:
-            return json.loads(fh.read() or b"{}")
+            # strict=False: release names carry unescaped control characters
+            # (review-3); strict parsing crashed the whole queue read.
+            return json.loads((fh.read() or b"{}").decode("utf-8", "replace"),
+                              strict=False)
     except Exception as exc:  # noqa: BLE001
         raise SabError(f"{mode} failed: {type(exc).__name__}: {exc}") from exc
 

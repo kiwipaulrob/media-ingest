@@ -11,6 +11,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from media_lib import config, jellyfin, qb, safety, swap
 
@@ -35,8 +36,82 @@ def _refresh(lib_ids, item_ids=()):
             print(f"  refresh {lib_id} failed: {str(exc)[:100]}")
 
 
+def _watch_snapshot(uid: str, item_id: str) -> Dict[str, Any]:
+    """Played + position before a swap. Never raises (empty on any failure)."""
+    try:
+        ud = jellyfin.user_data(uid, item_id) or {}
+        return {"played": bool(ud.get("Played")),
+                "ticks": int(ud.get("PlaybackPositionTicks") or 0)}
+    except Exception:  # noqa: BLE001 - best effort; no snapshot, no restore
+        return {}
+
+
+def _row_id_by_path(uid: str, container_path: str) -> Optional[str]:
+    """Current row id for a container path, or None. Never raises."""
+    try:
+        rows = jellyfin.list_items(uid, recursive=True, include_types="Movie",
+                                   fields="Path") or []
+        for it in rows:
+            if isinstance(it, dict) and it.get("Path") == container_path:
+                return str(it.get("Id"))
+    except Exception:  # noqa: BLE001 - best effort
+        pass
+    return None
+
+
+def _restore_watch_state(uid: str, new_id: str, snap: Dict[str, Any]) -> None:
+    """Re-apply Played + position after an id-changing swap. Never raises."""
+    try:
+        if snap.get("played"):
+            jellyfin.set_played(uid, new_id, True)
+        if snap.get("ticks"):
+            jellyfin.set_playback_position(uid, new_id, int(snap["ticks"]))
+    except Exception:  # noqa: BLE001 - report, never abort
+        print(f"  watch-state restore failed for {new_id}", flush=True)
+
+
+def _hardlinked_hashes(hashes: list) -> set:
+    """Torrent hashes whose payload shares bytes with the library (nlink>1).
+
+    Best effort; any lookup failure excludes the hash (fail-open toward
+    keeping files — deleting the entry only). Never raises.
+    """
+    from media_lib import place  # deferred: light import for tests
+
+    linked = set()
+    try:
+        live = {str(t.get("hash")): t for t in qb.torrents() if isinstance(t, dict)}
+        for h in hashes:
+            t = live.get(str(h))
+            if not t:
+                continue
+            try:
+                root = qb.save_to_remote(str(t.get("save_path") or "/downloads"))
+            except Exception:  # noqa: BLE001 - unknown root, keep files
+                linked.add(h)
+                continue
+            try:
+                files = qb.files(str(h)) or []
+            except Exception:  # noqa: BLE001 - unreadable, keep files
+                linked.add(h)
+                continue
+            for f in files:
+                if not isinstance(f, dict):
+                    continue
+                disk = root + "/" + str(f.get("name") or "")
+                try:
+                    n = place.remote_nlink(disk)
+                except Exception:  # noqa: BLE001 - unstatable, keep files
+                    n = 2
+                if n and n > 1:
+                    linked.add(h)
+                    break
+    except Exception:  # noqa: BLE001 - whole check failed, keep everything
+        return set(hashes)
+    return linked
+
+
 def _lib_id(uid, name) -> str | None:
-    from typing import Any
 
     rows: Any = jellyfin.get_json("/Library/VirtualFolders")
     items: list[Any] = rows if isinstance(rows, list) else []
@@ -101,6 +176,7 @@ def main(argv=None) -> int:
 
     with safety.acquire():
         done, failed = [], []
+        snaps: Dict[Any, Dict[str, Any]] = {}
         for r in rows:
             print(
                 f"[{r['id']}] {r['old_res']} -> {r['new_res']}  "
@@ -115,6 +191,13 @@ def main(argv=None) -> int:
                     print("    SKIPPED: client is playing this item right now", flush=True)
                     failed.append((r, "playing — retry on next apply run"))
                     continue
+                # Review-3 P1.4: snapshot watch state BEFORE the swap. An
+                # extension change mints a new ItemId and wipes it otherwise.
+                snap: Dict[str, Any] = {}
+                try:
+                    snap = _watch_snapshot(jellyfin.user_id(), r["old_id"]) if r.get("old_id") else {}
+                except Exception:  # noqa: BLE001 - uid unavailable, skip snapshot
+                    pass
                 status, detail = swap.replace(
                     r["src"],
                     r["dest_disk"],
@@ -134,6 +217,8 @@ def main(argv=None) -> int:
                 item=r.get("old_id"),
             )
             done.append(r)
+            if snap:
+                snaps[r["id"]] = snap
             print(f"    {status}: {detail}", flush=True)
 
         libs = {r.get("library") for r in done if r.get("library")}
@@ -145,10 +230,35 @@ def main(argv=None) -> int:
         if uid and libs:
             ids = [i for i in (_lib_id(uid, n) for n in libs) if i]
             _refresh(ids, [r["old_id"] for r in done if r.get("old_id")])
+            # Review-3 P1.4: an extension change mints a new ItemId, wiping
+            # Played/position. The bytes are at dest; if the row id differs
+            # from old_id, re-apply the pre-swap snapshot.
+            from media_lib import place as _place
+
+            for r in done:
+                kept = snaps.get(r["id"])
+                if not kept or not (kept.get("played") or kept.get("ticks")):
+                    continue
+                try:
+                    jf_path = _place.to_jf(str(r["dest_disk"]))
+                    new_id = _row_id_by_path(uid, jf_path)
+                except Exception:  # noqa: BLE001 - best effort
+                    new_id = None
+                if new_id and new_id != r.get("old_id"):
+                    _restore_watch_state(uid, new_id, kept)
+                    print(f"  watch state restored onto {new_id}", flush=True)
 
         if args.delete_source and done:
             hashes = [r["hash"] for r in done]
-            qb.delete(hashes)
+            # Review-3 P1.1: hardlink guard. If the payload shares bytes with
+            # the library (nlink>1), drop the torrent entry but keep the files.
+            linked = _hardlinked_hashes(hashes)
+            plain = [h for h in hashes if h not in linked]
+            if plain:
+                qb.delete(list(plain), delete_files=True)
+            if linked:
+                qb.delete(list(linked), delete_files=False)
+                print(f"  kept files for hardlinked: {sorted(linked)}")
             after = {str(t.get("hash")) for t in qb.torrents()}
             left = [h for h in hashes if h in after]
             print(f"  deleted {len(hashes)} torrent(s); still present: {left}")

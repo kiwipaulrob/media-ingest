@@ -353,3 +353,11 @@ initialisms (`doa`, `tmen`). Separately, verbose-but-legit release names (aka
 titles like "[Dead on Arrival]", encoder credits) blew the extras budget, so
 exact candidate/wanted year agreement doubles it via `same_year` — the subset
 rule still holds, so a wrong film fails regardless of year.
+
+## 39. Third review was fresh — triage, don't assume staleness
+
+Reviews 1-2 cited already-fixed code (stale clones). Review-3 (email 2133)
+targeted HEAD itself, so every item got verified: 6 adopted (per-hash POSTs,
+nlink-guarded deletes, tolerant SAB JSON, episode cache rows, watch-state
+restore, env-based plugin paths), 5 already-done, 1 declined (tidy merge).
+Stale-clone is a hypothesis, never a presumption — check the tree first.

@@ -111,6 +111,27 @@ def _ext(name: str) -> str:
     return name[i:].lower() if i >= 0 else ""
 
 
+def _post_hashes(endpoint: str, hashes: List[str], extra: Dict[str, str] | None = None,
+                 op=None) -> int:
+    """One POST per hash. qBittorrent v5.x mutating endpoints reject pipe-joined
+    hashes with HTTP 400 (review-3 caught this: every call site worked only
+    because our server still tolerates the old form). Returns successes."""
+    op = op or _opener()
+    done = 0
+    for h in hashes:
+        body = urllib.parse.urlencode({"hashes": h, **(extra or {})}).encode()
+        req = urllib.request.Request(
+            f"{_base()}{endpoint}", data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"})
+        try:
+            with op.open(req, timeout=60) as r:
+                r.read()
+            done += 1
+        except urllib.error.HTTPError:
+            continue
+    return done
+
+
 def delete(hashes: List[str], op=None, delete_files: bool = True) -> int:
     """Delete torrents by FULL hash. Refuses prefixes.
 
@@ -121,17 +142,8 @@ def delete(hashes: List[str], op=None, delete_files: bool = True) -> int:
         raise ValueError(f"refusing to delete non-40-char hashes: {bad}")
     if not hashes:
         return 0
-    op = op or _opener()
-    body = urllib.parse.urlencode(
-        {
-            "hashes": "|".join(hashes),
-            "deleteFiles": "true" if delete_files else "false",
-        }
-    ).encode()
-    req = urllib.request.Request(f"{_base()}/api/v2/torrents/delete", data=body)
-    # qBittorrent answers 200 with an empty body on success.
-    op.open(req, timeout=60).read()
-    return len(hashes)
+    return _post_hashes("/api/v2/torrents/delete", [str(h) for h in hashes],
+                        {"deleteFiles": "true" if delete_files else "false"}, op)
 
 
 def completed_candidates(
@@ -196,19 +208,8 @@ def set_force(hashes: List[str], value: bool, op=None) -> int:
     hashes = [h for h in hashes if h]
     if not hashes:
         return 0
-    op = op or _opener()
-    body = urllib.parse.urlencode({
-        "hashes": "|".join(hashes), "value": "true" if value else "false"}).encode()
-    req = urllib.request.Request(
-        f"{_base()}/api/v2/torrents/setForceStart",
-        data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    try:
-        with op.open(req, timeout=60) as r:
-            return r.status
-    except urllib.error.HTTPError as exc:
-        return exc.code
+    return _post_hashes("/api/v2/torrents/setForceStart", hashes,
+                        {"value": "true" if value else "false"}, op)
 
 
 #: Public announce URLs used when a queued magnet carries NO tracker at all.
@@ -255,14 +256,7 @@ def reannounce(hashes: List[str], op=None) -> int:
     hashes = [h for h in hashes if h]
     if not hashes:
         return 0
-    op = op or _opener()
-    body = urllib.parse.urlencode({"hashes": "|".join(hashes)}).encode()
-    req = urllib.request.Request(f"{_base()}/api/v2/torrents/reannounce", data=body)
-    try:
-        with op.open(req, timeout=60) as r:
-            return r.status
-    except urllib.error.HTTPError as exc:
-        return exc.code
+    return _post_hashes("/api/v2/torrents/reannounce", hashes, None, op)
 
 
 def ensure_trackers(hash_: str, op=None) -> Dict[str, Any]:

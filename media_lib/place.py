@@ -41,6 +41,16 @@ from typing import Any, Dict, Optional
 
 from . import avsync, completeness, config, probe, slot_check
 
+
+def remote_nlink(disk_path: str) -> int:
+    """Hardlink count of one media-host path, via the media host. Pure remote stat.
+
+    Judge hardlinks by link count, never by inode (CIFS hands out synthetic
+    inodes per path). Raises when the path cannot be stated.
+    """
+    out = probe.on_media(f"stat -c %h {shlex.quote(disk_path)}", timeout=60).strip()
+    return int(out.split()[0])
+
 DECODE_SPANS = (0.05, 0.50, 0.95)
 M_SRC = "@@SRC@@"
 M_DST = "@@DST@@"
