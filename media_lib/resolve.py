@@ -33,7 +33,8 @@ def _words(s: str) -> List[str]:
 
 
 def resolve_series(title: str, year: Optional[str] = None,
-                   local_nfo: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+                   local_nfo: Optional[Dict[str, str]] = None,
+                   wiki_page: Optional[str] = None) -> Dict[str, Any]:
     """Best metadata from every source. Never raises, never writes."""
     from . import bbc, tmdb, tvmaze  # deferred: light import for tests
 
@@ -133,6 +134,19 @@ def resolve_series(title: str, year: Optional[str] = None,
                 if ok:
                     out["imdb_id"] = tt
                     out["imdb_from"] = "search"
+        except Exception:  # noqa: BLE001
+            pass
+    # 6. Wikipedia episode tables (keyless; First Cut proved the need: TMDB
+    # covered the wrong years, TVmaze had titles with 0-char overviews).
+    if "overview" not in out and wiki_page:
+        try:
+            from media_lib import wikipedia as _wiki  # deferred: network-heavy
+
+            found = _wiki.episode_overview(wiki_page, title)
+            if found.get("overview"):
+                out["overview"] = found["overview"]
+                out["overview_from"] = found["overview_from"]
+                out["sources"].append("wikipedia")
         except Exception:  # noqa: BLE001
             pass
     return out
