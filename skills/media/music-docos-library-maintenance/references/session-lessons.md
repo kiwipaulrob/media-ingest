@@ -291,15 +291,13 @@ synopsis are both empty, fall through to the HTML scrape — returning the empty
 result reports success with no data, which reads as "BBC has nothing" and ends
 a hunt that should have continued.
 
-## 34. No ad hoc inline sweeps — promote or perish
+## 34. No ad hoc inline sweeps — promote or perish (see also 30)
 
 Every inline heredoc that survives first contact gets promoted to a tested
-script the same night (`audit_series.py` for the 4-field series sweep,
-`slot_check.py`, `hunt.plan/queue`, `scan_series_shapes.py`). Importable
-single-purpose functions, pure flag/match logic with fixture tests, live
-proof before commit. The rule for tonight's leftovers: per-row Jellyfin
-writes stay manual (they are approval-gated by nature), everything
-read-only or repeated becomes a script.
+script the same night. Importable single-purpose functions, pure flag/match
+logic with fixture tests, live proof before commit. Per-row Jellyfin writes
+stay manual (approval-gated); everything read-only or repeated becomes a
+script.
 
 ## 35. No series-level id does not mean no ids at all
 
@@ -318,13 +316,13 @@ TMDB series miss is the start of the hunt, not its end.
 
 ## 36. Never stop at the first source that says nothing
 
-Stopping at "no TMDB match" left The Devil's Music, Folk America and the
-Britannia strand unidentified for months while TVmaze, BBC pid.json, IMDb
-and the disks' own nfo files held the answers. `media_lib/resolve.py`
-chains TMDB -> TVmaze -> BBC -> local-nfo and records per-field provenance;
-`missing_fields()` says what is still open. IMDb has no API, so the agent
-web-searches IMDb directly as the final step (Folk America tt2200247 came
-that way) — that step is doctrine, not code.
+Stopping at "no TMDB match" left titles unidentified for months while
+TVmaze, BBC pid.json, IMDb and local nfo files held the answers.
+`media_lib/resolve.py` chains TMDB -> TVmaze -> BBC -> local-nfo ->
+search-engine IMDb -> Wikipedia episode tables with per-field provenance;
+`missing_fields()` says what is still open. A bare search hit is evidence,
+not proof — verify before pinning. When every source returns nothing,
+report that per source with the evidence.
 
 ## 35. Virtual episode slots are not missing media
 
@@ -378,13 +376,12 @@ sar/dar). 24 files repaired lossless in one batch.
 ## 41. Every swap snapshots metadata first, re-applies with LockData after
 
 Swapping bytes under a row drops it from search for up to an hour (Geffen,
-Stone Roses) and the dropout wipes Name+Overview — a failing provider
-refresh blanks them despite field locks. Only item-level LockData=true
-holds. Checklist now enforced for every remux/repair swap: (1) snapshot
+Stone Roses). Checklist for every remux/repair swap: (1) snapshot
 overview+provider ids to state/ BEFORE touching bytes; (2) swap; (3) wait
 for the row by direct listing (never search); (4) re-apply snapshot with
-LockData=true; (5) verify by direct item read. `set_overview(lock=True)`
-sets LockData itself since this lesson.
+LockData=true via `lock_item()`; (5) verify by direct item read.
+`set_overview(lock=True)` sets LockData itself. See 43 for why partial
+lock posts are forbidden.
 
 ## 42. Tdarr integration is suite-queues-per-file, flows stay unlinked
 
@@ -397,8 +394,6 @@ here, so custom needs are hand-built flows, not downloads.
 
 ## 43. I blanked 12 rows with LockData-only posts — partial POSTs wipe
 
-Correction to lesson 41: the Name wipe was not TVDB, it was me.
-`jellyfin.post_item()` POSTs the given body and Jellyfin replaces wholesale,
-so 12 `{"LockData","LockedFields"}`-only posts blanked 12 Names+Overviews.
-New rule: locks go through `jellyfin.lock_item()` (fetch-merge-post) or not
-at all. The nfo sidecars + Tvdb strip were harmless but beside the point.
+The Name wipe in 41 was not TVDB, it was me: `post_item()` POSTs the given
+body and Jellyfin replaces wholesale. Locks go through `lock_item()`
+(fetch-merge-post) or not at all. Same root cause as 2.

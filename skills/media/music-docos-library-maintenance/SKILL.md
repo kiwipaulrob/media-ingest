@@ -96,74 +96,23 @@ against the API:
 - `references/people-enrichment.md`: the full chain (TMDB credits → Wikipedia → Last.fm → portraits),
   with the traps and verification rules.
 
-### Two mistakes this rule prevents, both made in one session
-
-1. **A partial DTO wipes fields you never touched.** Posting `{"LockedFields": [...]}` alone stored
-   `Name` as null and blanked `Overview`. Always: GET the DTO fresh, change only the target fields,
-   **include `Name`**, omit `Genres`, then re-read and diff the fields you did not intend to change.
-2. **Never verify `LockedFields` through a search.** Search-result DTOs omit it and read back
-   null even when the lock is set — which produced a false report that locking had failed. Verify
-   with `GET /Users/{uid}/Items/{id}?Fields=LockedFields`.
+See lessons 2 (partial DTO wipes), 3 (verify locks by direct GET), and 43
+(`lock_item()` is the only way to set locks) — each cost live damage.
 
 "Bios" is a people-enrichment job, not an item edit: bios live on Person records, the item only
-carries credits.
+carries credits. Identify series/film rows with `jellyfin.remote_search` /
+`apply_identification` (lesson 7: media-type route, module auth helper, generic-Video credit trap).
 
+### Source fallback order (see lessons 33, 36)
 
-
-
-### Identify is automatable — one route, one body shape
-
-```
-jellyfin.remote_search(item_id, name, year, provider_ids)   -> candidate list (read-only)
-jellyfin.apply_identification(item_id, result, replace_images=False)   -> what the UI button does
-```
-
-Rules learned by failing at it first: the route is the MEDIA TYPE one, `POST /Items/RemoteSearch/Movie`.
-Sending the bare search info returns **500**; provider-named routes (`/RemoteSearch/Tmdb`,
-`/RemoteSearch/TheMovieDb`, `/RemoteSearch/Imdb`) return **404**. The body is
-`{"SearchInfo": {...}, "ItemId": ...}`.
-
-And the 401 that looked like an auth wall was self-inflicted: a hand-rolled `X-Emby-Token` header
-fails, while `jellyfin._request()` (which uses `auth_header()`) succeeds on the same route. Use the
-module's request helper — never build the auth header by hand.
-
-Identify also fixes what a credit write cannot: on a generic Video item in a music library, POSTing
-`People` and `ProviderIds` returns **204 and silently discards both**. Identifying the item attaches
-the credits properly (nine people plus Tmdb/Imdb/Tvdb ids on this entry).
-
-### When TMDB has no match, fall back to the BBC programme site — never to guessing
-
-TMDB under-covers BBC-original documentaries (strand episodes, one-offs, pre-2000 archive).
-A TMDB no-match is not evidence of absence. The BBC programme site carries the title, synopsis
-and full episode guide, and its pages are server-rendered enough to parse with stdlib:
-`media_lib/bbc.py` (`programme(pid)` for title+synopsis, `episode_guide(pid)` for n/m-numbered
-episodes, `gate_with_fallback(release)` which runs `tmdb.gate` first and consults the BBC only
-on a clean no-match). Proven: Hawking's Universe episode guide, Bitter Lake / It Felt Like a
-Kiss / A303 synopses applied as sourced overviews.
-
-Two constraints on the fallback. First, **the BBC never overrides an ambiguous TMDB hit** — it
-is a gap-filler, not an appeals court; an ambiguous hit stays ambiguous. Second, **programme
-search from the media box is bot-walled** (DDG serves a consent page, Bing serves junk), so PID
-discovery happens agent-side via web search (`site:bbc.co.uk/programmes <title>`) and the code
-consumes PIDs — do not build a runtime path that depends on search-engine scraping from the box.
-Do not rewire it to the RMS API either: its `search=` parameter is ignored server-side (any term
-returns the same global-newest list), and the programme-search routes 404. A correct BBC absence is also a result: an ITV strand has no BBC page, and that ends the hunt instead of failing it.
-
-When TMDB shells on UK broadcast strands (Arena, Later... with Jools Holland, Classic Albums past season 10), fall back to TVmaze before the BBC: `media_lib/tvmaze.py` (`by_name` first — doctrine is never-by-number-alone — then `by_number` on the broadcast slot) is keyless and returns the whole episode list in one call. It never overrides a TMDB hit, only a miss, and TVmaze-sourced rows skip TMDB-id pinning (there is no episode id to pin). Combine the sources when each is half-right: TVmaze's real episode names over TMDB's "Episode N" shells with real overviews, renaming files to the TVmaze names and identifying to the TMDB series id.
-
-Prefer the public `programmes/<pid>.json` payload over scraping HTML — but know its two shapes: version/clip PIDs return `{"version": {...}}` with no programme block, so resolve the parent episode PID and fetch that; and `display_title` can be a dict (use its subtitle), not a string. An empty title+synopsis from JSON means fall back to the HTML page, not to report empties.
+TMDB miss starts the hunt: TVmaze (keyless episode lists) -> BBC pid.json
+(two pid shapes, HTML fallback) -> `media_lib/resolve.py` full chain with
+provenance. BBC never overrides an ambiguous TMDB hit; programme search is
+bot-walled from the box, so PID discovery is agent-side web search.
 
 ## Never stop at the first source that says nothing
 
-A TMDB miss is the START of an identification hunt, not its end. Work the whole chain before a row may be called unidentified — `media_lib/resolve.py` runs the first four automatically and records provenance per field:
-
-1. **TMDB** (`/search/tv`, then `/search/movie`) — ids, overview, poster, episode list.
-2. **TVmaze** (keyless) — the real episode list where TMDB shells as "Episode N" or 404s past its last season; also a show-level summary.
-3. **BBC programme catalogue** (`programmes/<pid>.json`) — synopsis, first broadcast, 16:9 artwork.
-4. **The media's own `tvshow.nfo` / container tags** — often carries `imdb_id` next to an empty plot.
-5. **IMDb discovery is code now, agent search is the fallback** — `media_lib/imdb_search.py` (`discover_imdb`) runs a keyless Bing search, decodes the wrapped result target to a tt id, and `resolve.py` verifies it through TVmaze's imdb lookup (`tvmaze.by_imdb`) before pinning: the longest distinctive word of the wanted title must appear in the looked-up name. A bare search hit is evidence, not proof — the top hit for a strand title can be a same-name film, and the anchor refuses it. Engine reality from the media box: DDG serves a JS shell with no parseable results, Brave rate-limits; Bing HTML parses with stdlib. Never pin an id from memory or from a title match alone.
-
-Two failures this rule exists to prevent, both of which reached the user as "why did you not look?": a trilogy shipped with empty `ProviderIds` because only the *series* namespace was checked (each part is a film with its own IMDb id), and a three-part folk series left blank while its IMDb entry sat one search away. When every source above returns nothing, report that per source with the evidence — that is a legitimate result. "No TMDB match" on its own is not.
+See lesson 36: work the whole `resolve.py` chain with per-field provenance before calling a row unidentified.
 
 ## Never hand-build an ingest spec — the planner already decided
 
@@ -268,6 +217,15 @@ Agent-side tools (when the plugins are loaded): `media_scan`, `media_plan`, `med
 **Promote a repeated inline flow to a tested script instead of re-typing it.** A heredoc run three times is a script that lacks tests: `identify_series.py` / `identify_movie.py` / `scan_series_shapes.py` all began as inline snippets and earned `--help`, `main()`-wrapping, fixture tests and a skill-table row. When the user asks whether a script is ad hoc or suite, the answer must be suite with tests — or say plainly that it is ad hoc and why it cannot go through the suite yet.
 
 **Verify external review citations against HEAD before implementing.** A cited file/line/function may describe code fixed days ago — the reviewer's clone goes stale, not the tree. Check each item against the live files first, implement only what is genuinely missing, and answer with a per-item verdict table (fixed-where / adopted / rejected-with-evidence / deferred-with-reason) so the re-review starts from what's actually new.
+
+## Newer suite paths (see lessons 40-43)
+
+- Aspect-flag audit + lossless SAR repair: `scripts/scan_aspect_flags.py` → `scripts/fix_aspect_remux.py`
+  (lesson 40); ingest warns `ASPECT-FLAG` at placement via `media_lib/aspect.py`.
+- Tdarr integration is suite-queues-per-file: `scripts/tdarr_queue.py --flow audio|sar|legacy
+  --files ... [--apply]` (lesson 42); flows stay unlinked; lesson 41 governs the after-side.
+- Swap metadata checklist: snapshot → swap → direct-listing wait → re-apply with LockData
+  via `lock_item()` → direct-read verify (lessons 41, 43).
 
 ## Adding a series to Music Docos Series
 
