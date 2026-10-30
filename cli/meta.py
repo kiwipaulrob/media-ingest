@@ -81,7 +81,27 @@ def _identify(args) -> int:
                     {"Tmdb": str(want)})
                 pick = enrich.pick_identification(name, b.get("year"), found or [], want)
                 if not pick:
-                    raise RuntimeError("gated id absent from remote-search hits")
+                    # Providers hold nothing (6/6 on the first live run): pin
+                    # the gated id + TMDB overview directly instead of failing.
+                    # Credits cannot be fetched, but the row leaves the bare
+                    # set and future refreshes have an id to work from.
+                    from media_lib import tmdb as _tmdb
+                    d = _tmdb._get(f"/movie/{want}", {}) or {}
+                    if d.get("overview"):
+                        cur = jellyfin.get_json(
+                            f"/Users/{jellyfin.user_id()}/Items/{b.get('id')}") or {}
+                        if not (cur.get("Overview") or "").strip():
+                            jellyfin.set_overview(str(b.get("id")), d["overview"],
+                                                  lock=True)
+                    uid = jellyfin.user_id()
+                    dto = jellyfin.get_json(f"/Users/{uid}/Items/{b.get('id')}") or {}
+                    prov = dto.get("ProviderIds") or {}
+                    prov["Tmdb"] = str(want)
+                    dto["ProviderIds"] = prov
+                    jellyfin.post_item(str(b.get("id")), dto)
+                    counts["PINNED"] = counts.get("PINNED", 0) + 1
+                    print(f"  [{i}/{len(bare)}] PINNED tmdb={want} {name[:44]}", flush=True)
+                    continue
                 jellyfin.apply_identification(str(b.get("id")), pick)
                 counts["DONE"] = counts.get("DONE", 0) + 1
                 print(f"  [{i}/{len(bare)}] DONE tmdb={want} {name[:44]}", flush=True)

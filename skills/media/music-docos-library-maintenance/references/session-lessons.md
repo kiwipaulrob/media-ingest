@@ -422,7 +422,7 @@ AUDIO-BLOAT at placement (advisory, never a gate). Strip rule: drop
 non-English/Italian dubs, keep foreign-only soundtracks, always keep
 Italian, AAC-stereo first.
 
-## 46. The bio plan cannot see unidentified films (Moog gap)
+## 47. The bio plan cannot see unidentified films (Moog gap)
 
 `cli.meta plan` only fills bios on existing Person rows. A never-identified
 film has no credits and no ids, so enrichment skips it forever. New rule:
@@ -430,8 +430,16 @@ film has no credits and no ids, so enrichment skips it forever. New rule:
 runs BEFORE every bio plan. Candidate pick matches the gated TMDB id, never
 list position.
 
-## 47. Read-only sweeps must not hold the write lock
+## 48. Read-only sweeps must not hold the write lock
 
 The identify dry-run wrapped all 157 TMDB gates in `safety.acquire()`,
 blocking every other run and failing 8 lock-holding tests. Locks guard
 writes only (`--apply`); dry-runs use a nullcontext.
+
+## 49. A row that 400s on GET but writes fine is flapping, not dead
+
+The Swindle row refused every `GET /Users/{uid}/Items/{id}` (400, three
+retries) while `set_overview` on the same id succeeded minutes apart. Do
+not delete or rebuild a flapping row: apply what you can through the
+working route, pin ids later, log it. A row that fails every route AND has
+no file on disk is dead; anything else is index weather.
