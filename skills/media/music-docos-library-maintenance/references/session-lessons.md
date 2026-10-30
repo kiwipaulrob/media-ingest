@@ -450,3 +450,14 @@ Bios applied for months while portrait URLs sat unread in the plan rows —
 `cli.meta plan` now prints PORTRAITS AVAILABLE (imageless rows where the
 chain already holds a URL) with the exact `bio portrait --id --url`
 command. Portraits stay approval-gated, but never invisible again.
+
+## 51. Vision-verify portraits before attaching (Slowdive rule)
+
+Deezer and Genius both return a "Simon Scott" portrait, but only the
+Deezer one shows a drummer behind a Slowdive-branded kit — verified by
+looking at the pixels, not the label. The Genius Hufford candidate is a
+generic outdoor photo with zero identifying context: left blank, not
+attached. Rule: download the candidate, vision-check it against the known
+facts (band branding, era, role), attach only on positive evidence.
+Portrait source order that actually delivers: TMDB profile > Deezer artist
+image > Commons/Wikidata P18 > Genius (last resort, often unverifiable).
