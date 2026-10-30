@@ -479,3 +479,13 @@ release filename as the "description" (58ch of RARBG tags) despite holding
 Tmdb 404141 with a 585ch overview upstream. `cli.meta overviews`
 (dry-run/`--apply`) fills rows that have a Tmdb id and an empty or
 filename-shaped overview. Runs after identify, before bio plan.
+
+## 54. Credit-less rows with ids need cast backfill too (Swartz class)
+
+The Swartz row held a full overview + Tmdb id but zero People (re-created
+by a library move; credits never fetched, providers return nothing on
+re-search). `bare_movies` now also flags `has-id-no-credits`, and
+`attach_tmdb_cast()` writes TMDB top cast by full-DTO merge after every
+DONE/PINNED identify. Post-swap lesson stands too: same-name swaps do NOT
+reliably preserve metadata (Otis wiped, Epstein shortened) — snapshot,
+diff, restore, lock, every time.

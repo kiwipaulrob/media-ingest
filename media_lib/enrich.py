@@ -110,12 +110,50 @@ def thin_overviews(parent_id: str) -> List[Dict[str, Any]]:
     return out
 
 
+def attach_tmdb_cast(item_id: str, tmdb_id: Any) -> int:
+    """Write TMDB top cast onto a credit-less row. Returns names added.
+
+    The Swartz fix: providers sometimes hold nothing for remote_search, so
+    identify can never fetch credits — but /movie/{id}/credits is sourced
+    truth for names+roles. Full-DTO merge, never a partial post.
+    """
+    from . import jellyfin
+
+    uid = jellyfin.user_id()
+    dto = jellyfin.get_json(f"/Users/{uid}/Items/{item_id}") or {}
+    if not dto or dto.get("People"):
+        return 0
+    try:
+        from . import tmdb as _t
+        cred = _t._get(f"/movie/{tmdb_id}/credits", {}) or {}
+    except Exception:  # noqa: BLE001 - no cast source, caller reports
+        return 0
+    people = list(dto.get("People") or [])
+    have = {p.get("Name") for p in people}
+    for p in (cred.get("cast") or [])[:12]:
+        if p.get("name") and p.get("name") not in have:
+            people.append({"Name": p.get("name"),
+                           "Role": p.get("character") or "Self",
+                           "Type": "Actor",
+                           "ProviderIds": ({"Tmdb": str(p.get("id"))}
+                                           if p.get("id") else {})})
+    if len(people) == len(dto.get("People") or []):
+        return 0
+    dto["People"] = people
+    jellyfin.post_item(item_id, dto)
+    return len(people) - len(have)
+
+
 def bare_movies(parent_id: str) -> List[Dict[str, Any]]:
     """Movies with no credits AND no provider ids. Read-only.
 
     The Moog gap: the bio plan only fills bios on existing Person rows, so a
     never-identified film (no credits, no ids) is invisible to enrichment.
     This is the identify-first sweep that runs before every bio plan.
+
+    The Swartz class also qualifies: a row WITH a Tmdb id but zero People
+    (moved or re-created after ingest, credits never fetched). Same fix,
+    reason "has-id-no-credits".
     """
     uid = jellyfin.user_id()
     rows = list(jellyfin.list_items(
@@ -125,11 +163,19 @@ def bare_movies(parent_id: str) -> List[Dict[str, Any]]:
     for r in rows:
         if not isinstance(r, dict):
             continue
-        if (r.get("People") or []) or (r.get("ProviderIds") or {}):
+        if r.get("People"):
             continue
+        ids = r.get("ProviderIds") or {}
+        if ids:
+            if not ids.get("Tmdb"):
+                continue
+            reason = "has-id-no-credits"
+        else:
+            reason = "bare"
         out.append({"id": r.get("Id"), "name": r.get("Name"),
                     "year": (r.get("ProductionYear") or None),
-                    "path": r.get("Path")})
+                    "path": r.get("Path"), "reason": reason,
+                    "tmdb": (ids.get("Tmdb") if ids else None)})
     return out
 
 

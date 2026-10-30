@@ -73,7 +73,11 @@ def _identify(args) -> int:
     with guard:
         for i, b in enumerate(bare, 1):
             name = str(b.get("name") or "")
-            g = tmdb.gate(f"{name} {b.get('year') or ''}".strip())
+            if b.get("reason") == "has-id-no-credits" and b.get("tmdb"):
+                want = b["tmdb"]
+                g: Dict[str, Any] = {"status": "candidate", "candidate": {"id": want}}
+            else:
+                g = tmdb.gate(f"{name} {b.get('year') or ''}".strip())
             cand = (g.get("candidate") or {})
             want = cand.get("id")
             if g.get("status") != "candidate" or not want:
@@ -110,12 +114,22 @@ def _identify(args) -> int:
                     prov["Tmdb"] = str(want)
                     dto["ProviderIds"] = prov
                     jellyfin.post_item(str(b.get("id")), dto)
+                    try:
+                        n = enrich.attach_tmdb_cast(str(b.get("id")), want)
+                        tag = f"+{n}cast" if n else ""
+                    except Exception:  # noqa: BLE001
+                        tag = ""
                     counts["PINNED"] = counts.get("PINNED", 0) + 1
-                    print(f"  [{i}/{len(bare)}] PINNED tmdb={want} {name[:44]}", flush=True)
+                    print(f"  [{i}/{len(bare)}] PINNED tmdb={want}{tag} {name[:44]}", flush=True)
                     continue
                 jellyfin.apply_identification(str(b.get("id")), pick)
+                try:
+                    n = enrich.attach_tmdb_cast(str(b.get("id")), want)
+                    tag = f"+{n}cast" if n else ""
+                except Exception:  # noqa: BLE001
+                    tag = ""
                 counts["DONE"] = counts.get("DONE", 0) + 1
-                print(f"  [{i}/{len(bare)}] DONE tmdb={want} {name[:44]}", flush=True)
+                print(f"  [{i}/{len(bare)}] DONE tmdb={want}{tag} {name[:44]}", flush=True)
             except Exception as exc:  # noqa: BLE001
                 counts["ERR"] = counts.get("ERR", 0) + 1
                 print(f"  [{i}/{len(bare)}] ERR {name[:40]} {str(exc)[:80]}", flush=True)

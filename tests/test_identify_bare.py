@@ -30,7 +30,8 @@ def test_bare_movies_filters(monkeypatch):
     monkeypatch.setattr(E.jellyfin, "user_id", lambda: "u")
     monkeypatch.setattr(E.jellyfin, "list_items", lambda *a, **k: rows)
     bare = E.bare_movies("parent")
-    assert [b["id"] for b in bare] == ["a"]
+    assert [(b["id"], b["reason"]) for b in bare] == [("a", "bare"),
+                                                             ("c", "has-id-no-credits")]
     assert bare[0]["year"] == 2004
 
 
@@ -47,3 +48,38 @@ def test_thin_overviews_flags_filename(monkeypatch):
     monkeypatch.setattr(E.jellyfin, "list_items", lambda *a, **k: rows)
     gaps = E.thin_overviews("parent")
     assert [(g["id"], g["reason"]) for g in gaps] == [("a", "filename-as-overview")]
+
+
+def test_bare_movies_flags_has_id_no_credits(monkeypatch):
+    import media_lib.enrich as E
+    rows = [
+        {"Id": "s", "Name": "Swartz", "People": [],
+         "ProviderIds": {"Tmdb": "250658"}, "ProductionYear": 2014, "Path": "/x"},
+        {"Id": "f", "Name": "Full", "People": [{"Name": "X"}],
+         "ProviderIds": {"Tmdb": "1"}, "ProductionYear": 2000, "Path": "/y"},
+    ]
+    monkeypatch.setattr(E.jellyfin, "user_id", lambda: "u")
+    monkeypatch.setattr(E.jellyfin, "list_items", lambda *a, **k: rows)
+    bare = E.bare_movies("parent")
+    assert [(b["id"], b["reason"], b["tmdb"]) for b in bare] == [("s", "has-id-no-credits", "250658")]
+
+
+def test_attach_tmdb_cast_merges(monkeypatch):
+    import media_lib.enrich as E
+    dto = {"Id": "s", "Name": "S", "People": [], "ProviderIds": {"Tmdb": "250658"}}
+    posts = []
+
+    def fake_get(path, params=None):
+        assert "credits" in path
+        return {"cast": [{"name": "A Uthor", "character": "Self", "id": 1},
+                         {"name": "B Writer", "character": None, "id": None}]}
+
+    from media_lib import tmdb as _real_tmdb
+    monkeypatch.setattr(E.jellyfin, "user_id", lambda: "u")
+    monkeypatch.setattr(E.jellyfin, "get_json", lambda path: dict(dto))
+    monkeypatch.setattr(E.jellyfin, "post_item", lambda i, b: posts.append(b) or 204)
+    monkeypatch.setattr(_real_tmdb, "_get", fake_get)
+    monkeypatch.setattr("media_lib.enrich.jellyfin", E.jellyfin)
+    n = E.attach_tmdb_cast("s", 250658)
+    assert n == 2
+    assert posts and len(posts[0]["People"]) == 2
