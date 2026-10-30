@@ -548,18 +548,11 @@ Diagnose with the state histogram (`Counter(t["state"] for t in qb.torrents())`)
 anything just added) forced, or you will stall the downloads that were working. Un-forcing
 deletes nothing and is reversible; deleting is a `media-deletion-policy` decision.
 
-## Probing many files: use the Tdarr node, not CT105
+## Probing many files: pool host (prox4) over ssh, never CT105
 
-`pct exec 105 -- ffprobe` is a **docker wrapper** (`docker run --rm -v /mnt/zmedia ...`), so
-one probe costs a container start and a direct call returns an empty height — a scan built
-that way silently reports **0 items**. For batches, run ffprobe inside the Tdarr node,
-which has the share mounted, and map `/mnt/zmedia/ -> /media/`:
-
-```bash
-ssh root@192.168.214.131 "docker exec tdarr-node sh -c 'for f in "$@"; do ...; done' sh /media/..."
-```
-
-Chunk ~60 paths per call; 350 files probe in a couple of minutes.
+CT105/Jellyfin containers have no ffmpeg/ffprobe at all. Run probes and encodes on the
+pool host (`config.NODE_PROX4`, `/mnt/zmedia/...` local there) via ssh. Chunk ~60 paths
+per call; 350 files probe in a couple of minutes.
 
 ## Ingest checks must be episode-level, not series-level
 
@@ -653,7 +646,8 @@ in the library, and **three were the same quality** — PDTV/x264 rips carrying 
 resolution tag, chosen because the search sorted on seeders and treated "untagged" as
 "low". That costs bandwidth, disk and transcode hours to arrive back where we started.
 
-`media_lib/quality.py` decides:
+`media_lib/quality.py` decides (full gate incl. ep-token strip, slot-compat, junk words;
+same-file check uses stem + `max_extra=6`, hunts stay strict — see music-docos SKILL):
 
 | candidate | held | verdict | queue? |
 |---|---|---|---|
@@ -665,23 +659,13 @@ resolution tag, chosen because the search sorted on seeders and treated "untagge
 | unrelated title | anything | different-title | **no** |
 | `... 720p` | 660p | marginal | **no** |
 
-**Uncertainty must never resolve to "download".** The first version of this gate collapsed
-"could not probe what we hold" into "we hold nothing", and queued a dozen downloads that
-included content already held at 1080p **and a `The Lone Ranger (2013)` release offered as
-a replacement for a music documentary**. `held_state_for()` therefore distinguishes `none`
+**Uncertainty must never resolve to "download".** `held_state_for()` distinguishes `none`
 (a real gap) from `unprobeable` / `ambiguous`, and only `none` or a proven height increase
 may queue.
 
 **Title matching is the hard part.** Loose word overlap approved all of these:
 
-| wanted | offered |
-|---|---|
-| Cajun Country | Cooks Country S18E18 Cajun Cooking |
-| Dig! | Stranger Things S02E05 Chapter Five Dig Dug |
-| The Filth and the Fury | c4 wrestling 2019 05 24 the filth and the fury |
-| Stairway to Heaven | X art Stairway To Heaven **II** 4K |
-
-`title_matches()` now strips release-name junk and broadcaster prefixes, requires **every**
+`title_matches()` strips release-name junk and broadcaster prefixes, requires **every**
 wanted word, allows at most `MAX_EXTRA_WORDS = 2` of the candidate's own, and refuses:
 - an **episodic** release for a standalone film (and the reverse);
 - a **sequel** (`II`, `III`, `part 2`) when the wanted title has none;

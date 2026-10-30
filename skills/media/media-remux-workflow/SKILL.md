@@ -441,14 +441,14 @@ session because the argument surface is declared and constrained:
 Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0 and
 `dead_rows` shows 0 before declaring a batch done.
 
-## Distributed transcoding (Tdarr cluster — the default tool)
+## Distributed transcoding (Tdarr — per-file queues, never library-linked)
 
-- This is the DEFAULT for all recoding, not just multi-host work (see the STOP
-  gate at the top). Full procedure, API patterns and pitfalls in
-  `references/tdarr-cluster.md`. A freshly-built flow stays monitor-only
-  (scan + report, transcodes off) until the operator approves the graph, and a
-  new flow is proven on ONE file before it is pointed at a library — it
-  replaces files in place, so a bad graph damages everything it touches.
+- Tdarr is the default TRANSCODER, but since 26 Oct the cluster runs
+  library-unlinked (a linked flow re-encoded five already-fixed rows that
+  night). Queue EXPLICIT files only: `scripts/tdarr_queue.py --flow
+  audio|sar|legacy --files ... [--apply]` (lesson 42). Flows stay unlinked;
+  a new flow is proven on ONE file first. API patterns and pitfalls in
+  `references/tdarr-cluster.md`.
 
 - `scripts/reencode-sweep.py --scan <libdir>` — read-only triage: walks the
   tree, ffprobes every video file (skips `*.reenc-tmp.mkv` / `*.remux-tmp.mkv`
@@ -462,7 +462,7 @@ Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0
   and file listed `NEEDS-REPLACEMENT-HUNT` on any fail. Non-MKV sources take
   the `.mkv` name (extension swap = new Jellyfin item — report it). Exit 1 if
   any file failed. Always `--dry-run` first to review the candidate list.
-- Run ON the media host (proxmox3 — ffmpeg and the files live there): `scp`
+- Run ON the pool host (proxmox4 per `config.NODE_PROX4` — ffmpeg and the files live there): ssh over and run;
   the scripts over and run; then do the Jellyfin aftermath (library-scoped
   Refresh, per-item full refresh where overview/art did not carry, recount
   imageless). Proven: sweep + dry-run against
