@@ -123,6 +123,40 @@ def _identify(args) -> int:
     return 0
 
 
+def _overviews(args) -> int:
+    """Backfill item overviews from pinned TMDB ids (One-More-Time gap)."""
+    from media_lib import tmdb
+    from contextlib import nullcontext
+
+    parent = jellyfin.resolve_library(args.library)
+    gaps = enrich.thin_overviews(parent)
+    print(f"thin overviews: {len(gaps)}")
+    counts: Dict[str, int] = {}
+    guard = safety.acquire() if args.apply else nullcontext()
+    with guard:
+        for i, g in enumerate(gaps, 1):
+            name = str(g.get("name") or "")
+            try:
+                d = tmdb._get(f"/movie/{g.get('tmdb')}", {}) or {}
+                ov = (d.get("overview") or "").strip()
+                if not ov:
+                    counts["SKIP-TMDB-BLANK"] = counts.get("SKIP-TMDB-BLANK", 0) + 1
+                    print(f"  [{i}/{len(gaps)}] SKIP-TMDB-BLANK {name[:44]}", flush=True)
+                    continue
+                if not args.apply:
+                    counts["WOULD"] = counts.get("WOULD", 0) + 1
+                    print(f"  [{i}/{len(gaps)}] WOULD {len(ov)}ch {name[:44]}", flush=True)
+                    continue
+                jellyfin.set_overview(str(g.get("id")), ov, lock=True)
+                counts["DONE"] = counts.get("DONE", 0) + 1
+                print(f"  [{i}/{len(gaps)}] DONE {len(ov)}ch {name[:44]}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                counts["ERR"] = counts.get("ERR", 0) + 1
+                print(f"  [{i}/{len(gaps)}] ERR {name[:40]} {str(exc)[:80]}", flush=True)
+    print("totals:", counts)
+    return 0
+
+
 def _apply(args) -> int:
     plan = json.loads(enrich.PLAN.read_text())
     rows: List[Dict[str, Any]] = plan.get("rows") or []
@@ -170,11 +204,16 @@ def main(argv=None) -> int:
     i = sub.add_parser("identify", help="identify bare movies (dry-run unless --apply)")
     i.add_argument("--library", default=MUSIC_DOCOS)
     i.add_argument("--apply", action="store_true")
+    o = sub.add_parser("overviews", help="backfill filename-as-overview rows (dry-run unless --apply)")
+    o.add_argument("--library", default=MUSIC_DOCOS)
+    o.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
     if args.cmd == "plan":
         return _plan(args)
     if args.cmd == "identify":
         return _identify(args)
+    if args.cmd == "overviews":
+        return _overviews(args)
     return _apply(args)
 
 

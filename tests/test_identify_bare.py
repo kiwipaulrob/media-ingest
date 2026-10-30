@@ -32,3 +32,18 @@ def test_bare_movies_filters(monkeypatch):
     bare = E.bare_movies("parent")
     assert [b["id"] for b in bare] == ["a"]
     assert bare[0]["year"] == 2004
+
+
+def test_thin_overviews_flags_filename(monkeypatch):
+    import media_lib.enrich as E
+    rows = [
+        {"Id": "a", "Name": "Film", "Overview": "One.More.Time.2016.720p.BluRay-RARBG",
+         "ProviderIds": {"Tmdb": "404141"}},
+        {"Id": "b", "Name": "Full", "Overview": "A real description here.",
+         "ProviderIds": {"Tmdb": "1"}},
+        {"Id": "c", "Name": "NoId", "Overview": "", "ProviderIds": {}},
+    ]
+    monkeypatch.setattr(E.jellyfin, "user_id", lambda: "u")
+    monkeypatch.setattr(E.jellyfin, "list_items", lambda *a, **k: rows)
+    gaps = E.thin_overviews("parent")
+    assert [(g["id"], g["reason"]) for g in gaps] == [("a", "filename-as-overview")]

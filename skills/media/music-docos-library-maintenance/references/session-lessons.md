@@ -471,3 +471,11 @@ unverifiable promo cutout. Deezer/Genius match by name string, and film
 people share names with musicians constantly. Never attach a music-source
 portrait to a non-musician without pixel evidence; TMDB-person matches are
 the only low-risk auto-source.
+
+## 53. Backfill item overviews from pinned ids (One-More-Time gap)
+
+Ingest pins provider ids but never the item overview: the row kept its
+release filename as the "description" (58ch of RARBG tags) despite holding
+Tmdb 404141 with a 585ch overview upstream. `cli.meta overviews`
+(dry-run/`--apply`) fills rows that have a Tmdb id and an empty or
+filename-shaped overview. Runs after identify, before bio plan.

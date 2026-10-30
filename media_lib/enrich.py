@@ -79,6 +79,37 @@ def _person_rows(uid: str) -> Dict[str, Dict[str, Any]]:
     return rows
 
 
+def thin_overviews(parent_id: str) -> List[Dict[str, Any]]:
+    """Movies whose Overview is missing or is a release filename. Read-only.
+
+    The One-More-Time gap: ingest pins provider ids, but nothing backfills
+    the item overview — Jellyfin keeps the parsed release filename
+    ("One.More.Time...RARBG", 58ch) as the description forever. A row
+    qualifies when it HAS a Tmdb id (so the fill is sourced, never guessed)
+    and its overview is empty or matches release-filename markers.
+    """
+    import re
+    REL = re.compile(r"\.(720p|1080p|2160p|BluRay|WEB[-_.]?DL|HDTV|AAC|DTS|x26[45]|HDRip|BRRip|DVDRip|RARBG|YIFY|YTS|EVO|FGT|MVGroup)\b",
+                     re.I)
+    uid = jellyfin.user_id()
+    rows = list(jellyfin.list_items(
+        uid, parent_id=parent_id, recursive=True, include_types="Movie",
+        fields="Name,Overview,ProviderIds,ProductionYear") or [])
+    out = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        tmdb_id = (r.get("ProviderIds") or {}).get("Tmdb")
+        if not tmdb_id:
+            continue
+        ov = (r.get("Overview") or "").strip()
+        if not ov or REL.search(ov):
+            out.append({"id": r.get("Id"), "name": r.get("Name"),
+                        "tmdb": str(tmdb_id), "overview": ov,
+                        "reason": "empty" if not ov else "filename-as-overview"})
+    return out
+
+
 def bare_movies(parent_id: str) -> List[Dict[str, Any]]:
     """Movies with no credits AND no provider ids. Read-only.
 
