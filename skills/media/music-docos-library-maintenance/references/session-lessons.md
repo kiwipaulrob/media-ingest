@@ -461,3 +461,13 @@ attached. Rule: download the candidate, vision-check it against the known
 facts (band branding, era, role), attach only on positive evidence.
 Portrait source order that actually delivers: TMDB profile > Deezer artist
 image > Commons/Wikidata P18 > Genius (last resort, often unverifiable).
+
+## 52. Music-source portraits for non-musicians are near-always wrong
+
+Four Film Docos portrait candidates vision-checked, all rejected: a DJ's
+single cover for a TV producer (same name), an EDM cover for a protected
+individual (same letters), a singer's album art for a curator, an
+unverifiable promo cutout. Deezer/Genius match by name string, and film
+people share names with musicians constantly. Never attach a music-source
+portrait to a non-musician without pixel evidence; TMDB-person matches are
+the only low-risk auto-source.
