@@ -47,6 +47,51 @@ def _plan(args) -> int:
     return 0
 
 
+def _identify(args) -> int:
+    """Identify-first sweep (Moog gap): bare movies get credits before bios."""
+    from media_lib import tmdb
+
+    parent = jellyfin.resolve_library(args.library)
+    bare = enrich.bare_movies(parent)
+    print(f"bare movies (no credits, no ids): {len(bare)}")
+    counts: Dict[str, int] = {}
+    # The write lock is for writes: a dry-run holding it blocks every other
+    # run (and the test suite) for the whole sweep. Lock only around --apply.
+    from contextlib import nullcontext
+    guard = safety.acquire() if args.apply else nullcontext()
+    with guard:
+        for i, b in enumerate(bare, 1):
+            name = str(b.get("name") or "")
+            g = tmdb.gate(f"{name} {b.get('year') or ''}".strip())
+            cand = (g.get("candidate") or {})
+            want = cand.get("id")
+            if g.get("status") != "candidate" or not want:
+                counts["SKIP-NO-CANDIDATE"] = counts.get("SKIP-NO-CANDIDATE", 0) + 1
+                print(f"  [{i}/{len(bare)}] SKIP-NO-CANDIDATE {name[:44]}", flush=True)
+                continue
+            if not args.apply:
+                counts["WOULD"] = counts.get("WOULD", 0) + 1
+                print(f"  [{i}/{len(bare)}] WOULD tmdb={want} {name[:44]}", flush=True)
+                continue
+            try:
+                yr = b.get("year")
+                found = jellyfin.remote_search(
+                    str(b.get("id")), name,
+                    int(yr) if yr else None,
+                    {"Tmdb": str(want)})
+                pick = enrich.pick_identification(name, b.get("year"), found or [], want)
+                if not pick:
+                    raise RuntimeError("gated id absent from remote-search hits")
+                jellyfin.apply_identification(str(b.get("id")), pick)
+                counts["DONE"] = counts.get("DONE", 0) + 1
+                print(f"  [{i}/{len(bare)}] DONE tmdb={want} {name[:44]}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                counts["ERR"] = counts.get("ERR", 0) + 1
+                print(f"  [{i}/{len(bare)}] ERR {name[:40]} {str(exc)[:80]}", flush=True)
+    print("totals:", counts)
+    return 0
+
+
 def _apply(args) -> int:
     plan = json.loads(enrich.PLAN.read_text())
     rows: List[Dict[str, Any]] = plan.get("rows") or []
@@ -91,8 +136,15 @@ def main(argv=None) -> int:
     a = sub.add_parser("apply", help="write bios for planned rows")
     a.add_argument("--ids", default="", help="comma-separated plan row ids")
     a.add_argument("--limit", type=int, default=None)
+    i = sub.add_parser("identify", help="identify bare movies (dry-run unless --apply)")
+    i.add_argument("--library", default=MUSIC_DOCOS)
+    i.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
-    return _plan(args) if args.cmd == "plan" else _apply(args)
+    if args.cmd == "plan":
+        return _plan(args)
+    if args.cmd == "identify":
+        return _identify(args)
+    return _apply(args)
 
 
 if __name__ == "__main__":

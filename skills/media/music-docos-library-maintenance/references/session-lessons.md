@@ -421,3 +421,17 @@ returns an `audio` track list and `media_lib/audio.py` warns AUDIO-NO-AAC /
 AUDIO-BLOAT at placement (advisory, never a gate). Strip rule: drop
 non-English/Italian dubs, keep foreign-only soundtracks, always keep
 Italian, AAC-stereo first.
+
+## 46. The bio plan cannot see unidentified films (Moog gap)
+
+`cli.meta plan` only fills bios on existing Person rows. A never-identified
+film has no credits and no ids, so enrichment skips it forever. New rule:
+`cli.meta identify` (dry-run default, `--apply` with gated TMDB match)
+runs BEFORE every bio plan. Candidate pick matches the gated TMDB id, never
+list position.
+
+## 47. Read-only sweeps must not hold the write lock
+
+The identify dry-run wrapped all 157 TMDB gates in `safety.acquire()`,
+blocking every other run and failing 8 lock-holding tests. Locks guard
+writes only (`--apply`); dry-runs use a nullcontext.

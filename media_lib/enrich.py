@@ -79,6 +79,44 @@ def _person_rows(uid: str) -> Dict[str, Dict[str, Any]]:
     return rows
 
 
+def bare_movies(parent_id: str) -> List[Dict[str, Any]]:
+    """Movies with no credits AND no provider ids. Read-only.
+
+    The Moog gap: the bio plan only fills bios on existing Person rows, so a
+    never-identified film (no credits, no ids) is invisible to enrichment.
+    This is the identify-first sweep that runs before every bio plan.
+    """
+    uid = jellyfin.user_id()
+    rows = list(jellyfin.list_items(
+        uid, parent_id=parent_id, recursive=True, include_types="Movie",
+        fields="Name,Path,People,ProviderIds,ProductionYear") or [])
+    out = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        if (r.get("People") or []) or (r.get("ProviderIds") or {}):
+            continue
+        out.append({"id": r.get("Id"), "name": r.get("Name"),
+                    "year": (r.get("ProductionYear") or None),
+                    "path": r.get("Path")})
+    return out
+
+
+def pick_identification(name: str, year: Any,
+                        candidates: List[Dict[str, Any]],
+                        want_tmdb: Any) -> Optional[Dict[str, Any]]:
+    """First candidate whose Tmdb id matches the gated want. Pure.
+
+    Matching by gated id, not by position: the first remote-search hit is
+    frequently a same-name stranger (lesson: year is identity, name is not).
+    """
+    for c in candidates or []:
+        prov = (c.get("ProviderIds") or c.get("providerIds") or {})
+        if str(prov.get("Tmdb") or "") == str(want_tmdb or "") and want_tmdb:
+            return c
+    return None
+
+
 def build_plan(
     parent_id: str,
     limit: Optional[int] = None,
