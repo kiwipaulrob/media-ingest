@@ -138,3 +138,22 @@ def test_bio_mutating_commands_hold_the_lock():
 
     for fn in (bio.cmd_fill, bio.cmd_alias, bio.cmd_wikidata):
         assert "safety.acquire" in inspect.getsource(fn), fn.__name__
+
+
+def test_lock_item_fetch_merges(monkeypatch):
+    """Partial lock posts wipe Name/Overview (12 rows blanked live)."""
+    from media_lib import jellyfin
+    dto = {"Id": "x", "Name": "N", "Overview": "O", "LockedFields": []}
+    posts = []
+
+    def fake_request(path, method="GET", body=None, **k):
+        if method == "POST":
+            posts.append(dict(body))
+            return ""
+        return json.dumps(dto)
+
+    monkeypatch.setattr(jellyfin, "_request", fake_request)
+    import json as _json
+    out = jellyfin.lock_item("x")
+    assert posts and posts[0]["Name"] == "N" and posts[0]["Overview"] == "O"
+    assert posts[0]["LockData"] is True

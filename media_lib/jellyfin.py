@@ -186,6 +186,11 @@ def get_json(
 def post_item(item_id: str, body: Dict[str, Any], *, key: Optional[str] = None) -> int:
     """POST an item DTO. Falls back to a minimal body on 400.
 
+    WARNING: Jellyfin replaces item metadata wholesale on POST. A partial body
+    (e.g. only LockData/LockedFields) WIPES Name and Overview - proven live
+    when 12 LockData-only posts blanked 12 rows. Never call this with a
+    partial body to set locks; use lock_item(), which fetch-merges first.
+
     The minimal retry exists because the full DTO carries fields some updaters
     reject (Genres on items; unrelated keys on Person rows). Losing a whole
     write to an unrelated field would be a silent metadata loss.
@@ -203,6 +208,24 @@ def post_item(item_id: str, body: Dict[str, Any], *, key: Optional[str] = None) 
             raise
         _request(f"/Items/{item_id}", method="POST", body=minimal, key=key)
         return 204
+
+
+def lock_item(item_id: str, fields=("Name", "Overview")) -> Dict[str, Any]:
+    """Fetch-merge lock: set LockData + LockedFields without touching anything
+    else. The ONLY safe way to lock a row (partial post_item wipes)."""
+    uid = user_id()
+    dto = json.loads(_request(f"/Users/{uid}/Items/{item_id}") or "{}")
+    if not dto:
+        raise JellyfinError(f"item {item_id} not found")
+    dto["LockData"] = True
+    locked = list(dto.get("LockedFields") or [])
+    for f in fields:
+        if f not in locked:
+            locked.append(f)
+    dto["LockedFields"] = locked
+    _request(f"/Items/{item_id}", method="POST", body=dto)
+    return json.loads(
+        _request(f"/Users/{uid}/Items/{item_id}?Fields=LockedFields") or "{}")
 
 
 def _fields_param(fields: Optional[Iterable[str]]) -> Optional[str]:

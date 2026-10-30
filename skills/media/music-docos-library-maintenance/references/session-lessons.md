@@ -394,3 +394,11 @@ Queued/bumped on explicit file ids only (dry-run default, unknown ids
 refuse). Tdarr replacing bytes never re-applies metadata or watch state —
 lesson 41 still governs the after-side. Remote plugin search is dead from
 here, so custom needs are hand-built flows, not downloads.
+
+## 43. I blanked 12 rows with LockData-only posts — partial POSTs wipe
+
+Correction to lesson 41: the Name wipe was not TVDB, it was me.
+`jellyfin.post_item()` POSTs the given body and Jellyfin replaces wholesale,
+so 12 `{"LockData","LockedFields"}`-only posts blanked 12 Names+Overviews.
+New rule: locks go through `jellyfin.lock_item()` (fetch-merge-post) or not
+at all. The nfo sidecars + Tvdb strip were harmless but beside the point.
