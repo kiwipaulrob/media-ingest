@@ -7,7 +7,7 @@ This repository exists because ad-hoc ingest scripts written per task kept
 failing in the same ways. Every rule in the code below is the scar of a specific
 incident, and each one has a test that fails if it regresses.
 
-**~4,400 lines of library code · 469 tests · no external dependencies beyond
+**~4,400 lines of library code · 473 tests · no external dependencies beyond
 the Python standard library**
 
 ---
@@ -111,6 +111,7 @@ thinking, explicit targets, verify by reading back) covers four more verbs:
 | exhaustive resolve | `media_lib/resolve.py` (read-only chain) | `tests/test_resolve.py` | TMDB -> TVmaze -> BBC -> local-nfo with per-field provenance; dead sources never stop the chain |
 | episode audit | `scripts/audit_episodes.py --library` (read-only) | `tests/test_audit_episodes.py` | path-aware: virtual TMDB slots are not gaps; counts-first, detail to JSON |
 | episode pinning | `scripts/pin_episode_ids.py --library --all [--apply]` | `tests/test_pin_episode_ids.py` | TMDB episode ids matched BY NAME only; ties refused; never by number |
+| tdarr queue | `scripts/tdarr_queue.py --flow audio\|sar\|legacy --files ... [--apply]` | `tests/test_tdarr_queue.py` | suite-queues-per-file into Tdarr (dry-run default, unknown ids refuse) |
 | aspect flags | `scripts/scan_aspect_flags.py [--libs ...]` | `tests/test_aspect_flags.py` | flags wide rasters with narrow DAR flags (Gilbert & George class); legit anamorphic never flags |
 | dupe prune | `scripts/prune_lateral_dupes.py` (dry-run default) | `tests/test_prune_dupes.py` | deletes only triple-proven lateral dupes (library match, no upgrade, shelf probes healthy); explicit --ids, no bulk switch |
 

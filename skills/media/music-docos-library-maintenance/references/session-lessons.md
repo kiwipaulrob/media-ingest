@@ -374,3 +374,23 @@ pool-side ssh + `probe_wrap()` only. `fix_aspect_remux.py` is stream-copy
 (`+genpts` for broken timestamps), gated on output DAR ~16:9, and the
 ingest pipeline now warns ASPECT-FLAG at placement time (probe carries
 sar/dar). 24 files repaired lossless in one batch.
+
+## 41. Every swap snapshots metadata first, re-applies with LockData after
+
+Swapping bytes under a row drops it from search for up to an hour (Geffen,
+Stone Roses) and the dropout wipes Name+Overview — a failing provider
+refresh blanks them despite field locks. Only item-level LockData=true
+holds. Checklist now enforced for every remux/repair swap: (1) snapshot
+overview+provider ids to state/ BEFORE touching bytes; (2) swap; (3) wait
+for the row by direct listing (never search); (4) re-apply snapshot with
+LockData=true; (5) verify by direct item read. `set_overview(lock=True)`
+sets LockData itself since this lesson.
+
+## 42. Tdarr integration is suite-queues-per-file, flows stay unlinked
+
+Three house flows now exist (legacy b3VtKqt, audio j2PAq5X, SAR HxM2kjc) but
+NONE is linked to a library: `scripts/tdarr_queue.py` sets flowId +
+Queued/bumped on explicit file ids only (dry-run default, unknown ids
+refuse). Tdarr replacing bytes never re-applies metadata or watch state —
+lesson 41 still governs the after-side. Remote plugin search is dead from
+here, so custom needs are hand-built flows, not downloads.

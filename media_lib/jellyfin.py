@@ -419,6 +419,10 @@ def set_overview(item_id: str, overview: str, *, lock: bool = True) -> Dict[str,
     fields. The current DTO is therefore fetched first and ONLY Overview/LockedFields
     are changed — the standing rule for this library: surgical writes, and lock the
     field afterwards so a later refresh cannot revert it.
+
+    lock=True also sets item-level LockData: field locks alone did NOT stop a
+    failing TVDB lookup from blanking Name+Overview on refresh (proven twice —
+    Geffen, Stone Roses). Returns the re-read row; callers must check it.
     """
     uid = user_id()
     dto = json.loads(_request(f"/Users/{uid}/Items/{item_id}") or "{}")
@@ -430,6 +434,7 @@ def set_overview(item_id: str, overview: str, *, lock: bool = True) -> Dict[str,
         if "Overview" not in locked:
             locked.append("Overview")
         dto["LockedFields"] = locked
+        dto["LockData"] = True
     _request(f"/Items/{item_id}", method="POST", body=dto)
     return json.loads(
         _request(f"/Users/{uid}/Items/{item_id}?Fields=Overview,LockedFields") or "{}")
