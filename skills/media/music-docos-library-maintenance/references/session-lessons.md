@@ -397,3 +397,10 @@ here, so custom needs are hand-built flows, not downloads.
 The Name wipe in 41 was not TVDB, it was me: `post_item()` POSTs the given
 body and Jellyfin replaces wholesale. Locks go through `lock_item()`
 (fetch-merge-post) or not at all. Same root cause as 2.
+
+## 44. Never lock a row whose numbering is still wrong
+
+`LockData=true` freezes everything, including a stale S00E00 parse. Locking
+the Dirty South overview before its numbering refreshed cemented the wrong
+slot; the fix was unlock -> FullRefresh -> verify S03E04 -> re-apply ->
+re-lock. Order for any mis-slotted row: numbers first, locks last.
