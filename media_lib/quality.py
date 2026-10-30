@@ -114,6 +114,11 @@ def _title_words(text: str, *, strip_junk: bool) -> set:
     """
     words = {w for w in _normalise(text).split() if len(w) > 2 and not w.isdigit()}
     words = {w for w in words if not _EP_TOKEN_RE.match(w)}
+    # Plural tolerance ("Internets" vs "Internet" blocked a genuine ingest):
+    # add the singular variant, keep both. Strictness survives — the subset
+    # rule still requires every wanted word present in some form.
+    words |= {w[:-1] for w in words if w.endswith("s") and len(w) > 4
+              and not w.endswith("ss")}
     if strip_junk:
         words -= RELEASE_JUNK
         words -= NETWORKS

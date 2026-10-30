@@ -201,3 +201,12 @@ def test_same_year_widens_extras_but_subset_still_rules():
                                  "Film (1949)")
     assert not quality.title_matches("Other.1949." + ".".join(f"w{i}" for i in range(10)),
                                      "Film (1949)")
+
+
+def test_plural_tolerance():
+    from media_lib import quality
+    assert quality.title_matches(
+        "The.Internets.Own.Boy.The.Story.of.Aaron.Swartz.720p.HDRip",
+        "The Internet's Own Boy (2014)", max_extra=6)
+    # singular-variant never licenses a wrong film on its own
+    assert not quality.title_matches("Glass.2019.1080p.BluRay", "Glas (2019)")
