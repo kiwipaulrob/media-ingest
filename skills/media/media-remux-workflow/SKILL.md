@@ -110,6 +110,11 @@ Tdarr's own state is worth checking every time, because "installed" is not
 
 - Prefer `mkvmerge -q -o <dest> <src>` over `ffmpeg -c copy` — sources
   with broken timestamps fail the ffmpeg copy path but mux fine.
+- **`-map` indexes are per-type, not global.** ffprobe's flat `index=N`
+  counts every stream; ffmpeg's `0:a:K` counts audio streams only, so the
+  14th audio track is `0:a:13` even when its flat index is 14 — mapping the
+  flat number fails with `Stream map '' matches no streams`. Always
+  re-list with `:stream_tags=language` per-type before writing `-map` lines.
 - Any mux failure or stream/duration mismatch is a re-encode candidate,
   not a retry — record it and move on.
 - Per file, verify before swapping: probe-readable, video stream count
@@ -182,6 +187,17 @@ produces fake filenames and a whole batch of 'file not found'.
   a huge file): stop spending CPU and hunt a replacement copy instead.
 - Audio-only damage on an otherwise good file: `-c:v copy -c:a <codec>`
   rebuilds the track in minutes — never re-encode the video for an audio fault.
+- **Multi-dub REMUX recipe (no compatible track + non-English bloat):**
+  keep video untouched (`-c:v copy`); build audio as AAC-stereo-first
+  (downmixed from the best English source) + the English originals copied;
+  drop every non-English audio track; keep English subs only. Proven on a
+  37.5 GB REMUX (TrueHD Atmos + 13x AC3 + 40+ subs): output plays
+  everywhere with the English 5.1/stereo originals intact, and the dropped
+  dubs are the space saving — report original vs output bytes as the
+  saving. Language-strip standing rule: keep Italian tracks always, and
+  keep the foreign-language track when no English track exists at all —
+  stripping the only intelligible audio is worse than bloat. Snapshot the Jellyfin row (overview/ids/watch state) before
+  swapping, gate durations, swap same-name, FullRefresh.
   YouTube AV1+Opus merges in MP4 are a special case of this: the streams show
   zero container offset yet clients (notably Samsung/Tizen, some Jellyfin
   clients) play them out of sync, because Opus-in-MP4 is poorly direct-played.
@@ -499,6 +515,10 @@ Both consequences have to be coded around, because both look like success at the
   id; an add issued against the pre-rebuild row dies with it, silently leaving a curated collection
   empty. On timeout, add best-effort and flag the row for a re-check instead of reporting success.
 - **Re-apply and LOCK Name + Overview** on the rebuilt row, or the next rebuild drops them again.
+  But verify season/episode numbering BEFORE locking — `LockData=true`
+  freezes a stale parse too, cementing the wrong slot (proven: a lock
+  applied to an S00E00-cached row blocked its correction to S03E04 until
+  unlocked). Numbers first, locks last.
 
 Verify collection membership with a USER-SCOPED read (`/Users/{uid}/Items?ParentId=<collId>`) — the
 anonymous endpoint reports 0 children on a full BoxSet and reads as a failed add.

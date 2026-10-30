@@ -8,5 +8,12 @@
  "synopsis": null,
  "aired": null,
  "sar": "1:1",
- "dar": "16:9"
+ "dar": "16:9",
+ "audio": [
+  {
+   "codec": "aac",
+   "channels": 2,
+   "lang": "eng"
+  }
+ ]
 }

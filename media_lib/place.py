@@ -285,6 +285,20 @@ def place_new(
     except Exception:  # noqa: BLE001 - advisory only, never gates placement
         pass
 
+    # Ingest-time audio advisory (Moana rule): warn, never refuse. A file
+    # with no AAC stereo in English/Italian needs a remux for Android; dub
+    # bloat is strippable unless it is the only soundtrack.
+    audio_note = ""
+    try:
+        from . import audio as _audio
+
+        for _n in _audio.verdict(dst_s.get("audio") or []):
+            audio_note = f"{audio_note}; {_n}" if audio_note else _n
+    except Exception:  # noqa: BLE001 - advisory only, never gates placement
+        pass
+    if audio_note:
+        aspect_note = f"{aspect_note}; {audio_note}" if aspect_note else audio_note
+
     try:
         dec = probe.on_media(_decode_script(dst_d, dst_s["duration"]), timeout=600)
     except Exception as exc:  # noqa: BLE001

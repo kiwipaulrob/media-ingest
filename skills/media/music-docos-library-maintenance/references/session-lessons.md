@@ -412,3 +412,12 @@ another; pinning TVmaze E01's text onto Jellyfin E01 would have mistagged
 Paul Simon as Snow Patrol. The name-match (guest names) found the true
 counterparts. Same class as lesson 19 (slot collisions): numbers are local
 opinions, names are identity.
+
+## 46. Ingest flags audio too now (Moana rule)
+
+Moana arrived with TrueHD + 13 AC3 tracks and no AAC: unplayable on
+Android until remuxed, plus ~10 GB of non-English dubs. `probe()` now
+returns an `audio` track list and `media_lib/audio.py` warns AUDIO-NO-AAC /
+AUDIO-BLOAT at placement (advisory, never a gate). Strip rule: drop
+non-English/Italian dubs, keep foreign-only soundtracks, always keep
+Italian, AAC-stereo first.

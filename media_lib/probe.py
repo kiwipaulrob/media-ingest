@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
-from typing import Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 from . import config
 
@@ -96,8 +96,8 @@ def probe_wrap(binary: str) -> str:
 
 def ffprobe_cmd(path: str) -> str:
     return (
-        f"{probe_wrap(config.FFPROBE_ENTRY)} -v error -select_streams v:0 "
-        f"-show_entries stream=width,height,codec_name,sample_aspect_ratio,display_aspect_ratio:format=duration,size:format_tags=title,description,synopsis,comment,date "  # noqa: E501 - Review-P3.5a tags
+        f"{probe_wrap(config.FFPROBE_ENTRY)} -v error "
+        f"-show_entries stream=index,codec_type,width,height,codec_name,channels,sample_aspect_ratio,display_aspect_ratio:stream_tags=language:format=duration,size:format_tags=title,description,synopsis,comment,date "  # noqa: E501 - Review-P3.5a tags
         f"-of json {shlex.quote(path)}"
     )
 
@@ -166,6 +166,9 @@ class ProbeResult(TypedDict):
     # plays squeezed while the pixels are fine — "5:4", "16:9", or None.
     sar: Optional[str]
     dar: Optional[str]
+    # Audio track list for the language/bloat advisory (Moana rule): each
+    # {"codec","channels","lang"}. [] when the probe predates audio select.
+    audio: List[Dict]
 
 
 def probe(remote_path: str) -> ProbeResult:
@@ -180,10 +183,18 @@ def probe(remote_path: str) -> ProbeResult:
         # violates the declared contract and made "could not measure" indistinguishable
         # from a type that was never meant to carry the key.
         return {"w": None, "h": None, "codec": None, "dur": None, "size": 0, "title": None,
-                "synopsis": None, "aired": None, "sar": None, "dar": None}
+                "synopsis": None, "aired": None, "sar": None, "dar": None, "audio": []}
     streams = data.get("streams") or [{}]
     fmt = data.get("format") or {}
-    s = streams[0] if streams else {}
+    video = next((x for x in streams
+                  if isinstance(x, dict) and x.get("codec_type") == "video"),
+                 streams[0] if streams else {})
+    s = video
+    audio = [{"codec": a.get("codec_name"),
+              "channels": a.get("channels"),
+              "lang": ((a.get("tags") or {}).get("language") or "").lower() or None}
+             for a in streams
+             if isinstance(a, dict) and a.get("codec_type") == "audio"]
     dur = fmt.get("duration")
     try:
         dur = float(dur) if dur not in (None, "", "N/A") else None
@@ -212,6 +223,7 @@ def probe(remote_path: str) -> ProbeResult:
         "aired": str(tags.get("date") or "").strip() or None,
         "sar": s.get("sample_aspect_ratio"),
         "dar": s.get("display_aspect_ratio"),
+        "audio": audio,
     }
 
 
