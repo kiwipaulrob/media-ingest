@@ -44,6 +44,17 @@ def _plan(args) -> int:
                 f"   {r.get('bio_len', 0):>4}c via {str(r.get('source')):<10} "
                 f"{r['name'][:30]:<32} {r.get('collision', '')}"
             )
+    # Portraits are approval-gated (never auto-attached): list imageless rows
+    # where the chain already found a portrait URL, so the human pick is one
+    # `bio portrait --id ... --url ...` away. (Halstead gap: bios applied for
+    # months while portraits sat in the plan rows unread.)
+    po = [r for r in out["rows"]
+          if not r.get("has_image") and r.get("portrait")][:20]
+    if po:
+        print("\n  PORTRAITS AVAILABLE — attach with `bio portrait --id <id> --url <url>`:")
+        for r in po:
+            print(f"   {r['name'][:34]:<36} via {str(r.get('portrait_source')):<10} "
+                  f"{str(r.get('portrait'))[:80]}")
     return 0
 
 

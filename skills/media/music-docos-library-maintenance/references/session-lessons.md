@@ -443,3 +443,10 @@ retries) while `set_overview` on the same id succeeded minutes apart. Do
 not delete or rebuild a flapping row: apply what you can through the
 working route, pin ids later, log it. A row that fails every route AND has
 no file on disk is dead; anything else is index weather.
+
+## 50. Every bio plan ends with the portrait list (Halstead gap)
+
+Bios applied for months while portrait URLs sat unread in the plan rows —
+`cli.meta plan` now prints PORTRAITS AVAILABLE (imageless rows where the
+chain already holds a URL) with the exact `bio portrait --id --url`
+command. Portraits stay approval-gated, but never invisible again.
