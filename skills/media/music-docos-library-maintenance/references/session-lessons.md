@@ -404,3 +404,11 @@ body and Jellyfin replaces wholesale. Locks go through `lock_item()`
 the Dirty South overview before its numbering refreshed cemented the wrong
 slot; the fix was unlock -> FullRefresh -> verify S03E04 -> re-apply ->
 re-lock. Order for any mis-slotted row: numbers first, locks last.
+
+## 45. Episode order differs per provider — match episodes by NAME, never number
+
+TVmaze lists Live from Abbey Road in US broadcast order, Jellyfin/TMDB in
+another; pinning TVmaze E01's text onto Jellyfin E01 would have mistagged
+Paul Simon as Snow Patrol. The name-match (guest names) found the true
+counterparts. Same class as lesson 19 (slot collisions): numbers are local
+opinions, names are identity.
