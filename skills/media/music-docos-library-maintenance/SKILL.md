@@ -183,7 +183,7 @@ Two traps this closes:
 
 Separate roots — so the same content can legitimately exist in both, which is what produces duplicates.
 
-Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes/.env`. Media host is proxmox3 (`root@192.168.214.131`); library roots are `/mnt/zmedia/videos/musicdocos`, `/mnt/zmedia/videos/musicdocos-series` (Jellyfin `/data/<lib>` maps 1:1).
+Jellyfin: `http://192.168.214.20:8096`, key `JELLYFIN_API_KEY` in `/root/.hermes/.env`. Media host is proxmox4 (`root@192.168.214.132`); library roots are `/mnt/zmedia/videos/musicdocos`, `/mnt/zmedia/videos/musicdocos-series` (Jellyfin `/data/<lib>` maps 1:1).
 
 > **Topology caveat:** that proxmox3 view is stale for everything except `musicdocos`. Library and download file operations must run through CT105 on prox2 — see `jellyfin-administration` → "TOPOLOGY CORRECTION".
 

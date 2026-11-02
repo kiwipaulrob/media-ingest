@@ -4,7 +4,7 @@ set -u
 cd /root/.hermes/profiles/media-maintainer/media-ops || exit 1
 set -a; . /root/.hermes/.env 2>/dev/null; set +a
 
-NODE="root@192.168.214.131"
+NODE="root@192.168.214.132"
 
 # wait for tranche 1 (up to 40 minutes)
 for _ in $(seq 1 240); do

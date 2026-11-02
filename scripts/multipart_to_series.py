@@ -28,7 +28,7 @@ import shlex
 sys.path.insert(0, "/root/.hermes/profiles/media-maintainer/media-ops")
 from media_lib import jellyfin, tmdb  # noqa: E402  (path set above)
 
-NODE = "root@192.168.214.131"
+NODE = "root@192.168.214.132"
 
 SRC = os.environ.get("SRC") or "/mnt/zmedia/videos/FilmDocumentaries/A Century of Light and Shadow (2005)"
 QUERY = os.environ.get("QUERY") or "A Century of Light and Shadow"

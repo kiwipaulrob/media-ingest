@@ -4,7 +4,7 @@ set -u
 cd /root/.hermes/profiles/media-maintainer/media-ops || exit 1
 set -a; . /root/.hermes/.env 2>/dev/null; set +a
 
-NODE="root@192.168.214.131"
+NODE="root@192.168.214.132"
 
 run_one() {
   local pattern="$1" query="$2" year="$3" title="$4"

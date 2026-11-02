@@ -14,7 +14,7 @@ so `/data` maps to `/mnt/zmedia/videos`. The disk listing is taken from a host t
 actually mounts the pool (prox3 or prox4), not from this machine, which has no mount.
 
 Usage:
-    jellyfin_dead_rows.py [--host root@192.168.214.131] [--show N]
+    jellyfin_dead_rows.py [--host root@192.168.214.132] [--show N]
 """
 from __future__ import annotations
 
@@ -105,8 +105,8 @@ def remote_existing(host: str, paths: List[str]) -> Set[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--host", default="root@192.168.214.131",
-                    help="host that mounts the pool (default prox3)")
+    ap.add_argument("--host", default="root@192.168.214.132",
+                    help="host that mounts the pool (default prox4)")
     ap.add_argument("--show", type=int, default=15)
     args = ap.parse_args()
 

@@ -41,8 +41,12 @@ MEDIA_VOLUME = "/mnt/zmedia"
 #: Image tag used for ffprobe/ffmpeg. Must match the compose pin; override with
 #: MEDIA_IMAGE if the server is upgraded.
 DEFAULT_MEDIA_IMAGE = "jellyfin/jellyfin:12.2"
-#: Host running the Tdarr node, which also sees the media share directly (proxmox3).
-#: Several scripts shell into it; declaring it once keeps a host move to one edit.
+#: Host running the Tdarr node. All consumers wrap `docker exec tdarr-node`
+#: (container paths under /media/... are valid ONLY inside that container) —
+#: that is why this stays root@192.168.214.131 even though the zmedia POOL
+#: lives on proxmox4. Never point this at a pool host; never run /mnt/zmedia
+#: host paths against it (proxmox3:/mnt/zmedia is a stale partial shadow).
+#: Pool-direct host work uses NODE_PROX4. Override with MEDIA_NODE.
 NODE = os.environ.get("MEDIA_NODE", "root@192.168.214.131")
 #: Where the share appears INSIDE containers on that node (host paths are in JF_TO_DISK).
 NODE_PROX4 = os.environ.get("MEDIA_NODE_PROX4", "root@192.168.214.132")

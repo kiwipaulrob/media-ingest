@@ -38,7 +38,11 @@ probe readable → `>= min_height` → duration within tolerance **of the source
 duration** (not a caller-supplied number, so it always runs) → decode 3 spans
 (5/50/95%). Copy, both probes and all decode spans are folded into **two** remote
 calls; six separate `docker run` round-trips cost ~5.7 s per file for the same
-gates.
+gates. **Resume interrupted copies with rsync, not cp.** A local `rsync`
+defaults to `--whole-file` and rewrites from zero — add `--no-whole-file
+--partial --inplace` so an interrupted copy resumes from the partial instead of
+restarting; on a ~39 MB/s share a failed tail otherwise re-spends the whole
+transfer.
 
 **Placing a file does NOT make Jellyfin notice it.** A library-scoped Refresh
 re-resolves metadata for KNOWN rows and will not discover a new file — two
