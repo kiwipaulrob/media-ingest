@@ -248,11 +248,9 @@ tool catalog is built at start-up.
 - Placements run sequentially. Copying is I/O-bound (~39 MB/s to CIFS) and the
   gates are network-bound, so 2–3 workers should roughly double batch
   throughput.
-- `config.COPY_MBPS = 158` is a local-disk measurement and overstates this CIFS
-  path ~4× — budget at ~40 MB/s.
-- A failed placement re-copies from zero; `.part` files are removed rather than
-  resumed.
-- `cli/meta.py` took a library name where an ItemId was needed; `jellyfin.resolve_library()` now accepts either (with 3 tests).
+- `meta apply` takes `--library` and refuses a plan built for a different
+  library; plans are stored per-library (`meta-plan-<id>.json`), so one
+  library's plan can never silently clobber another's.
 - **Not packaged** (`pip install -e .`), so the plugin shells out to `cli.*` with a
   hardcoded `MEDIA_OPS` path. Decided 2026-10-22 and **kept under review** — the
   full reasoning and the five conditions that would reopen it are in

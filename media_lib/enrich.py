@@ -18,11 +18,19 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import config, jellyfin
-from .providers import chain
+from .providers import cache, chain
 
 JOURNAL = config.STATE_DIR / "meta-apply.jsonl"
 PLAN = config.STATE_DIR / "meta-plan.json"
 MIN_BIO = 80  # shorter than this is reported, not written
+
+
+def plan_path_for(library_id: str) -> Path:
+    """Per-library plan artefact: one library's plan must never clobber another's.
+
+    PLAN is kept as the legacy fallback for plans written before this split.
+    """
+    return config.STATE_DIR / f"meta-plan-{library_id}.json"
 
 
 def _credited_people(
@@ -204,9 +212,10 @@ def build_plan(
 
     `out_path` exists because tests (and concurrent runs) must never be able to
     overwrite the real plan artefact — a unit test with fake rows once clobbered
-    a completed 425-row plan.
+    a completed 425-row plan. Omit it and the plan lands in the per-library
+    file for `parent_id`, so two libraries never share one artefact.
     """
-    plan_path = Path(out_path) if out_path else PLAN
+    plan_path = Path(out_path) if out_path else plan_path_for(parent_id)
     uid = jellyfin.user_id()
     counts, credit_types = _credited_people(uid, parent_id, with_types=True)
     rows = _person_rows(uid)
@@ -316,6 +325,14 @@ def build_plan(
     }
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(out, indent=1))
+    # The cache grows without bound across sweeps; prune here, never inside
+    # hot lookups. A failed prune must never fail the plan.
+    try:
+        pruned = cache.prune_cache()
+        print(f"  pruned meta-cache: {pruned.get('removed', 0)} removed, "
+              f"{pruned.get('kept', 0)} kept", flush=True)
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 

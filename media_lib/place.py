@@ -123,7 +123,12 @@ def _stats(blob: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _stage_script(src_d: str, dst_d: str) -> str:
-    """Stage the copy and probe BOTH ends in a single remote call."""
+    """Stage the copy and probe BOTH ends in a single remote call.
+
+Resume, not restart: rsync --inplace keeps the partial in the destination and
+--no-whole-file forces the delta algorithm for a local copy (the default would
+rewrite from zero, which is what the old cp path did). Falls back to cp when
+rsync is missing on the media host."""
     ffp = probe.probe_wrap(config.FFPROBE_ENTRY)
     probe_expr = (
         "-v error -select_streams v:0 "
@@ -139,6 +144,11 @@ mkdir -p "$(dirname "$DST")" || {{ echo STAGE=MKDIR-FAIL; exit 3; }}
 SIZE_SRC=$(stat -c%s "$SRC")
 if [ -f "$DST" ] && [ "$(stat -c%s "$DST")" = "$SIZE_SRC" ]; then
   COPIED=already
+elif command -v rsync >/dev/null 2>&1; then
+  if ! rsync --partial --inplace --no-whole-file "$SRC" "$DST"; then
+    rm -f "$DST"; echo STAGE=COPY-FAIL; exit 3
+  fi
+  COPIED=fresh
 else
   rm -f "$DST.part"
   if ! cp --reflink=auto --sparse=always "$SRC" "$DST.part"; then

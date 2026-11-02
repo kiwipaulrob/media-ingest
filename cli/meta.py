@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 from media_lib import enrich, jellyfin, safety
@@ -172,7 +173,22 @@ def _overviews(args) -> int:
 
 
 def _apply(args) -> int:
-    plan = json.loads(enrich.PLAN.read_text())
+    parent = jellyfin.resolve_library(args.library)
+    plan_file = Path(args.plan) if args.plan else enrich.plan_path_for(parent)
+    if not plan_file.exists() and plan_file != enrich.PLAN and enrich.PLAN.exists():
+        print(f"no per-library plan yet; using legacy {enrich.PLAN}")
+        plan_file = enrich.PLAN
+    plan = json.loads(plan_file.read_text())
+    if plan.get("library") and plan["library"] != parent:
+        print(
+            f"plan covers library {plan['library']} but --library resolved to "
+            f"{parent}; refusing to apply another library's rows. "
+            "Re-run plan for this library first.",
+            file=sys.stderr,
+        )
+        return 2
+    print(f"applying from plan for library {plan.get('library') or parent} "
+          f"({plan_file.name})", flush=True)
     rows: List[Dict[str, Any]] = plan.get("rows") or []
     if args.ids:
         wanted = {int(x) for x in args.ids.split(",") if x.strip()}
@@ -213,6 +229,9 @@ def main(argv=None) -> int:
     p.add_argument("--library", default=MUSIC_DOCOS)
     p.add_argument("--limit", type=int, default=None)
     a = sub.add_parser("apply", help="write bios for planned rows")
+    a.add_argument("--library", default=MUSIC_DOCOS)
+    a.add_argument("--plan", default="",
+                   help="explicit plan file (default: per-library plan)")
     a.add_argument("--ids", default="", help="comma-separated plan row ids")
     a.add_argument("--limit", type=int, default=None)
     i = sub.add_parser("identify", help="identify bare movies (dry-run unless --apply)")
