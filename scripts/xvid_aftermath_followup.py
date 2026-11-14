@@ -49,11 +49,13 @@ def main() -> int:
     uid = jellyfin.user_id()
     docos = jellyfin.resolve_library("Docos")
     series = jellyfin.resolve_library("Docos Series")
-    print(f"Docos={docos} DocosSeries={series}", flush=True)
+    filmdocos = jellyfin.resolve_library("Film Docos")
+    print(f"Docos={docos} DocosSeries={series} FilmDocos={filmdocos}", flush=True)
 
     catalog: dict = {}
     for lib_id, types in ((docos, "Movie,Video,Episode"),
-                          (series, "Series,Season,Episode,Movie,Video")):
+                          (series, "Series,Season,Episode,Movie,Video"),
+                          (filmdocos, "Movie,Video,Episode")):
         items = jellyfin.list_items(
             uid, parent_id=lib_id, include_types=types,
             fields=["Path", "MediaSources", "Overview", "Name"])
@@ -94,9 +96,9 @@ def main() -> int:
 
     # Refresh the newly found rows so their MediaSources re-probe the file.
     to_refresh = [it["Id"] for lib_id, it in found.values()
-                  if lib_id == series]
+                  if lib_id in (series, filmdocos)]
     # Also refresh any Docos rows the main pass may have skipped.
-    print(f"refreshing {len(to_refresh)} Docos-Series rows", flush=True)
+    print(f"refreshing {len(to_refresh)} Docos-Series/Film-Docos rows", flush=True)
     for iid in to_refresh:
         try:
             jellyfin.refresh_item(iid)
@@ -107,7 +109,8 @@ def main() -> int:
         time.sleep(WAIT_S)
         catalog = {}
         for lib_id, types in ((docos, "Movie,Video,Episode"),
-                              (series, "Series,Season,Episode,Movie,Video")):
+                              (series, "Series,Season,Episode,Movie,Video"),
+                              (filmdocos, "Movie,Video,Episode")):
             items = jellyfin.list_items(
                 uid, parent_id=lib_id, include_types=types,
                 fields=["Path", "MediaSources", "Overview", "Name"])
@@ -145,10 +148,14 @@ def main() -> int:
              if (i.get("Name") or "").lower() == "recoded"]
     coll_id = colls[0]["Id"]
     print(f"collection Recoded: {coll_id}", flush=True)
-    if ids:
+    # Chunked add: one giant Ids query string 414s (URI Too Long).
+    CHUNK = 25
+    for i in range(0, len(ids), CHUNK):
         jellyfin._request(
-            f"/Collections/{coll_id}/Items?Ids=" + ",".join(ids),
+            f"/Collections/{coll_id}/Items?Ids=" + ",".join(ids[i:i + CHUNK]),
             method="POST")
+        print(f"  added chunk {i // CHUNK + 1} ({min(i + CHUNK, len(ids))}/{len(ids)})",
+              flush=True)
     members = jellyfin.list_items(uid, parent_id=coll_id,
                                   include_types="Movie,Video,Episode",
                                   fields=["Path"])

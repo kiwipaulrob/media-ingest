@@ -44,7 +44,7 @@ _TAGS = re.compile(
     # Edition/brand labels: they name the RELEASE, never the film, and left in
     # place they poison the TMDB query ('Leave Her to Heaven Criterion' = no match).
     r"criterion|eureka|arrow|kino|shout|scream[- ]?factory|olive|bfi|"
-    r"warner[- ]?archive|wac|masters[- ]of[- ]cinema|janus|"
+    r"warner[- ]?archive|wac|cinemania|masters[- ]of[- ]cinema|janus|"
     r"collectors?[- ]?edition|special[- ]?edition|anniversary|"
     r"director'?s[- ]?cut|theatrical[- ]?cut|extras"
     r")\b"

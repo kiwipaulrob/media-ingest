@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -199,6 +200,11 @@ def main(argv=None) -> int:
             # replacement is cli.apply's job, and an unmeasurable held copy is a review,
             # never a silent duplicate (uncertainty must not resolve to "ingest").
             label = Path(dest).parent.name
+            if re.fullmatch(r"(?i)season\s*\d+", label):
+                # Episode dest: the parent names the slot, not the programme —
+                # compare against the series folder or every episode spec
+                # misreads as 'different-title' (Women Make Film S01E03).
+                label = Path(dest).parent.parent.name
             try:
                 # Same-file check: the stem (never the extension — ".mkv" is
                 # not a title word) with room for release descriptors, since

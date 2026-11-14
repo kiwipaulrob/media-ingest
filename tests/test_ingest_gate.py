@@ -156,3 +156,30 @@ def test_from_plan_refuses_episodic_and_fuzzy():
     assert spec is None and "exact normalized" in reason
     spec, reason = placement_for_new(_new_row(tmdb={"status": "no-match"}), "/disk/Films")
     assert spec is None
+
+
+def test_episode_spec_compares_against_series_folder_not_season(tmp_path, monkeypatch):
+    """WMF S01E03 refused as 'different-title': the gate compared the release
+    against the 'Season 01' folder name instead of the series folder."""
+    seen = {}
+    spec = tmp_path / "spec.json"
+    spec.write_text(json.dumps([{
+        "src": "/mnt/zmedia/downloads/Women.Make.Film.2018.03of14.mkv",
+        "dest": "/mnt/zmedia/videos/filmdocuseries/Women Make Film (2018)/Season 01/Women Make Film (2018) S01E03.mkv",
+    }]))
+    monkeypatch.setattr(cli_ingest, "config", type("C", (), {
+        "ensure_state_dir": staticmethod(lambda: None), "STATE_DIR": tmp_path})())
+    monkeypatch.setattr(qbmod, "torrent_for_path", lambda p: None)
+
+    def fake_decide(cand, term, **k):
+        seen["term"] = term
+        return {"verdict": "no-local-copy"}
+
+    monkeypatch.setattr(qualitymod, "decide", fake_decide)
+    monkeypatch.setattr(placemod, "place_new",
+                        lambda *a, **k: {"ok": True, "stage": "PLACED"})
+    monkeypatch.setattr(safetymod, "record", lambda **kw: None)
+    monkeypatch.setattr(jf, "notify_media", lambda paths: 204)
+    monkeypatch.setattr(jf, "refresh_library", lambda lib: 204)
+    assert cli_ingest.main(["--spec", str(spec)]) == 0
+    assert seen["term"] == "Women Make Film (2018)", seen

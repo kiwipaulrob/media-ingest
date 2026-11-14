@@ -135,6 +135,34 @@ A finished torrent whose name matches a library title is not automatically new c
 - **Identical streams and duration but different hashes = the same encode in a different mux.** Swapping gains nothing — keep the library file and delete the torrent.
 - Only a streams/duration difference (or a genuinely absent library file) justifies an ingest or a swap, and a swap is then the user's call per the encoding-choice rule above.
 
+### Auditing the downloader queue against holdings
+
+A full queue (100+ torrents) cannot be judged one SearchTerm at a time. Dump the whole library once,
+match loosely in code, verify strictly per suspect:
+
+1. **One pass, all kinds.** Page the key-scoped `/Items` route with `IncludeItemTypes` `Movie`, `Episode`,
+   AND `Series` — a held series surfaces only as a Series row, and omitting it reads a held series as
+   absent, which has led to creating a duplicate series folder beside the held one. Save `Name`+`Path`
+   per row for the match pass.
+2. **Loose match, strict verdict.** Normalise torrent names (strip brackets, quality tags, stopwords) and
+   score token overlap against library titles. Anything at ~0.55 or above, plus any exact-substring hit,
+   is a suspect — never a verdict. Token matching over-flags episodic content: a series-level title match
+   says nothing about WHICH episodes are held, so confirm episode-level holdings before calling any part
+   a dupe.
+3. **Verify each suspect by SearchTerm + bytes.** Re-query the suspect title and compare the torrent's
+   `total_size` against the held file's byte size: an exact byte match on the same title is a certain dupe
+   — stop the torrent and remove it with its files. A same-title download with unknown or untagged
+   resolution is probable-dupe, not certain: let the ingest gate judge it at completion rather than
+   deleting on tags.
+4. **Judge the queue pairs too.** The same title downloading twice (two releases, a COMPLETE pack beside
+   singles, a 1080p beside a PDTV) is redundant even when neither copy is held — keep the best-positioned
+   one and present the drop list as a grouped choice, never silent deletes.
+5. **Hash-named torrents are unjudgeable by name.** A 40-hex-digit name carries no title — exclude those
+   from the verdict and say so; never force-match them.
+6. **Resolve removals to exact full hashes.** Several releases of one title share name substrings, including
+   a second COMPLETE copy in another save path — the delete guard in the SKILL.md table
+   ("Deleting torrent sources takes an unintended torrent with it") applies unchanged.
+
 ### Free-space readings lag — one `df` sample cannot prove a delete failed
 
 `df -B1` sampled immediately after `rm` can still return the pre-delete value, which looks exactly like a failed

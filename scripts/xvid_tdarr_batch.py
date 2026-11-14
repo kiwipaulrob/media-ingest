@@ -135,6 +135,9 @@ def main(argv=None) -> int:
                     help="queue mode: exactly one library folder")
     ap.add_argument("--limit", type=int, default=20,
                     help="queue mode: max files to hand over (default 20)")
+    ap.add_argument("--skip-unrecorded", action="store_true",
+                    help="queue mode: queue only record-covered files, warning "
+                    "about the rest (default refuses when any id lacks a record)")
     ap.add_argument("--apply", action="store_true",
                     help="queue mode: actually flip the rows (default dry run)")
     a = ap.parse_args(argv)
@@ -178,11 +181,14 @@ def main(argv=None) -> int:
         print(f"  refusing: no remaining files under {a.library!r}")
         return 2
     ids = [i for i in plan["groups"][a.library] if i in known]
-    if len(ids) < len(plan["groups"][a.library]):
-        print(f"  refusing: "
-              f"{len(plan['groups'][a.library]) - len(ids)} file(s) have no "
-              "Tdarr record — scan that library folder first, one at a time")
+    missing = len(plan["groups"][a.library]) - len(ids)
+    if missing and not a.skip_unrecorded:
+        print(f"  refusing: {missing} file(s) have no "
+              "Tdarr record — scan that library folder first, one at a time "
+              "(or pass --skip-unrecorded to queue the rest)")
         return 2
+    if missing:
+        print(f"  skipping {missing} file(s) with no Tdarr record")
     batch = ids[:a.limit]
     import tdarr_queue  # noqa: E402
 

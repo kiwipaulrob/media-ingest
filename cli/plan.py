@@ -32,6 +32,30 @@ def _dest_for(old_disk: str, src: str) -> str:
     return stem + _ext(src)
 
 
+def gate_entry(name: str, all_videos: list | None) -> dict:
+    """TMDB gate for a scan entry, with a media-filename fallback. Pure (network via tmdb.gate).
+
+    Torrent display names are often localized ('Клуб «CBGB» / CBGB (2013) ...
+    от CINEMANIA L2') while the payload filename is the ASCII release name
+    ('CBGB.2013.Blu.Ray.1080p.CINEMANIA.mkv'). Gating only the display name
+    no-matches films that obviously exist, so on a no-match with exactly one
+    video file, re-gate on the file's basename. Multi-file torrents stay
+    no-match: picking one file's name would be arbitrary.
+    """
+    g = tmdb.gate(name or "")
+    if g.get("status") != "no-match":
+        return g
+    vids = [v for v in (all_videos or []) if v]
+    if len(vids) == 1:
+        base = Path(vids[0]).name
+        if matcher.clean_release(base) != matcher.clean_release(name or ""):
+            g2 = tmdb.gate(base)
+            if g2.get("status") == "candidate":
+                g2["via"] = "media-filename-fallback"
+                return g2
+    return g
+
+
 def _pack_like(name: str, n_videos: int) -> bool:
     """Season pack / multi-file torrent: only its biggest file is visible."""
     if n_videos > 1:
@@ -130,7 +154,7 @@ def main(argv=None) -> int:
             else:
                 base["recommend"] = "NEW"
             if base["recommend"] == "NEW" and not args.no_tmdb:
-                base["tmdb"] = tmdb.gate(e.get("name") or "")
+                base["tmdb"] = gate_entry(e.get("name") or "", e.get("all_videos"))
             check.append(base)
             continue
 

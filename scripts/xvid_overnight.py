@@ -87,11 +87,15 @@ def main() -> int:
                 f.write(json.dumps(rec) + "\n")
             continue
         # gate: duration + decode
-        g = ssh(f"python3 -c \""
-                f"import json,subprocess;"
-                f"ds=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',{shq(rpath)}],capture_output=True,text=True).stdout.strip();"
-                f"dn=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',{shq(rtmp)}],capture_output=True,text=True).stdout.strip();"
-                f"print(ds+'|'+dn)\"")
+        # gate: duration + decode. Paths travel as argv (each shq'd once);
+        # embedding shq'd paths inside shq'd code double-escapes apostrophes
+        # and breaks the gate on files like "Hollywood's".
+        py = ("import subprocess,sys;"
+              "pb=lambda p:subprocess.run("
+              '["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",p],'
+              "capture_output=True,text=True).stdout.strip();"
+              'print(pb(sys.argv[1])+"|"+pb(sys.argv[2]))')
+        g = ssh(f"python3 -c {shq(py)} {shq(rpath)} {shq(rtmp)}")
         try:
             ds, dn = g.stdout.strip().split("|")
             ok_dur = abs(float(ds) - float(dn)) < max(5.0, float(ds) * 0.01)

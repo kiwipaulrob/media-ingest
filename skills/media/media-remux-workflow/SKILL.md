@@ -55,6 +55,11 @@ state that is currently missing; it never re-marks or resets an item you have si
 watched. Measured on this library: 797 items, 177 carrying state worth keeping
 (28 played, 88 with resume points).
 
+If the snapshot comes back empty on a library you know is populated, treat
+that as Jellyfin being unreachable — not as "nothing to preserve" — and hold
+the batch. Replacements made while Jellyfin is down can be neither verified
+nor restored, and the artwork/userdata aftermath has to wait for it anyway.
+
 **Do not derive "played" from PlayCount.** Jellyfin holds PlayCount>0 with
 Played=False for part-watched items, so `played or play_count > 0` silently marks
 every one of them played — it proposed 144 bogus writes on an untouched library.
@@ -173,6 +178,24 @@ produces fake filenames and a whole batch of 'file not found'.
 - Park originals to `_replaced/remux-<date>/`; delete parked originals
   only for gate-passers. Anything failing either check stays parked and
   joins the re-encode list (see media-deletion-policy before any delete).
+
+### Reclaiming space: the originals inventory
+
+After recode batches, originals accumulate in two places: `.orig*` files
+beside their keepers in the libraries, and the `_replaced/` tree. Present
+them for a pick-and-choose delete as tiers, never one flat list:
+
+- Dump one full `find <lib> -type f -printf '%s|%p'` listing to a file and
+  pair offline: strip `.orig(-suffix)?` before the extension for an exact
+  keeper match first, then fall back to same-directory normalized-name
+  containment (covers keepers that were renamed, e.g. extras filed under a
+  different stem).
+- **SAFE** = exact same-name pair, keeper present. **CHECK FIRST** = keeper
+  exists but renamed, or no keeper found (list the sibling files so the
+  reviewer can see what the folder holds). Report file count + GB per tier
+  plus the `_replaced/` media total separately — the user decides per tier
+  or per file, and only gate-passers from the confidence gate above are
+  ever in the SAFE tier.
 
 ## Re-encode pass (damaged sources)
 
@@ -431,6 +454,12 @@ prove field order and cadence: `references/interlaced-reencode.md`.
   relaunch detached (`setsid nohup ... &`), and require the first per-file
   completion line in the remote log as proof of liveness — then leave it
   alone until the final count.
+- An ssh session that hangs in handshake while ping and TCP/22 succeed is a
+  sick-host signal, not a slow network: kill any stuck copy/encode job it
+  was carrying, then verify the target path on the host before retrying —
+  a killed `cp` can leave a half-written file whose name looks complete.
+  Size-verify every parked copy (`stat` source vs dest) and treat a target
+  dir that was never created as proof nothing landed.
 
 ## Tdarr runbook (scripts in this repo)
 
@@ -443,6 +472,7 @@ prove field order and cadence: `references/interlaced-reencode.md`.
 | Verify | `jellyfin_dead_rows.py` | dead rows, generic names, mis-nesting |
 | Report | `tdarr_status.py` | progress, throughput, node load, scope check |
 | Scan | `tdarr_scan.py <lib>\|--all` | one library, own folder, refuses parents |
+| Backlog | `xvid_tdarr_batch.py [--library L] [--limit N] [--apply]` | audit → video-only (sidecars never queue) → minus receipt-done → minus Tdarr-job-handled → per-library coverage; queue refuses when any id lacks a record unless `--skip-unrecorded` |
 
 These are also registered as plugin tools, which is the preferred path from an agent
 session because the argument surface is declared and constrained:
@@ -465,6 +495,14 @@ Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0
   audio|sar|legacy --files ... [--apply]` (lesson 42). Flows stay unlinked;
   a new flow is proven on ONE file first. API patterns and pitfalls in
   `references/tdarr-cluster.md`.
+- Verify the live node roster before queueing or enabling anything:
+  `get-nodes` names plus a `docker ps` on each compute host. Nodes can be
+  (re-)registered between sessions by someone else, so a secondhand "no
+  node on that host" is never evidence — an unpaused node on a host that
+  must stay compute-free will pick up queued work. To fence a host off,
+  pause its node (`nodePaused`, live + stored doc, verify by re-reading):
+  pausing preserves its worker limits for a later re-enable, unlike
+  zeroing them.
 
 - `scripts/reencode-sweep.py --scan <libdir>` — read-only triage: walks the
   tree, ffprobes every video file (skips `*.reenc-tmp.mkv` / `*.remux-tmp.mkv`
@@ -522,6 +560,9 @@ Both consequences have to be coded around, because both look like success at the
 
 Verify collection membership with a USER-SCOPED read (`/Users/{uid}/Items?ParentId=<collId>`) — the
 anonymous endpoint reports 0 children on a full BoxSet and reads as a failed add.
+
+- **Chunk `POST /Collections/{id}/Items` to ~25 ids per call.** One giant `?Ids=` query string with a few hundred ids fails `414 URI Too Long` and adds nothing — the batch then reports success on verification while the collection sits unchanged (proven Nov 2026: 293-id add 414d, fixed by 25-id chunks).
+- **Verify version-grouped swaps by `MediaSources`, never by primary `Path`.** A same-folder second cut (or a `- WS PDTV` / `part2` sibling) is a secondary source on an existing row, so an exact-path catalog reports it `GONE` while the row already carries it as h264 — read each source's own streams to prove the swap, and file the ROW's id (once) into the collection.
 
 ## Priority order for a backlog run
 
