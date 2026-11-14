@@ -35,6 +35,16 @@ PARENTS = {
 }
 REMOTE_ROOT = f"{config.MEDIA_VOLUME}/videos"
 JF_ROOT = "/data"
+# The pool is CIFS-served (Samba `catia`): a colon in a name is stored on disk
+# as U+F022, so the SAME file has two spellings — `/data/.../Stax: ...` inside
+# the Jellyfin container, `/mnt/zmedia/videos/.../Stax<U+F022> ...` on the pool
+# host. Comparing one view against the other reads every such row as a dead
+# row (proven 2026-11-15: four healthy Stax episodes flagged dead, then
+# unlinked by DELETE). Disk truth therefore comes from the CONTAINER's view,
+# which is byte-identical to what Jellyfin stores — never the pool host's.
+CT_HOST = "root@192.168.214.109"
+CT_ID = "105"
+CONTAINER = "jellyfin"
 VIDEO_EXT = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".mov", ".webm", ".mpg", ".wmv")
 # Names Jellyfin falls back to when it cannot parse a title. They hide an item from
 # every name search, which is how an unnamed feature survived unnoticed: searching
@@ -45,15 +55,25 @@ DVD_EXTS = (".vob", ".ifo", ".bup")
 
 
 def disk_files(host: str) -> Set[str]:
-    """Every media file under the two libraries, as host paths."""
-    roots = " ".join(f"{REMOTE_ROOT}/{lib}" for lib in PARENTS)
+    """Every media file under the two libraries, as HOST paths for display.
+
+    Enumerated through the Jellyfin CONTAINER (`/data/...`), which is the
+    same CIFS-decoded view the server stores in its rows — then mapped to
+    host form for readable output. Never enumerate the pool host here: its
+    native spelling (U+F022 for ':') mismatches every row and fabricates
+    dead rows. The `host` arg is kept for CLI compatibility (folder-item
+    checks below still use it via remote_existing).
+    """
+    roots = " ".join(f"{JF_ROOT}/{lib}" for lib in PARENTS)
     expr = " -o ".join(f'-iname "*{e}"' for e in VIDEO_EXT)
-    cmd = f'find {roots} -type f \\( {expr} \\) 2>/dev/null'
-    out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", host, cmd],
+    cmd = (f"pct exec {CT_ID} -- docker exec {CONTAINER} "
+           f"find {roots} -type f \\( {expr} \\) 2>/dev/null")
+    out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", CT_HOST, cmd],
                          capture_output=True, text=True, timeout=600)
     if out.returncode != 0:
-        raise SystemExit(f"find failed on {host}: {out.stderr.strip()[:200]}")
-    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+        raise SystemExit(f"find failed in container: {out.stderr.strip()[:200]}")
+    return {line.strip().replace(JF_ROOT, REMOTE_ROOT, 1)
+            for line in out.stdout.splitlines() if line.strip()}
 
 
 def jf_items() -> Dict[str, Dict]:
@@ -82,25 +102,27 @@ def jf_items() -> Dict[str, Dict]:
 
 
 def remote_existing(host: str, paths: List[str]) -> Set[str]:
-    """Ask the host which of these paths exist (file OR directory).
+    """Which of these host-form paths exist — answered from the CONTAINER view.
 
-    Necessary because a DVD-folder item's Path is a DIRECTORY (VIDEO_TS style),
-    so a file-only `find` would report every one of them as a dead row. Test,
-    don't infer.
+    `paths` arrive in host form (`/mnt/zmedia/videos/...`); they are mapped
+    back to `/data/...` and tested against ONE container enumeration (files
+    and directories). The pool host is never asked: its native spelling of
+    CIFS-mangled names (U+F022 for ':') disagrees with the server's rows, and
+    that disagreement previously fabricated dead rows out of healthy items.
+    Returns the subset of `paths` that exist, in host form.
     """
     if not paths:
         return set()
-    script = "while IFS= read -r p; do [ -e \"$p\" ] && printf '%s\\n' \"$p\"; done"
-    # Trailing newline matters: `while read` returns non-zero on EOF for a final
-    # line with no newline and never runs the body for it, so the last candidate
-    # is silently reported as missing. That produced a false "dead row".
-    payload = "\n".join(paths) + "\n"
-    out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", host, script],
-                         input=payload, capture_output=True, text=True,
-                         timeout=600)
+    roots = " ".join(f"{JF_ROOT}/{lib}" for lib in PARENTS)
+    cmd = (f"pct exec {CT_ID} -- docker exec {CONTAINER} "
+           f"find {roots} 2>/dev/null")
+    out = subprocess.run(["ssh", "-o", "ConnectTimeout=15", CT_HOST, cmd],
+                         capture_output=True, text=True, timeout=600)
     if out.returncode != 0:
-        raise SystemExit(f"existence check failed: {out.stderr.strip()[:200]}")
-    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+        raise SystemExit(f"container find failed: {out.stderr.strip()[:200]}")
+    present = {line.strip() for line in out.stdout.splitlines() if line.strip()}
+    return {p for p in paths
+            if p.replace(REMOTE_ROOT, JF_ROOT, 1) in present}
 
 
 def main() -> int:
