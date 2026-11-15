@@ -105,7 +105,8 @@ def cmd_queue(args) -> int:
         if not pick.get("complete") and not args.allow_incomplete:
             print(f'  SKIP [{i}] incomplete set: {pick["title"][:56]}', flush=True)
             continue
-        res = source.queue(pick, category=args.category)
+        res = source.queue(pick, category=args.category,
+                           wanted=f"{row['artist']} {row['album']}")
         res.update(
             {
                 "id": i,

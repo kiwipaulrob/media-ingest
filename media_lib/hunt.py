@@ -81,10 +81,24 @@ def plan(
 def queue(
     candidate: Dict[str, Any],
     category: str = "tv",
+    wanted: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Queue ONE explicit candidate. The only bandwidth-spending call here."""
+    """Queue ONE explicit candidate. The only bandwidth-spending call here.
+
+    Runs the pre-queue gate first: a pick the library already holds (or that
+    is not provably an upgrade/gap) is refused with ok=False and no add is
+    attempted. Pass the wanted search term so the gate judges the right
+    programme; it defaults to the candidate title when omitted.
+    """
     from . import qb, sab  # deferred: keeps import light for tests
 
+    from . import source
+
+    gate = source.guard_pick(candidate, wanted=wanted)
+    if not gate.get("ok"):
+        return {"ok": False, "error": gate.get("reason"),
+                "verdict": gate.get("verdict"),
+                "detail": gate.get("detail", gate.get("reason"))}
     proto = str(candidate.get("protocol", "")).lower()
     title = str(candidate.get("title", ""))
     if proto == "usenet":

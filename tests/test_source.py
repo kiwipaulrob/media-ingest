@@ -154,7 +154,9 @@ def test_queue_refuses_an_incomplete_pick_unless_allowed(tmp_path, monkeypatch):
     sent = []
     monkeypatch.setattr(cli_source, 'PLAN_PATH', pf)
     monkeypatch.setattr(cli_source, 'QUEUE_LOG', tmp_path / 'q.jsonl')
-    monkeypatch.setattr(cli_source.source, 'queue', lambda p, category='': sent.append(p) or {'ok': True})
+    monkeypatch.setattr(cli_source.source, 'queue',
+                        lambda p, category='', wanted=None, wanted_year=None,
+                        gate=True: sent.append(p) or {'ok': True})
 
     rc = cli_source.main(['queue', '--ids', '1'])
     assert sent == [], 'an incomplete set must not be queued by default'
@@ -286,6 +288,8 @@ def test_queue_treats_202_as_success(monkeypatch):
     # or the test reaches for a live queue.
     monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: None)
     monkeypatch.setattr(source.qb, "force_start", lambda hashes, op=None: 200)
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
                         "title": "x"})
     assert out["ok"] is True and out["http"] == 202
@@ -306,6 +310,8 @@ def test_a_failed_verification_is_not_a_failed_add(monkeypatch):
 
     monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
     monkeypatch.setattr(source.qb, "by_title", boom)
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "c" * 40,
                         "protocol": "torrent", "title": "x"})
     assert out["ok"] is True
@@ -315,6 +321,8 @@ def test_a_failed_verification_is_not_a_failed_add(monkeypatch):
 def test_queue_still_rejects_a_real_failure(monkeypatch):
     from media_lib import source
     monkeypatch.setattr(source.qb, "add", lambda url, category="": 415)
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
                         "title": "x"})
     assert out["ok"] is False
@@ -395,6 +403,8 @@ def test_queue_forces_start_and_reports_what_the_queue_holds(monkeypatch):
         "hash": "a" * 40, "state": "forcedDL", "name": title})
     monkeypatch.setattr(source.qb, "force_start",
                         lambda hashes, op=None: forced.update(hashes=hashes) or 200)
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
 
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40, "protocol": "torrent",
                         "title": "Later with Jools Holland S57 complete"})
@@ -411,9 +421,53 @@ def test_queue_reports_unverified_when_the_torrent_is_not_in_the_queue(monkeypat
     from media_lib import source
     monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
     monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: None)
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
     out = source.queue({"url": "magnet:?xt=urn:btih:" + "b" * 40,
                         "protocol": "torrent", "title": "ghost"})
     assert out["ok"] is True and out["verified"] is False
+
+
+# ------------------------------------------- pre-queue gate (guard_pick / queue)
+def test_guard_refuses_a_held_copy_without_adding(monkeypatch):
+    """A pick the library already holds never reaches the downloader."""
+    from media_lib import quality, source
+
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 1080,
+                                      "matched": "Held Film"})
+    added = []
+    monkeypatch.setattr(source.qb, "add",
+                        lambda url, category="": added.append(url) or 202)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "a" * 40,
+                        "protocol": "torrent",
+                        "title": "Held Film 1080p WEB-DL"},
+                       wanted="Held Film", gate=True)
+    assert out["ok"] is False
+    assert str(out.get("reason", "")).startswith("gate-refused:")
+    assert added == [], "a refused pick must never be added"
+
+
+def test_guard_queues_a_genuine_gap(monkeypatch):
+    from media_lib import quality, source
+
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "none", "height": None,
+                                      "matched": None})
+    monkeypatch.setattr(source.qb, "add", lambda url, category="": 202)
+    monkeypatch.setattr(source.qb, "by_title", lambda title, op=None: None)
+    out = source.queue({"url": "magnet:?xt=urn:btih:" + "b" * 40,
+                        "protocol": "torrent", "title": "New Gap Film 720p"},
+                       wanted="New Gap Film", gate=True)
+    assert out["ok"] is True
+
+
+def test_guard_refuses_an_untestable_pick():
+    """No usable term means unjudgeable — refused, never queued blind."""
+    from media_lib import source
+
+    out = source.guard_pick({"title": ""})
+    assert out["ok"] is False and out["reason"] == "gate-refused:untestable"
 
 
 def test_torrent_for_path_rejects_prefix_sibling(monkeypatch):

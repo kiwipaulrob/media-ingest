@@ -23,7 +23,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -135,13 +135,15 @@ def prowlarr_search(query: str, limit: int = 30) -> List[Dict[str, Any]]:
         return []
 
 
-def queue_torrent(result: Dict[str, Any]) -> bool:
+def queue_torrent(result: Dict[str, Any], wanted: Optional[str] = None,
+                  wanted_year: Optional[int] = None) -> bool:
     from media_lib import qb
     url = result.get("downloadUrl") or ""
     if not url:
         return False
     try:
-        res = qb.add_release(result, category="musicdocos")
+        res = qb.add_release(result, category="musicdocos",
+                             wanted=wanted, wanted_year=wanted_year)
         return bool(res["ok"] and res["verified"])
     except Exception:
         return False
@@ -177,7 +179,7 @@ def do_hunt(apply: bool, cap: int) -> int:
             partial.write_text(json.dumps(report, indent=1))
             continue
         r, v = best
-        acted = queue_torrent(r) if apply else False
+        acted = queue_torrent(r, wanted=it["name"], wanted_year=it.get("year")) if apply else False
         queueable += 1
         report.append({**it, "verdict": v["verdict"], "candidate": r.get("title"),
                        "cand_height": v["candidate_height"], "seeds": r.get("seeders"),

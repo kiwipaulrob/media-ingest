@@ -135,6 +135,87 @@ def test_an_episode_cannot_stand_in_for_a_film():
                         wanted_title="Cajun Country")
     assert v["queue"] is False
 
+
+# --------------------------------- held_state_for: Series- and folder-aware
+def _item(name, type_, path, **kw):
+    row = {"Id": f"id-{name}", "Name": name, "Type": type_, "Path": path}
+    row.update(kw)
+    return row
+
+
+def test_held_series_reads_held_not_none(monkeypatch):
+    """A season the library holds must not read as a gap.
+
+    searchTerm surfaces the Series row (not its episodes); the lookup must
+    resolve episodes underneath and probe one, so a held season gates as
+    'held', not 'none'.
+    """
+    from media_lib import jellyfin, quality
+
+    series = _item("Athens: The Truth About Democracy", "Series", None)
+    eps = [_item("Episode 1", "Episode",
+                 "/data/docuseries/Athens (2007)/Season 01/S01E01.mkv",
+                 ParentIndexNumber=1, IndexNumber=1),
+           _item("Episode 2", "Episode",
+                 "/data/docuseries/Athens (2007)/Season 01/S01E02.mkv",
+                 ParentIndexNumber=1, IndexNumber=2)]
+
+    def fake_get_json(path, params=None, **kw):
+        if path.startswith("/Shows/"):
+            return {"Items": eps, "TotalRecordCount": len(eps)}
+        return {"Items": [series], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    monkeypatch.setattr("media_lib.place.to_disk", lambda p: p)
+    monkeypatch.setattr("media_lib.probe.probe",
+                        lambda p: {"h": 352} if "S01E01" in p else {"h": None})
+
+    st = quality.held_state_for("Athens The Truth About Democracy")
+    assert st["state"] == "held" and st["height"] == 352
+
+
+def test_folder_shelved_holding_reads_unprobeable_not_none(monkeypatch):
+    """A documentary shelved as a plain Folder is a holding, not a gap.
+
+    The Folder row carries no playable streams; its files are enumerated on
+    disk. When none can be measured, the answer is 'unprobeable' (human
+    decision), never 'none' (queue a duplicate).
+    """
+    from media_lib import jellyfin, quality
+
+    folder = _item("New York A Documentary Film (1999)", "Folder",
+                   "/data/documentaries/New York A Documentary Film (1999)")
+
+    def fake_get_json(path, params=None, **kw):
+        return {"Items": [folder], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    monkeypatch.setattr("media_lib.place.to_disk", lambda p: p)
+    monkeypatch.setattr("media_lib.quality._folder_videos", lambda d, cap=8: [])
+
+    st = quality.held_state_for("New York A Documentary Film")
+    assert st["state"] == "unprobeable"
+    assert "New York" in str(st["matched"])
+
+
+def test_folder_shelved_file_probes_to_held(monkeypatch):
+    from media_lib import jellyfin, quality
+
+    folder = _item("Some Doc (2001)", "Folder",
+                   "/data/documentaries/Some Doc (2001)")
+
+    def fake_get_json(path, params=None, **kw):
+        return {"Items": [folder], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    monkeypatch.setattr("media_lib.place.to_disk", lambda p: p)
+    monkeypatch.setattr("media_lib.quality._folder_videos",
+                        lambda d, cap=8: ["/disk/Some Doc (2001)/film.mkv"])
+    monkeypatch.setattr("media_lib.probe.probe", lambda p: {"h": 480})
+
+    st = quality.held_state_for("Some Doc")
+    assert st["state"] == "held" and st["height"] == 480
+
 @pytest.mark.parametrize("cand_year,expect", [
     (1998, True),   # exact
     (1997, True),   # one year earlier
@@ -165,6 +246,8 @@ def test_add_release_prefers_magnet_over_download_url(monkeypatch):
         return {'ok': True, 'http': 200, 'verified': True, 'hash': 'x', 'state': 'dl'}
 
     monkeypatch.setattr(qb, 'add_verified', fake_add_verified)
+    monkeypatch.setattr('media_lib.source.guard_pick',
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
     qb.add_release({'title': 'Thing', 'magnetUrl': 'magnet:?xt=urn:btih:' + 'a' * 40,
                     'downloadUrl': 'https://prowlarr/download/1'})
     assert sent['url'].startswith('magnet:'), 'a magnet must win over downloadUrl'
@@ -174,6 +257,21 @@ def test_add_release_prefers_magnet_over_download_url(monkeypatch):
 
     out = qb.add_release({'title': 'nothing'})
     assert out['ok'] is False and out['state'] == 'no-url'
+
+
+def test_add_release_refuses_a_held_copy(monkeypatch):
+    """add_release gates too: a held copy never reaches add_verified."""
+    from media_lib import quality, qb
+
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 1080,
+                                      "matched": "Held Film"})
+    called = []
+    monkeypatch.setattr(qb, "add_verified",
+                        lambda u, t, category="": called.append(u) or {"ok": True})
+    out = qb.add_release({"title": "Held Film 1080p WEB-DL"}, wanted="Held Film")
+    assert out["ok"] is False
+    assert called == []
 
 
 def test_episode_slot_markers_match_across_forms():

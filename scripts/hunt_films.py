@@ -173,7 +173,8 @@ def queue(plan_path, ids, picks=None) -> int:
             print(f"[{i}] pick {k} out of range — skip")
             continue
         pick = row["picks"][k]
-        res = source.queue(pick, category="movies", force=True)
+        res = source.queue(pick, category="movies", force=True,
+                           wanted=row["title"], wanted_year=row.get("year"))
         res.update({"id": i, "wanted": row["title"], "picked": pick["title"]})
         done.append(res)
         print(

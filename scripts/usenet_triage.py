@@ -27,7 +27,7 @@ import sys
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -63,20 +63,29 @@ def prowlarr_search(term: str, limit: int = 40) -> List[Dict[str, Any]]:
 
 
 
-def _queue(result: Dict[str, Any]) -> bool:
+def _queue(result: Dict[str, Any], wanted: Optional[str] = None) -> bool:
     """Add one Prowlarr result to qBittorrent (magnet preferred) or SABnzbd."""
-    from media_lib import qb
+    from media_lib import qb, source
     url = result.get("downloadUrl") or ""
     if result.get("protocol") == "usenet":
         from media_lib import sab
         try:
-            return bool(sab.add_url(url, name=str(result.get("title", "")), category="movies"))
+            # Usenet posts carry no resolution tag to judge by — gate on the
+            # failed job's own title: an unrelated posting (same first word,
+            # different programme) is never queued as its replacement. The
+            # search-time decide() verdict is the full gate; this is the
+            # last-chance identity check for direct _queue callers.
+            from media_lib import quality
+            cand = str(result.get("title", ""))
+            if wanted and not quality.title_matches(cand, wanted):
+                return False
+            return bool(sab.add_url(url, name=cand, category="movies"))
         except Exception:
             return False
     if not url:
         return False
     try:
-        res = qb.add_release(result, category="musicdocos")
+        res = qb.add_release(result, category="musicdocos", wanted=wanted)
         return bool(res["ok"] and res["verified"])
     except Exception:
         return False
@@ -156,7 +165,7 @@ def main() -> int:
                       f"seeds={str(r.get('seeders','-')):<4} {str(r.get('title'))[:50]}")
                 print(f"                  {v['reason']}")
                 if args.queue_upgrades and v["queue"] and not queued:
-                    queued = _queue(r)
+                    queued = _queue(r, wanted=title)
                     print(f"                  -> {'queued' if queued else 'queue FAILED'}")
     return 0
 

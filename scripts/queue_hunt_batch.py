@@ -87,7 +87,7 @@ def main() -> int:
             "title": title, "url": source.queue_url(res),
             "hash": infohash, "gb": round((res.get("size") or 0) / 1e9, 2),
             "seeds": res.get("seeders"), "protocol": res.get("protocol"),
-        })
+        }, wanted=label)
         if not out.get("ok"):
             print(f"  FAIL  {label}: {out.get('reason') or out}")
             continue

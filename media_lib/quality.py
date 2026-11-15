@@ -269,45 +269,178 @@ def verdict(candidate_title: str, held_height: Optional[int],
             "queue": False, "reason": f"{cand}p is not better than the {held}p we hold"}
 
 
+def _short_title(term: str) -> Optional[str]:
+    """First significant words — the broad query when the full phrase misses.
+
+    A full-phrase `searchTerm` returns zero while the bare title hits; that is
+    a query fault, not proof of absence, so the lookup retries broad and
+    filters in code.
+    """
+    words = [w for w in _normalise(term).split()
+             if len(w) > 2 and not w.isdigit() and not _EP_TOKEN_RE.match(w)]
+    short = " ".join(words[:4])
+    return short or None
+
+
+def _shares_a_word(a: str, b: str) -> bool:
+    """Lenient relevance for fuzzy search hits: one significant word in common.
+
+    Either side wordless (a one-letter title like "M") means "cannot judge" —
+    keep the row rather than acquit the library on an empty comparison.
+    """
+    aw = _title_words(a, strip_junk=False)
+    bw = _title_words(b, strip_junk=False)
+    return True if not aw or not bw else bool(aw & bw)
+
+
+def _episode_slot_wanted(ep: Dict[str, object], term: str) -> bool:
+    """Does this episode row fill the slot `term` asks about (if any)?
+
+    A term naming no slot is a whole-work want: every held episode is
+    evidence. An unnumbered row cannot be excluded — let the probe speak.
+    Season 0 (bare "E02" labels) is the wildcard.
+    """
+    from . import slot_check  # deferred: quality stays import-light for tests
+
+    ts, te = slot_check.slot_numbers(term)
+    if not te:
+        return True
+    es = int(ep.get("ParentIndexNumber") or 0)
+    ee = int(ep.get("IndexNumber") or 0)
+    if not ee:
+        return True
+    if ee != te:
+        return False
+    return not (ts and es) or ts == es
+
+
+#: Extensions that make a file library media (qb.VIDEO_EXT plus legacy rips).
+_VIDEO_EXTS = (".mkv", ".mp4", ".avi", ".m4v", ".ts", ".m2ts", ".mov",
+               ".wmv", ".flv", ".mpg", ".mpeg", ".divx", ".webm", ".ogm", ".vob")
+
+
+def _folder_videos(disk_folder: str, cap: int = 8) -> Optional[list]:
+    """Video files inside a folder-shelved holding. None when unlistable.
+
+    None is "unknown", not "empty": a failed listing must never read as proof
+    the folder holds nothing.
+    """
+    import shlex
+
+    from . import probe as _probe
+
+    try:
+        out = _probe.on_media(
+            "find %s -maxdepth 2 -type f | head -50" % shlex.quote(disk_folder),
+            timeout=120)
+    except Exception:
+        return None
+    vids = [ln for ln in out.splitlines()
+            if ln.strip().lower().endswith(_VIDEO_EXTS)]
+    return vids[:cap]
+
+
 def held_state_for(term: str) -> Dict[str, object]:
     """What do we hold for `term`, and can we measure it?
 
     Returns {'state', 'height', 'matched'}. A probe failure is 'unprobeable', NEVER
     'none' — conflating the two caused a dozen unnecessary downloads.
+
+    Series- and folder-aware. A `searchTerm` hit on a Series row owns episodes
+    the search itself never lists — filtering to Movie/Episode read a fully
+    held season as 'none' and queued a byte-identical duplicate. A
+    folder-shelved documentary surfaces only as a Folder row; its files are
+    enumerated on disk and probed, and a Folder that yields no measurable
+    file is 'unprobeable', never 'none' (child listings against Folder rows
+    return zero, so the Folder row itself is the holding evidence).
     """
     from . import jellyfin, place, probe
 
-    try:
-        uid = jellyfin.user_id()
-        rows = jellyfin.get_json(f"/Users/{uid}/Items", params={
-            "searchTerm": term, "Recursive": "true", "Fields": "Path", "Limit": "8"})
-    except Exception:
-        return {"state": "unprobeable", "height": None, "matched": None}
+    def _search(q: str) -> list:
+        try:
+            uid = jellyfin.user_id()
+            rows = jellyfin.get_json(f"/Users/{uid}/Items", params={
+                "searchTerm": q, "Recursive": "true",
+                "Fields": "Path,ParentIndexNumber,IndexNumber,ProductionYear",
+                "Limit": "20"})
+        except Exception:
+            return []
+        return list((rows or {}).get("Items") or [])
 
-    items = [i for i in (rows.get("Items") or [])
-             if i.get("Type") in ("Movie", "Episode") and i.get("Path")]
-    if not items:
+    rows = _search(term)
+    if not rows:
+        short = _short_title(term)
+        if short and _normalise(short) != _normalise(term):
+            rows = _search(short)
+    # In-code relevance: Jellyfin's search is fuzzy; a hit sharing no
+    # significant word with the term is not the programme.
+    rows = [r for r in rows if _shares_a_word(str(r.get("Name") or ""), term)]
+    if not rows:
         return {"state": "none", "height": None, "matched": None}
+
+    direct = [i for i in rows
+              if i.get("Type") in ("Movie", "Episode") and i.get("Path")]
+    series = [i for i in rows if i.get("Type") == "Series"]
+    folders = [i for i in rows if i.get("Type") == "Folder" and i.get("Path")]
+
+    unknown = False  # holdings seen but not resolved to measurable files
+    slot_gap = False  # series held, but no episode fills the wanted slot
+    for s in series:
+        try:
+            eps = jellyfin.get_json(
+                f"/Shows/{s.get('Id')}/Episodes",
+                params={"Fields": "Path,ParentIndexNumber,IndexNumber"}) or {}
+        except Exception:
+            unknown = True
+            continue
+        listed = list(eps.get("Items") or [])
+        if not listed:
+            # An empty listing is a busy server as often as an empty series —
+            # never evidence of a gap.
+            unknown = True
+            continue
+        pathed = [e for e in listed if e.get("Path")]
+        if not pathed:
+            continue  # provider/virtual slots only: this series holds no media
+        matched = [e for e in pathed if _episode_slot_wanted(e, term)]
+        if not matched:
+            slot_gap = True
+            continue
+        direct.extend(matched)
+
+    for f in folders:
+        try:
+            disk = place.to_disk(f["Path"])
+            vids = _folder_videos(disk)
+        except Exception:
+            unknown = True
+            continue
+        if not vids:
+            # Unlistable, or no measurable file: the Folder row itself is the
+            # holding evidence — held-but-unmeasurable, never a gap.
+            unknown = True
+            continue
+        direct.extend({"Path": v, "Name": f.get("Name")} for v in vids)
 
     # Year-aware: a same-stem different-year item is a different programme.
     # "D.O.A. (1949)" must not match the 1980 punk doc — that refusal blocked
     # a genuine gap fill. Items whose path-year disagrees are not the same film.
     want_year = release_year(term)
-    if want_year:
-        same = [i for i in items
+    if want_year and direct:
+        same = [i for i in direct
                 if (release_year(str(i.get("Path") or "")) or want_year) == want_year
                 or abs((release_year(str(i.get("Path") or "")) or want_year)
                        - want_year) <= YEAR_TOLERANCE]
         if same:
-            items = same
+            direct = same
         else:
             return {"state": "none", "height": None, "matched": None}
 
-    paths = {i["Path"] for i in items}
+    paths = {i["Path"] for i in direct}
     if len(paths) > 3:
         return {"state": "ambiguous", "height": None, "matched": len(paths)}
 
-    for item in items:
+    for item in direct:
         try:
             info = probe.probe(place.to_disk(item["Path"])) or {}
         except Exception:
@@ -315,7 +448,16 @@ def held_state_for(term: str) -> Dict[str, object]:
         height = info.get("h")
         if height:
             return {"state": "held", "height": int(height), "matched": item.get("Name")}
-    return {"state": "unprobeable", "height": None, "matched": items[0].get("Name")}
+    if direct:
+        # Files seen, none measurable: probe failure, never a gap.
+        return {"state": "unprobeable", "height": None, "matched": direct[0].get("Name")}
+    if slot_gap and not unknown:
+        # The series is readable and the wanted slot verifiably has no media.
+        return {"state": "none", "height": None, "matched": None}
+    if unknown or folders or series:
+        return {"state": "unprobeable", "height": None,
+                "matched": (series + folders)[0].get("Name")}
+    return {"state": "none", "height": None, "matched": None}
 
 
 def held_height_for(term: str) -> Optional[int]:

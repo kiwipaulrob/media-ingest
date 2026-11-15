@@ -401,7 +401,43 @@ def candidates_by_words(
 
 
 # -------------------------------------------------------------------- queueing
-def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[str, Any]:
+def guard_pick(pick: Dict[str, Any], wanted: Optional[str] = None,
+               wanted_year: Optional[int] = None) -> Dict[str, object]:
+    """Pre-queue gate: compare this pick against what the library holds.
+
+    Runs quality.decide(candidate_title, search_term) and reports the
+    verdict. queue=True only on 'upgrade' or 'no-local-copy'; everything
+    else ('same-or-worse', 'marginal', 'unknown', 'held-unknown',
+    'different-title') refuses with ok=False so no bandwidth is spent on a
+    held copy. A pick carrying no usable term is UNJUDGEABLE — refused,
+    never queued blind (an empty term matched nothing once and read as a gap).
+    """
+    from . import quality  # deferred: source stays import-light for tests
+
+    candidate = str(pick.get("title") or "")
+    term = str(wanted or pick.get("wanted") or candidate)
+    term = term.strip()
+    if not term:
+        return {"ok": False, "reason": "gate-refused:untestable",
+                "title": candidate,
+                "detail": "no wanted term — cannot prove this is not a duplicate"}
+    dec = quality.decide(candidate, term, wanted_year=wanted_year)
+    verdict = str(dec.get("verdict"))
+    if dec.get("queue"):
+        return {"ok": True, "title": candidate, "term": term,
+                "verdict": verdict, "held_height": dec.get("held_height"),
+                "candidate_height": dec.get("candidate_height"),
+                "reason": str(dec.get("reason") or "")}
+    return {"ok": False, "reason": f"gate-refused:{verdict}",
+            "title": candidate, "term": term, "verdict": verdict,
+            "held_height": dec.get("held_height"),
+            "candidate_height": dec.get("candidate_height"),
+            "detail": str(dec.get("reason") or "")}
+
+
+def queue(pick: Dict[str, Any], category: str = "", force: bool = True,
+          wanted: Optional[str] = None, wanted_year: Optional[int] = None,
+          gate: bool = True) -> Dict[str, Any]:
     """Send one ranked pick to the right downloader, then make it actually start.
 
     `force=True` is the default because this install's pipeline runs ~93 downloads
@@ -409,10 +445,21 @@ def queue(pick: Dict[str, Any], category: str = "", force: bool = True) -> Dict[
     downloads, which reads as success and delivers nothing. The torrent is resolved
     BY TITLE afterwards (a Prowlarr result often carries no infohash), so the reply
     says what the queue really holds.
+
+    The gate runs after the cheap local URL check (a missing URL is a caller
+    bug — no network needed to say so) and before any add: guard_pick()
+    verdicts the pick against the library, and a refused pick returns ok=False
+    with reason 'gate-refused:<verdict>' — no add is attempted. Skip with
+    gate=False only when the caller already ran guard_pick on this exact pick.
     """
     url = pick.get("url")
     if not url:
         return {"ok": False, "reason": "no-url", "title": pick.get("title")}
+    if gate:
+        g = guard_pick(pick, wanted=wanted, wanted_year=wanted_year)
+        if not g.get("ok"):
+            return {**g, "kind": pick.get("protocol") or "",
+                    "hash": pick.get("hash") or "", "verified": False}
     try:
         if pick.get("protocol") == "usenet":
             ids = sab.add_url(

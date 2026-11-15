@@ -45,8 +45,24 @@ def test_queue_refuses_urlless():
 
 def test_queue_usenet_calls_sab(monkeypatch):
     import media_lib.sab as sab
+    from media_lib import source as _source
 
     seen = {}
     monkeypatch.setattr(sab, "add_url", lambda u, t, category="tv": seen.setdefault("nzo", "NZO1"))
+    monkeypatch.setattr(_source, "guard_pick", lambda pick, wanted=None,
+                        wanted_year=None: {"ok": True, "verdict": "no-local-copy"})
     out = hunt.queue({"title": "t", "protocol": "usenet", "downloadUrl": "http://x/y"})
     assert out == {"ok": True, "nzo": "NZO1"}
+
+
+def test_queue_refuses_a_held_copy_without_adding(monkeypatch):
+    """A pick the library already holds never reaches SAB or qB."""
+    from media_lib import quality
+
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 720,
+                                      "matched": "The Show"})
+    out = hunt.queue({"title": "The.Show.S01E02.1080p", "protocol": "usenet",
+                      "downloadUrl": "http://x/y"}, wanted="The Show")
+    assert out["ok"] is False
+    assert str(out.get("error", "")).startswith("gate-refused:")
