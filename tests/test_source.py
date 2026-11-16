@@ -142,6 +142,39 @@ def test_queue_without_a_url_reports_it_rather_than_raising():
     assert out['ok'] is False and out['reason'] == 'no-url'
 
 
+def test_queue_resolves_a_raw_usenet_row_without_a_url_key(monkeypatch):
+    """A raw Prowlarr Usenet row must not die as no-url.
+
+    Regression: queue() read only pick['url'], but Prowlarr rows carry
+    `downloadUrl`, not `url` — so every Usenet pick straight out of
+    hunt.plan() was refused before any add was attempted. queue() must
+    fall back to queue_url(), which appends the Prowlarr apikey.
+    """
+    from media_lib import config as cfgmod
+    from media_lib import source
+
+    monkeypatch.setattr(cfgmod, "PROWLARR_KEY", "test-key")
+    added = []
+    monkeypatch.setattr(source.sab, "add_url",
+                        lambda url, name="", category="movies":
+                            added.append((url, name, category)) or ["nzo1"])
+    monkeypatch.setattr(source, "guard_pick",
+                        lambda pick, wanted=None, wanted_year=None: {"ok": True})
+    pick = {"title": "American.Masters.S39E01.1080p.WEB",
+            "protocol": "usenet",
+            "downloadUrl": "https://prowlarr/dl/nzb?nzbid=123"}
+    out = source.queue(dict(pick), gate=False)
+    assert out["ok"] is True and out["kind"] == "usenet"
+    assert out["nzo_ids"] == ["nzo1"]
+    assert added and added[0][0].endswith("apikey=test-key")
+
+
+def test_queue_still_refuses_a_pick_with_nothing_resolvable():
+    """The no-url refusal survives for picks with no magnet, hash or URL."""
+    out = source.queue({'title': 'x'})
+    assert out['ok'] is False and out['reason'] == 'no-url'
+
+
 # ------------------------------------------------------------- cli behaviour
 def test_queue_refuses_an_incomplete_pick_unless_allowed(tmp_path, monkeypatch):
     from cli import source as cli_source

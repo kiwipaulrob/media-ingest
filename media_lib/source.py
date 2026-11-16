@@ -446,13 +446,20 @@ def queue(pick: Dict[str, Any], category: str = "", force: bool = True,
     BY TITLE afterwards (a Prowlarr result often carries no infohash), so the reply
     says what the queue really holds.
 
-    The gate runs after the cheap local URL check (a missing URL is a caller
-    bug — no network needed to say so) and before any add: guard_pick()
+    The pick is resolved to something qBittorrent/SAB accepts first: an
+    explicit `url` wins, otherwise queue_url() derives one from the raw
+    Prowlarr fields (magnetUrl/guid infohash, or downloadUrl). Only a pick
+    that resolves to nothing is refused with 'no-url' — no network needed
+    to say so. The gate runs after resolution and before any add: guard_pick()
     verdicts the pick against the library, and a refused pick returns ok=False
     with reason 'gate-refused:<verdict>' — no add is attempted. Skip with
     gate=False only when the caller already ran guard_pick on this exact pick.
     """
-    url = pick.get("url")
+    # Raw Prowlarr rows carry no `url` key — they carry `downloadUrl` (a full
+    # proxy URL with the Prowlarr apikey baked in), `guid`/`magnetUrl`.
+    # Resolving here (not in the caller) is what lets a pick straight out of
+    # hunt.plan() queue; without it every Usenet attempt died as no-url.
+    url = pick.get("url") or queue_url(pick)
     if not url:
         return {"ok": False, "reason": "no-url", "title": pick.get("title")}
     if gate:
