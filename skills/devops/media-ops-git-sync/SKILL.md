@@ -58,7 +58,9 @@ Because everything pushed here is world-readable:
 
 - Credentials never live in tracked files; they are read from the environment
   (`media_lib/config.py`). Check before pushing:
-  `git grep -nIE "(api[_-]?key|token|secret|password)\s*[:=]"`.
+  `git grep -nIE "(api[_-]?key|token|secret|password)\s*[:=]"` — and separately
+  `grep -r` the untracked (`??`) files, because `git grep` never sees them
+  and a key in a helper script sails through the tracked-only check.
 - History is public too. The Tdarr key sat in commits `a09e1cf`, `e0d8d0e`, `4fa8d24`;
   deleting it from the working tree did not remove it from `git log -S`. **Rotate any secret
   that was ever committed** — treat it as published, because it is.
@@ -111,6 +113,21 @@ After editing `media_lib/`, `cli/` or `tests/`:
 If push refuses with *"behind origin"*, someone changed GitHub first: run
 `sync pull`, resolve, then push. Never force-push — history here is the audit
 trail of what ran in production.
+
+`sync push` runs `git add -A`, so every untracked scratch script from every
+session rides into the commit. Review `git status` first: raw-git add+commit
+the curated set (your tracked modifications plus intended new files, with a
+message describing exactly that set), then let `sync push -m` carry the
+remainder under an honest label — one commit per provenance, never someone
+else's in-flight helpers silently folded into yours.
+
+When CI fails on the push, check provenance before touching code: `git log
+--oneline -3 -- <failing files>` shows whether any pushed commit touched
+them, and earlier runs' conclusions show whether they failed identically
+before. Failing files no pushed commit touched plus identical prior failures
+means pre-existing/environmental — report it as such and leave the other
+session's tests alone. Rewriting tests you do not own to green your own push
+trades a true red signal for a false green one.
 
 ## Direction 2 — GitHub PRs to local
 

@@ -116,6 +116,9 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
   failed jobs leave partials in `incomplete/`. The audit that matters is the
   post-ingest sweep in `music-docos-library-maintenance` (three sinks:
   qBittorrent entries, SAB `incomplete/`+`complete/`, `_FAILED_*` markers).
+  A `Completed` slot whose payload is gone from the share AND whose title has
+  no library row is a re-fetch (fresh hunt), never a retry — `mode=retry`
+  only re-pulls failed slots.
 - Every grab spends block gigabytes: batch approvals per title (grab/skip)
   with size, age, and grabs stated inline, exactly like torrent picks.
 - Verify completions like any download (ffprobe streams + decode) before
