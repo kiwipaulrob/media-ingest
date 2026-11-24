@@ -252,8 +252,20 @@ client for the first time.
   nothing — hunt replacements and say so plainly, rather than reporting
   "still downloading". A handful waking is normal churn; near-zero is the signal.
 - **Diagnose before re-hunting:** connected + DHT nodes but 0 B/s across
-  high-progress torrents with 0 seeds means dead swarms, not a broken
-  client — hunt alternative releases rather than restarting the same magnets.
+high-progress torrents with 0 seeds means dead swarms, not a broken
+client — hunt alternative releases rather than restarting the same magnets.
+Read `availability` (distributed copies) first: below 1.0 proves pieces
+exist nowhere in the reachable swarm and the torrent can never finish on
+current peers — re-source immediately instead of waiting. Split the seed
+columns too: `num_complete` is the tracker's last scrape, `num_seeds` is
+connected right now — tracker seeds with zero connected peers after a
+reannounce is a stale scrape, not liveness.
+- **Zero connected peers on EVERY torrent at once is a different fault from
+  dead swarms.** Healthy DHT nodes plus 0 B/s everywhere means the client is
+  deaf, not that every swarm died: one torrent with peers and no speed is a
+  dead swarm, a whole client with no peers is a reachability fault (listen
+  port not forwarded, UPnP off). Confirm the forward in the router's live
+  tables, reannounce all, and only then judge liveness per torrent.
 - **Empty expected paths mean migration until proven otherwise.** When
   library or download dirs that should exist resolve to nothing, search
   MemOS memory for a recorded move/migration BEFORE diagnosing corruption
@@ -379,7 +391,14 @@ client for the first time.
 - **Zero hits on a held title may mean it is misnamed, not absent.**
   Extract frames across the runtime (`ffmpeg -ss <t> -frames:v 1`) and
   vision-scan them for title cards, channel bugs, and name captions; confirm
-  the true title — the exact scene release often exists under it.
+  the true title — the exact scene release often exists under it. The other
+  cause is the QUERY SHAPE: Jellyfin's `searchTerm` returns nothing for a
+  multi-word query carrying every word of the title ("Sunday Best Ed Sullivan"
+  found 0 hits for an item the library held) while the distinctive one or two
+  words find it instantly. Search the short form first, and treat a
+  disagreement between a 0-hit sweep and `quality.held_state_for()` reporting
+  `held` as proof the SEARCH is wrong, not the library — the gate probes the
+  real rows, so it wins.
 
 ## Series-episode lineup hunts (user picks by artist, not filename)
 
@@ -554,6 +573,11 @@ CT105/Jellyfin containers have no ffmpeg/ffprobe at all. Run probes and encodes 
 pool host (`config.NODE_PROX4`, `/mnt/zmedia/...` local there) via ssh. Chunk ~60 paths
 per call; 350 files probe in a couple of minutes.
 
+**`-nostdin` is an ffmpeg flag, not an ffprobe one.** `ffprobe -nostdin ...` fails with
+`Failed to set value '-v' for option 'nostdin'` and emits **no stream data at all**, which
+reads exactly like "this file has no streams". Redirect stdin instead (`</dev/null`) and never
+record an empty probe as a finding until the same command has been re-run without the flag.
+
 ## Ingest checks must be episode-level, not series-level
 
 Comparing a downloaded episode's name against library **series** names says "held" for
@@ -567,6 +591,22 @@ SABnzbd is the Usenet half of the fetch role — full deploy + provider-server r
 
 - Queue by NZB URL, not by file: `mode=addurl&name=<Prowlarr downloadUrl>&nzbname=<title>&cat=<cat>&apikey=<SABKEY>` (the Prowlarr `downloadUrl` carries its own apikey param — pass it through untouched). Then verify like any add: `mode=queue&output=json` must show the slot with a climbing `percentage` and `status=Downloading` — a returned `nzo_id` alone only proves acceptance.
 - Read the history `fail_message` before retrying anything — the taxonomy decides: `Aborted, cannot be completed` means the backbone lacks the articles and no retry will fix it (the fill is a second provider block as fill server, not persistence); `Repair failed, N short` by a small N is worth exactly one retry; a write error with free disk is transient — retry. Retry via `mode=retry&value=<nzo_id>` from the history slot.
+- **A configured second provider is not a working second provider — check its traffic before blaming the post.** `sab._call('server_stats')` returns per-server `total`/`month`/`day` bytes. One server serving ~100% of lifetime traffic while the "fill" server has moved a few MB ever means a silently broken login (wrong/rotated password, expired block), NOT a backbone gap — and every "incomplete at provider" verdict reached in that state is wrong. Compare `day` bytes before and after a grab: the deltas prove which server actually served the job. Full diagnostic + repair recipe: `references/sabnzbd-provider-maintenance.md`.
+- **`set_config` will not write the servers section — edit the ini with the container stopped.** Six payload shapes (bare array, `{"servers": [...]}`, with/without `keyword`, GET and POST form body) all return a template row and change nothing, and some of them leave junk hostless server rows behind. SAB also rewrites its ini on shutdown, so edit `/config/sabnzbd.ini` only while the container is stopped, back it up first, and re-read the file to confirm — see the reference above.
+- **Judge "dead" on `bytes` vs `downloaded`, and check history BEFORE spending a byte.** On a failed slot, `bytes == downloaded` means the providers served everything they hold: the post is incomplete at source, no retry helps, and re-grabbing the SAME release re-spends its full size to fail identically. Read `sab._call('history', output='json')` for the title first and skip any release already sitting there with that pattern — the size field is the evidence, the shortfall count is not.
+- **Several release GROUPS failing the same way means stop, not "try the next posting".** Different groups still draw on the same backbone: when three posts for one title (x264, HEVC and a low-res group) all end short or `cannot be completed`, the title's coverage is the problem, not the pick. Report the tally with `bytes`/`downloaded` per attempt and offer the real options — a second provider block as a fill server, a different delivery channel (torrent swarm for the same title), or waiting for a repost — instead of spending another grab that reads as persistence. Say plainly that the route is exhausted; do not let a cheap fourth attempt look like diligence.
+- **Grabbing a SERIES episode: put the `SxxEyy` in the wanted term or the gate refuses the pick.** `quality.title_matches()` rejects an episodic candidate against an episode-less wanted string ("an episodic release cannot stand in for a standalone film"), which surfaces as `gate-refused:different-title` on a perfectly correct posting. Pass `wanted="<Series> S39E01 <Episode Title>"`; then `title_matches` is True and `held_state_for` correctly reports `none` for a real gap. A refusal here is a wording fault, never evidence the episode is unavailable.
+- **Prove the Usenet catalogue is fully searched before reporting a provider gap.** `GET /api/v1/indexer` and filter `protocol == "usenet"`. When that set holds a single indexer, every Usenet posting for the title has been seen and the correct verdict is "incomplete at the provider for this title", not "not indexed" — no further grab can change it, so stop and say so. Put the indexer count in the report: a user who reads only "not found" will reasonably ask you to look again, and the difference between an indexer miss and a backbone gap is exactly what decides the remedy (add a provider block vs add an indexer).
+- **`Verifying` is not success — a fully downloaded job can still fail at repair.** SAB walks
+  `Queued → Downloading → Verifying → Completed|Failed`, and a job that reaches 100% and sits in
+  `Verifying` for ~30 s can still end `Failed` with `bytes == downloaded`. Never report a grab as
+  "downloading, on its way" from a mid-flight percentage, and never call it done from `Verifying`:
+  poll until `status` is literally `Completed`, then probe the file. When a job dies at repair, the
+  payload is left in `sabnzbd/incomplete/<name>` — it is not a usable copy.
+- **A release you nearly queued is not evidence; the history is.** Before re-attempting a title,
+  read `sab._call('history')` for that name: an entry with `bytes == downloaded` and a repair
+  shortfall means the same release has already failed and re-adding it spends its whole size again
+  to fail identically.
 - Every grab spends block data, so grabs get per-item approval like deletes do: present candidates one at a time as library-holding vs Usenet-twin (resolution/codec/size on both sides, plus post age and grab count as the completion signal) with an explicit Grab/Skip choice — never batch-queue a shortlist.
 
 ## Where to run fetchers (homelab placement)
@@ -690,6 +730,30 @@ quality.verdict(title, held_height)            # pure decision
 An untagged SD release is **not** a proven upgrade — report it for a human decision.
 `scripts/usenet_triage.py --search --queue-upgrades` applies the gate and labels every
 candidate QUEUE / skip with the reason.
+
+**A one-word title defeats the matcher — gate on the year and junk out non-video first.**
+`title_matches("...", "Dig!")` happily accepts `Dig or Die`, `Shovel Knight Dig`, `Big Dig`,
+an ebook and a game repack, because one wanted word plus two extras is inside tolerance. For
+titles of one or two common words, require the release YEAR (±1) as a token and junk-reject
+`epub|pdf|audiobook|iso|repack|gog|steam|ps4|ps5|xbox|switch|v?N.N` before ranking, then read
+the survivors by hand. Without the year gate the shortlist is mostly homonyms and the real
+releases rank below them on seeds.
+
+**When the gate says upgrade but the candidate is SMALLER, look at a frame before swapping.**
+Height alone cannot rank two encodes when the bitrate per pixel moves the other way — a
+632x480 VP9 WEB-DL at 0.41 GB scored `upgrade` over a 512x384 h264 at 1.12 GB, while carrying
+a quarter of the bits per pixel. Extract the same timestamp from both and compare artefacts:
+`ffmpeg -nostdin -y -ss <t> -i <file> -map 0:v:0 -frames:v 1 -update 1 /tmp/x.png` (the
+`-update 1` silences the image2 sequence warning; without `-map 0:v:0` the grab can fail with
+"Output file does not contain any stream"), then view both. Blocking, ringing and banding in
+the gradients decide it — the cleaner encode wins even at the lower bitrate, and that
+comparison is the evidence to show the user rather than the height numbers.
+
+**A codec change is a compatibility decision, not just a quality win — surface it before the
+swap.** Moving h264 to VP9/Opus buys resolution but can force transcoding on TVs and other
+clients that direct-play h264, and the row plays worse after an upgrade that only looked
+better on paper. State the trade-off, park the original, and offer a Tdarr h264 recode as the
+follow-up: the user may prefer slightly lower resolution that plays everywhere.
 
 Sort candidates by **resolution first, seeds second** — seeders alone is how a PDTV rip
 outranks a genuine 1080p release.

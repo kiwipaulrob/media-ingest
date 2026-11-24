@@ -63,9 +63,19 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
   nothing while the title IS indexed. Search BROAD (bare title) and filter
   by tokens in code — same discipline as the torrent side.
 - Usenet rows carry no seeders. Judge completion odds by post **age** versus
-  provider retention plus **grabs** (high grabs = recently completable).
-  Treat posts older than ~3,500 days as gambles: try the cheapest one first
+  provider retention plus **grabs** (high grabs = recently completable) — but grabs
+  count past downloads, never current article presence: indexed posts with 60-1400
+  grabs have failed with the articles long gone from every backbone. Always test-grab
+  the smallest candidate first and read its verdict before batch-queueing; one dead
+  post burns minimal block space, a dead batch burns it all. Treat posts flagged
+  `stale_post` as gambles: try the cheapest one first
   to calibrate real retention before spending block space on the rest.
+  `media_lib.hunt.post_age_days()` computes a row's age in days from
+  `ageMinutes`/`publishDate`, and `hunt.rank()` annotates every Usenet row with
+  `age_days` plus the `stale_post` flag past `USENET_STALE_DAYS` — check the flag
+  before batch-queueing old posts. `media_lib.sab.watch()` polls a queued job to
+  its terminal state (done/failed/timeout with the fail message); use it instead
+  of hand-rolled queue/history polling loops.
 - A zero is genuine only after controls pass: same-indexer search for a
   popular title must return ~100 hits, else the indexer (not the subject)
   is broken.
@@ -127,10 +137,29 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
 ## Completion cover: second backbone as fill server + paused-job diagnosis
 
 - Run two providers on different backbones: main at priority 0, fill at
-  priority 1 (`mode=set_config&section=servers&name=<n>&host=<h>&port=563
-  &username=<u>&password=<p>&connections=20&ssl=1&priority=1&enable=1`).
-  SABnzbd pulls missing blocks from the fill server automatically — no
-  per-job action needed once it exists.
+  priority 1. SABnzbd pulls missing blocks from the fill server automatically —
+  no per-job action needed once it exists.
+- **Do not create or edit server rows through the API.** `mode=set_config` with
+  `section=servers` answers `{"status": true}` plus a template row while changing
+  nothing — tried as a bare array, `{"servers": [...]}`, with and without `keyword`,
+  as GET query and POST form body, and with `keyword` set to the server name. It also
+  appends hostless junk rows named after whatever you passed as `keyword`. Edit
+  `sabnzbd.ini` directly with the container **stopped** (SAB rewrites the ini on
+  shutdown, so a live edit is discarded on the next restart). Full recipe, including how
+  to find the ini and prove the change: `references/sab-server-config-repair.md`.
+- **A second provider can be enabled, reachable and still unused.** Config state is not
+  usage. Compare per-server lifetime/day bytes from `mode=server_stats`: a fill server
+  showing megabytes against a primary showing hundreds of gigabytes has a dead login, not
+  a retention gap. Confirm with a raw NNTP handshake — `482 Invalid username or password`
+  means rotate the credential, `281 Authentication accepted` means the credential is fine
+  and the client's stored copy is stale, so the fix is client-side.
+- `media_lib.sab._call()` applies `str()` to every parameter, so passing a dict sends a
+  Python repr (single quotes) and SAB silently mis-parses it. Pass `json.dumps(...)` when
+  a parameter must be JSON.
+- **Prove a credential change by traffic, never by a config read** — SAB can return masked
+  or stale values, so a matching `get_config` proves nothing either way. Grab something and
+  diff `server_stats` day counters for both servers, and grep the log for
+  `Connecting <n>@<host> finished` to show connections actually open.
 - A job that instantly re-pauses after resume is SABnzbd's verdict, not a
   glitch: resume is per-job (`mode=resume&value=<nzo_id>`), and a queue-level
   resume does not clear a job-level pause. Read `mode=warnings` to learn WHY

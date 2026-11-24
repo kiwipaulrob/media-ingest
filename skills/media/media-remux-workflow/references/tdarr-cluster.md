@@ -395,6 +395,46 @@ Rules:
   then remove the old one. Recreating a node container aborts any encode in progress, so
   rotate when the nodes are idle.
 
+## Creating a flow over the API (v3) — and the scan that eats a library index
+
+Solved Nov 2026 while adding a one-off VP9→h264 flow. All three traps cost a round of guessing:
+
+1. **There is no `saveFlow` endpoint.** `POST /api/v2/saveFlow` returns **404** on 3.00.00.
+2. **`cruddb` insert takes mode `insert` with key `obj`.** `insertOne` returns **400 Bad Request**;
+   `insert` returns 200 and creates the flow. **The server assigns its own `_id`** — the `_id` in the
+   document you send is ignored (sent `vp9h264x`, got `sLJAlc2`), so always re-read `getAll` and take
+   the real id before wiring anything to it.
+3. **Clone-then-edit is the safe way to author a flow.** `getById` the working flow, deep-copy,
+   change `name` and the one `inputsDB` field you actually want different (e.g. the
+   `checkStreamProperty` `valuesToMatch`), then insert. Hand-building `flowPlugins` is how a flow
+   ends up with `inputs` instead of `inputsDB` and silently runs defaults.
+
+### `scanFresh` DESTROYS a library's file records — never use it to force a re-probe
+
+Proven 18 Nov 2026: after replacing a file on disk, Tdarr still cached the **old** codec, so a
+codec-gated flow answered `Not required`. Running
+`scan-files {mode:'scanFresh', dbID:<lib>}` against the library **deleted all 635 of its file
+records and did not rebuild them** (`getAll` dropped 1634 → 999; every record for that DB was gone).
+Media was untouched — `filejsondb` only — but the library index was empty and needed a real scan.
+
+- `scanFresh` is not "re-read metadata"; it is a reset. Do not reach for it to refresh one file.
+- **Do NOT assume a plain rescan heals it — this was NOT solved, so verify by counting.** After the
+  purge, `scan-files {mode:'scanFindNew', arrayOrPath:['/media/videos/<lib>']}` answered `OK` on every
+  attempt while the server log read `Scanner <db>: Sending 0 files for extraction` / `Finished`, and
+  the per-DB record count stayed at **0** across five minutes and repeated scans. The media and the
+  config were both ruled out first: 634 files listed inside the container, `folder` correct,
+  `processLibrary: true`, `containerFilter` includes `mkv`, and the sibling library scanned fine.
+  So a scan that returns `OK` and indexes nothing is the failure mode — count `FileJSONDB` rows per
+  `DB` before and after, and if the count does not move, stop and diagnose the scanner instead of
+  reporting a rebuild. A library showing 0 records also silently stops transcoding for that library,
+  so treat it as an outage, not a cosmetic gap.
+- Passing a **single file path** as `arrayOrPath` is safe and indexes only that file (it is not a
+  parent path). Use it to register one new file without touching the rest of the library.
+- Expect a **stale `video_codec_name` after any out-of-band file swap** (replace/remux/copy). The
+  flow gate reads the DB value, not the bytes, so a VP9 file that used to be h264 is reported
+  `Not required`. There is no clean per-file metadata refresh — re-scanning the library is the only
+  route, which is why the swap-then-recode order matters: get the file in place, scan once, then queue.
+
 ## Probing a whole library (do not use CT105's ffprobe)
 
 CT105's ffprobe is a **docker wrapper** — one container start per file, and a direct

@@ -85,6 +85,8 @@ A "how are downloads going?" answer is a states breakdown plus proof of motion, 
 - Report `states` counts from one fresh `/api/v2/torrents/info` fetch, then split in-progress into **actively downloading** (`dlspeed > 1024`) vs **stalled** (`progress > 0.05`, `dlspeed <= 1024`, `num_seeds == 0`). A queue of 139 with 0 actively downloading is stalled-or-parked, not working — the total alone hides that.
 - Name the `queuedDL` wedge explicitly: entries parked by `max_active_downloads` are waiting for a slot, not dead. Do not present them as failures or re-source them.
 - Pair every qB answer with the SAB queue (`mode=queue`: slots, status, percentage) — SAB idle with one paused slot plus qB at 0 B/s is the full picture, and either half alone misleads.
+- Prove client health from `/api/v2/sync/maindata` `server_state` before blaming swarms: `connection_status` plus `dht_nodes` in the hundreds means the client reaches the network — 0 B/s past that point is swarm-side, not client-side.
+- Read per-torrent trackers (`/api/v2/torrents/trackers?hash=`) by status code: 1 = never contacted, 2 = working, 4 = failing; seeds/peers of -1 = never scraped. Working DHT/PeX/LSD with zero peers plus uncontacted or failing trackers means peer discovery never happened — inject public trackers and reannounce before calling the swarm dead.
 
 An *arr-style pipeline writes to the same client. A 24-entry queue grew to 143
 mid-session from named music-doc torrents this agent never added. So:

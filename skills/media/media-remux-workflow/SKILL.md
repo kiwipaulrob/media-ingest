@@ -111,6 +111,27 @@ Tdarr's own state is worth checking every time, because "installed" is not
 `Files`, `Jobs`, `ApiKeys` all 0), `NODE_LINK` was unset and only ports
 8265/8266 were published — an install that had never processed a single file.
 
+## Invoking ffmpeg/ffprobe from a remote shell
+
+**ffmpeg reads stdin for its interactive command loop, so it will eat a script that arrives on
+stdin.** Any ffmpeg call inside a piped script — `ssh host 'bash -s' <<'EOF' ... EOF`, a driver
+fed by a pipe, a nested heredoc — consumes the remaining script lines: the run appears to
+stall and emits `Enter command: <target>|all <time>|-1 <command>[ <argument>]`, then the shell
+executes the leftover fragments as junk (`bash: line N: error: command not found`). The encode
+never ran even though the script "completed". Always pass **`-nostdin`** and redirect
+**`</dev/null`** for every ffmpeg invocation inside a piped or heredoc script, and treat a
+decode/probe that produced no output as unrun rather than passed.
+
+**ffprobe has no `-nostdin`.** Passing it fails with `Failed to set value '-v' for option
+'nostdin': Option not found` while still printing the version banner, so the call yields no
+stream or format data at all — which silently reads as "this file has no streams" and can be
+recorded as a finding about the media when it is purely an argument error. Use `</dev/null`
+for ffprobe and drop the flag; only ffmpeg takes `-nostdin`.
+
+**When a probe returns nothing, read stderr before writing down a conclusion.** An empty result
+is an argument or path fault (banner, `Option not found`, `No such file`) far more often than a
+media property; a probe you cannot show output from has not established anything.
+
 ## Remux pass (mkvmerge first)
 
 - Prefer `mkvmerge -q -o <dest> <src>` over `ffmpeg -c copy` — sources
@@ -196,6 +217,13 @@ them for a pick-and-choose delete as tiers, never one flat list:
   plus the `_replaced/` media total separately — the user decides per tier
   or per file, and only gate-passers from the confidence gate above are
   ever in the SAFE tier.
+- **A raw `.ts` capture is usually redundant beside the `.mkv` remuxed from it — prove it by
+  probing BOTH, then weigh it as a reclaim candidate.** Same video (codec, width, height) plus the
+  same primary audio, with the `.ts` only adding teletext/mp2/secondary subtitle streams, means the
+  mkv is the keeper and the `.ts` is the space. It is NOT the automatic-duplicate case (sizes differ
+  by several percent, since the remux dropped overhead and junk streams), so present it as a sized
+  deletion candidate rather than deleting it. Report the pair side by side — both sizes, both stream
+  lists — because "3.98 GB .ts beside the 3.62 GB mkv" is the whole argument.
 
 ## Re-encode pass (damaged sources)
 
@@ -495,6 +523,34 @@ Run `snapshot` BEFORE a batch and `restore` after; check `prune_foreign` shows 0
   audio|sar|legacy --files ... [--apply]` (lesson 42). Flows stay unlinked;
   a new flow is proven on ONE file first. API patterns and pitfalls in
   `references/tdarr-cluster.md`.
+- **`scanFresh` PURGES a library's file records — it is not a re-probe.** Run for a single file to
+  pick up a changed codec, it emptied musicdocos (635 records): the media was untouched but the
+  library's index was gone and every row had to be rebuilt. There is no clean per-file metadata
+  refresh.
+- **Do not assume a normal rescan heals a purged index — verify it, and treat this as unresolved.**
+  After the purge above, `scanFindNew` over the library's own folder completed with `OK` while the
+  scanner logged `Scanner <db>: Sending 0 files for extraction` on every attempt and the record
+  count stayed at 0 for minutes — with the media verifiably present (634 files listed inside the
+  container, correct `folder`, `processLibrary: true`, matching `containerFilter`). A scan that
+  returns `OK` and indexes nothing is the failure mode to watch for; count the per-DB records before
+  and after and never report a rebuild you have not counted. If it does not restore, stop and
+  diagnose the scanner rather than assuming the library is fine.
+- **A file replaced on disk keeps its OLD codec in Tdarr's database, and a queued flow reads the
+  database first.** After swapping a VP9 item in, the flow answered `Not required` because the
+  cached `video_codec_name` was still the previous h264 — the gate never saw the new codec. Re-index
+  the library and confirm the record shows the real codec BEFORE queueing. Queue with
+  `bulk-update-files {fileIds:[<file path>], updatedObj:{flowId, TranscodeDecisionMaker:'Queued',
+  bumped:true, lastTranscodeDate:0, holdUntil:0}}` — the record `_id` IS the file path.
+- **Create a new flow with `cruddb` mode `insert` and key `obj`.** Mode `insertOne` returns 400, and
+  the server assigns its own `_id` — read it back from `getAll` rather than trusting the id you
+  sent. Clone a house flow and change only the gate (`inputsDB.valuesToMatch`), so encoder, preset,
+  quality and the filename exclusions stay house-standard.
+- **`scan-files` answers the bare string `OK`**, and `get-filescanner-status` is not dependably
+  JSON: parse tolerantly and confirm the scan by counting records, or a scan that started fine
+  reads as a failed one.
+- **Close the schedule window again after an approved out-of-hours encode.** Opening it for one file
+  leaves every hour block open to the cutoff, and the libraries' linked flow then starts on
+  anything else the scan queued.
 - Verify the live node roster before queueing or enabling anything:
   `get-nodes` names plus a `docker ps` on each compute host. Nodes can be
   (re-)registered between sessions by someone else, so a secondhand "no
@@ -561,8 +617,102 @@ Both consequences have to be coded around, because both look like success at the
 Verify collection membership with a USER-SCOPED read (`/Users/{uid}/Items?ParentId=<collId>`) — the
 anonymous endpoint reports 0 children on a full BoxSet and reads as a failed add.
 
+**The same scoping trap hides locks.** A `LockedFields` check made through `/Items?Ids=...` (a
+search DTO) returns `null` even when the lock is set, which reads as "the lock did not take" and
+invites a pointless second write. Read `/Users/{uid}/Items/{id}?Fields=Overview,LockedFields` and
+check `LockData` alongside it before concluding anything; a failed re-read is usually the wrong
+endpoint, not a failed write. Use `jellyfin.lock_item(id, fields=("Name","Overview"))` to apply
+it — it is a fetch-merge that touches nothing but the lock flags, so re-running it is safe and it
+cannot clobber the text it is protecting.
+
 - **Chunk `POST /Collections/{id}/Items` to ~25 ids per call.** One giant `?Ids=` query string with a few hundred ids fails `414 URI Too Long` and adds nothing — the batch then reports success on verification while the collection sits unchanged (proven Nov 2026: 293-id add 414d, fixed by 25-id chunks).
 - **Verify version-grouped swaps by `MediaSources`, never by primary `Path`.** A same-folder second cut (or a `- WS PDTV` / `part2` sibling) is a secondary source on an existing row, so an exact-path catalog reports it `GONE` while the row already carries it as h264 — read each source's own streams to prove the swap, and file the ROW's id (once) into the collection.
+
+## Audio: never re-encode video for an audio fault (standing rule, 19 Nov 2026)
+
+**An audio fault never justifies re-encoding video.** Probe first: if the picture is fine and the
+audio is the problem, fixing it is an audio job (`-c:v copy`), which takes minutes instead of hours
+and costs no picture quality. The 19 `h264+opus` items in this library are the evidence — a past
+pass re-encoded their video to h264 and left the audio untouched, which is half a fix for an audio
+problem.
+
+### Opus/Vorbis in MP4 is a CONTAINER fault — remux, do not transcode
+
+Opus-in-MP4 is the documented out-of-sync/direct-play offender here (YouTube AV1+Opus merges arrive
+that way). The container, not the codec, is the variable, and moving it is free:
+
+```
+ffmpeg -nostdin -i in.mp4 -map 0 -c copy out.mkv     # measured: 1.3 s, 174307733 -> 173750165 B,
+                                                     # av1+opus intact, 2254.501 -> 2254.508 s
+```
+
+So: **remux MP4→MKV first**, keep Opus, done. Convert audio to AAC only when a specific client
+still fails *after* the container fix. Opus/Vorbis in MKV is not a fault.
+
+Batch tool — `scripts/remux_opus_mp4.py` (dry run is the default, `--apply` to act):
+
+```bash
+python3 scripts/tdarr_preserve_userdata.py snapshot           # container change = new item ids
+python3 scripts/remux_opus_mp4.py --library musicdocos         # lists MP4/MOV+Opus candidates
+python3 scripts/remux_opus_mp4.py --library musicdocos --apply # remux, verify, park, swap
+python3 scripts/tdarr_preserve_userdata.py restore
+```
+
+It selects MP4/MOV items whose first audio stream is Opus from Jellyfin, keeps Opus (container move
+only), and per file requires streams-identical + duration within 2 s + a head/tail decode before it
+parks the original under `_replaced/opus-mp4-remux-<date>/` (size-checked) and swaps. Any failure
+deletes the temp and leaves the original alone. ~1-3 s per file.
+
+### Never bulk-transcode audio on codec grounds alone
+
+Measured Nov 2026, all libraries: **114 Opus items (35.6 GB)** — mp4 90 / mkv 23 / mov 1; video vp9
+48, av1 30, h264 19, hevc 17; resolution 720p 57, 1080p 45. Three days of Jellyfin logs contained
+**zero** ffmpeg-transcode sessions and **no** Opus mention, i.e. no measured playback problem at all.
+A blanket Opus→AAC pass would have been lossy-to-lossy across 35.6 GB to fix nothing.
+
+- A stereo audio transcode in Jellyfin is cheap CPU — it is not a reason to rewrite files.
+- Blanket AAC is defensible ONLY against the explicit goal "zero transcoding on every device always",
+  and that is a user decision with a quality cost, not a default.
+- The bigger unaddressed compatibility risk in that set is **AV1 video (30 items)**, which does need a
+  video re-encode — treat it separately and with the quality trade-off stated.
+
+## VP9/AV1: why the legacy flow ignores them, and the right fix
+
+The legacy whitelist deliberately excludes VP9/AV1/H.265. That is quality protection, not an
+oversight, and the library proves it (measured Nov 2026 across both music libraries):
+
+| codec | items | size | typical |
+|---|---|---|---|
+| h264 | 661 | 913 GB | mixed |
+| hevc | 96 | 136 GB | 1080p |
+| vp9 | 47 | 18 GB | **42 of 47 are 1920x1080** |
+| av1 | 32 | 6 GB | mostly 1280x720 |
+| mpeg2video | 8 | 7 GB | 720x576 SD |
+| mpeg4 | 1 | 0.5 GB | 704x396 |
+
+Those VP9/AV1 items are the **best copies in the library** — 1080p web encodes of the YouTube
+music-doc strands — so pushing them through a flow tuned for a 512x384 Xvid rip loses a generation
+of quality, grows the files (VP9/AV1 are 30-50% more efficient than h264, so 18 GB of VP9 can land
+near 30 GB), and burns hours of CPU for a worse result. **Never add VP9/AV1 to the legacy
+whitelist** to "fix compatibility": that silently re-encodes 79 high-resolution items overnight.
+
+### The compatibility problem is usually the AUDIO, not the video
+
+Every VP9 item and 30 of 32 AV1 items carry **Opus**, so check the container before blaming the video
+codec — the rule, the measured remux numbers and the batch script are in
+**"Audio: never re-encode video for an audio fault"** above. In short: Opus-in-MP4 remuxes to MKV
+losslessly, Opus-in-MKV is not a fault, and the house `j2PAq5X` audio flow is the fallback.
+
+Escalate to a video re-encode only when a client genuinely cannot decode the codec — AV1 is the
+weakest supported, and those are only 720p. For a **low-resolution** VP9 item (a 632x480 WEB-DL is
+the smallest VP9 in the library at 0.4 GB) a one-off h264 recode is cheap and loses little; that is
+a scalpel, not a policy.
+
+Recipe for that one-off: clone `b3VtKqt`, set the `checkStreamProperty` `valuesToMatch` to
+`vp9,av1`, insert (see `references/tdarr-cluster.md` — `cruddb` mode `insert`/`obj`, and the server
+picks the `_id`), keep it **unlinked**, park a copy of the source first because
+`replaceOriginalFile` deletes it, queue exactly that file, and prove it on that one file before
+ever considering a second.
 
 ## Priority order for a backlog run
 
