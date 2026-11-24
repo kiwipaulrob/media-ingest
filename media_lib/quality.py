@@ -470,6 +470,50 @@ def held_height_for(term: str) -> Optional[int]:
     return int(height) if isinstance(height, int) else None
 
 
+def slot_empty(series: str, season: int, ep: int) -> Optional[bool]:
+    """True when the (series, season, ep) slot verifiably holds no media.
+
+    False when an episode row with a path fills it. None when the slot cannot
+    be verified (no Series row found, listing failed) — the caller must fall
+    back to the normal held-quality gate, never treat unknown as empty.
+    Season 0 is the wildcard: any season holding that episode number counts
+    as occupied. Shared by the ingest --spec gate and the queue guard so a
+    genuine gap fill is not refused as whole-series 'ambiguous'.
+    """
+    from . import jellyfin  # deferred: quality stays import-light for tests
+
+    if not series or not ep:
+        return None
+    try:
+        uid = jellyfin.user_id()
+        rows = jellyfin.get_json(
+            f"/Users/{uid}/Items",
+            params={"searchTerm": series, "Recursive": "true",
+                    "Fields": "Path,ParentIndexNumber,IndexNumber",
+                    "Limit": "30"}) or {}
+    except Exception:
+        return None
+    series_rows = [i for i in (rows.get("Items") or [])
+                    if i.get("Type") == "Series"]
+    if not series_rows:
+        return None
+    try:
+        for s in series_rows:
+            eps = jellyfin.get_json(
+                f"/Shows/{s.get('Id')}/Episodes",
+                params={"Fields": "Path,ParentIndexNumber,IndexNumber"}) or {}
+            for e in (eps.get("Items") or {}):
+                if int(e.get("IndexNumber") or 0) != ep:
+                    continue
+                if season and int(e.get("ParentIndexNumber") or 0) != season:
+                    continue
+                if e.get("Path"):
+                    return False
+        return True
+    except Exception:
+        return None
+
+
 def decide(candidate_title: str, term: str,
            wanted_year: Optional[int] = None, max_extra: int = MAX_EXTRA_WORDS) -> Dict[str, object]:
     """verdict() against whatever the library actually holds for `term`."""

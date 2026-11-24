@@ -421,6 +421,24 @@ def guard_pick(pick: Dict[str, Any], wanted: Optional[str] = None,
         return {"ok": False, "reason": "gate-refused:untestable",
                 "title": candidate,
                 "detail": "no wanted term — cannot prove this is not a duplicate"}
+    # Slot emptiness pre-check: a wanted term naming a full SxxEyy slot that
+    # verifiably holds no media is a genuine gap — the whole-series match
+    # would otherwise return 'ambiguous'/'held-unknown' and block the queue
+    # (shared helper with the ingest --spec gate). Bare Exx terms keep the
+    # old behaviour: without a season the series parse is unreliable.
+    try:
+        from . import slot_check
+        _season, _ep = slot_check.slot_numbers(term)
+        if _season and _ep:
+            _series = re.sub(r"\s*S\d{1,2}E\d{1,2}\s*", " ", term,
+                             flags=re.IGNORECASE).strip()
+            if _series and quality.slot_empty(_series, _season, _ep):
+                return {"ok": True, "title": candidate, "term": term,
+                        "verdict": "no-local-copy", "held_height": None,
+                        "candidate_height": quality.release_height(candidate),
+                        "reason": f"S{_season:02d}E{_ep:02d} slot verified empty"}
+    except Exception:
+        pass
     dec = quality.decide(candidate, term, wanted_year=wanted_year)
     verdict = str(dec.get("verdict"))
     if dec.get("queue"):

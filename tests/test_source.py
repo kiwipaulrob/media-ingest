@@ -550,3 +550,42 @@ def test_torrent_for_path_skips_implausible_torrents(monkeypatch):
     got = qbmod.torrent_for_path('/downloads-zmedia/Wanted.Film.1080p/movie.mkv')
     assert got and got['hash'] == 'h1'
     assert calls == ['h1']
+
+
+def test_guard_slot_empty_queues_verified_gap(monkeypatch):
+    """A wanted SxxEyy slot verified empty queues without consulting
+    the whole-series gate (which would refuse as ambiguous)."""
+    from media_lib import quality, source
+
+    monkeypatch.setattr(quality, "slot_empty", lambda series, s, e: True)
+    out = source.guard_pick({"title": "Women.Make.Film.2018.11of14.1080p"},
+                            wanted="Women Make Film S01E11")
+    assert out["ok"] is True
+    assert out["verdict"] == "no-local-copy"
+
+
+def test_guard_slot_occupied_falls_back_to_gate(monkeypatch):
+    """An occupied slot still runs the normal held-quality gate."""
+    from media_lib import quality, source
+
+    monkeypatch.setattr(quality, "slot_empty", lambda series, s, e: False)
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "held", "height": 1080,
+                                      "matched": "Held Show"})
+    out = source.guard_pick({"title": "Held.Show.S01E02.1080p"},
+                            wanted="Held Show S01E02")
+    assert out["ok"] is False
+
+
+def test_guard_unverifiable_slot_falls_back_to_gate(monkeypatch):
+    """slot_empty=None (cannot verify) must not read as a gap."""
+    from media_lib import quality, source
+
+    monkeypatch.setattr(quality, "slot_empty", lambda series, s, e: None)
+    monkeypatch.setattr(quality, "held_state_for",
+                        lambda term: {"state": "ambiguous", "height": None,
+                                      "matched": 5})
+    out = source.guard_pick({"title": "Some.Show.S01E03.1080p"},
+                            wanted="Some Show S01E03")
+    assert out["ok"] is False
+    assert "held-unknown" in str(out.get("reason", ""))

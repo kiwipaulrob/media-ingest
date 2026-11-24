@@ -205,12 +205,29 @@ def main(argv=None) -> int:
                 # compare against the series folder or every episode spec
                 # misreads as 'different-title' (Women Make Film S01E03).
                 label = Path(dest).parent.parent.name
+            # Slot emptiness pre-check: when the destination slot verifiably
+            # holds no media, there is nothing to compare against, so skip the
+            # held-quality gate (treat as no-local-copy). Without this,
+            # held_state_for() sees the whole series and returns 'ambiguous'
+            # (4+ episodes) or 'different-title', which blocks a genuine gap
+            # fill. The gate still runs when the slot is occupied.
+            _slot_empty = False
             try:
-                # Same-file check: the stem (never the extension — ".mkv" is
-                # not a title word) with room for release descriptors, since
-                # src and dest describe one file. Hunts keep the strict budget.
-                verdict = quality.decide(Path(src).stem, label, max_extra=6)
-                v = str(verdict.get("verdict"))
+                from media_lib import quality as _quality
+                _series, _season, _ep = series_slot_from_path(dest)
+                if _quality.slot_empty(_series or "", _season or 0, _ep or 0):
+                    _slot_empty = True
+            except Exception:
+                _slot_empty = False
+            try:
+                if _slot_empty:
+                    v = "no-local-copy"
+                else:
+                    # Same-file check: the stem (never the extension — ".mkv" is
+                    # not a title word) with room for release descriptors, since
+                    # src and dest describe one file. Hunts keep the strict budget.
+                    verdict = quality.decide(Path(src).stem, label, max_extra=6)
+                    v = str(verdict.get("verdict"))
             except Exception as exc:  # noqa: BLE001
                 v = f"check-failed:{type(exc).__name__}"
             if v in ("same-or-worse", "marginal", "different-title"):

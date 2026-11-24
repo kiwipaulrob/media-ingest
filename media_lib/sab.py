@@ -74,6 +74,47 @@ def find_completed(name_contains: str, limit: int = 30) -> Optional[Dict[str, An
     return None
 
 
+def watch(job: str, timeout_s: int = 600, poll_s: int = 20) -> Dict[str, Any]:
+    """Poll queue() + history() until `job` (nzo id or name fragment) leaves
+    the queue. Returns the terminal state: {'done', 'status', 'fail_message',
+    'size', 'name'}. Hand-rolled SAB polling in callers kept crashing on
+    trivial bugs (a format string eating its own braces, a timeout kwarg on
+    the wrong call) — use this instead of re-inventing the loop.
+    Pure wrapper over queue()/history(); no new endpoint shapes."""
+    import time
+
+    deadline = time.time() + max(timeout_s, 1)
+    needle = str(job or "").lower()
+    last_seen: Dict[str, Any] = {}
+    while time.time() < deadline:
+        try:
+            jobs = queue()
+        except SabError:
+            jobs = []
+        hit = None
+        for j in jobs:
+            if needle and (needle == str(j.get("nzo_id") or "").lower()
+                           or needle in str(j.get("filename") or "").lower()):
+                hit = j
+                break
+        if hit:
+            last_seen = {"name": hit.get("filename"), "status": hit.get("status"),
+                         "percentage": hit.get("percentage")}
+            time.sleep(max(poll_s, 1))
+            continue
+        for s in history(limit=10):
+            if needle and (needle == str(s.get("nzo_id") or "").lower()
+                           or needle in str(s.get("name") or "").lower()
+                           or (last_seen and str(s.get("name") or "") == str(last_seen.get("name") or ""))):
+                return {"done": True, "status": s.get("status"),
+                        "fail_message": s.get("fail_message") or "",
+                        "size": s.get("size"), "name": s.get("name")}
+        time.sleep(max(poll_s, 1))
+    return {"done": False, "status": "timeout",
+            "fail_message": f"still queued after {timeout_s}s",
+            "size": None, "name": (last_seen or {}).get("name")}
+
+
 _SHORT_RE = re.compile(r"(\d+)\s+short")
 #: "Repair failed, N short" is worth exactly ONE retry when N is small; a large
 #: N means the backbone simply lacks the articles and no retry will fix it.

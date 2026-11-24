@@ -308,3 +308,66 @@ def test_plural_tolerance():
         "The Internet's Own Boy (2014)", max_extra=6)
     # singular-variant never licenses a wrong film on its own
     assert not quality.title_matches("Glass.2019.1080p.BluRay", "Glas (2019)")
+
+
+def test_slot_empty_true_when_slot_unheld(monkeypatch):
+    """A series holding E02/E03 but not E11 reads slot 11 as empty."""
+    from media_lib import jellyfin, quality
+
+    series = _item("Women Make Film", "Series", None)
+    eps = [_item("Ep2", "Episode", "/d/S01E02.mkv", ParentIndexNumber=1, IndexNumber=2),
+           _item("Ep3", "Episode", "/d/S01E03.mkv", ParentIndexNumber=1, IndexNumber=3)]
+
+    def fake_get_json(path, params=None, **kw):
+        if path.startswith("/Shows/"):
+            return {"Items": eps, "TotalRecordCount": len(eps)}
+        return {"Items": [series], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "user_id", lambda: "u1")
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    assert quality.slot_empty("Women Make Film", 1, 11) is True
+
+
+def test_slot_empty_false_when_slot_held(monkeypatch):
+    from media_lib import jellyfin, quality
+
+    series = _item("Women Make Film", "Series", None)
+    eps = [_item("Ep2", "Episode", "/d/S01E02.mkv", ParentIndexNumber=1, IndexNumber=2)]
+
+    def fake_get_json(path, params=None, **kw):
+        if path.startswith("/Shows/"):
+            return {"Items": eps, "TotalRecordCount": len(eps)}
+        return {"Items": [series], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "user_id", lambda: "u1")
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    assert quality.slot_empty("Women Make Film", 1, 2) is False
+
+
+def test_slot_empty_none_when_unverifiable(monkeypatch):
+    """No Series row, or a failed listing, is unknown — never empty."""
+    from media_lib import jellyfin, quality
+
+    monkeypatch.setattr(jellyfin, "user_id", lambda: "u1")
+    monkeypatch.setattr(jellyfin, "get_json",
+                        lambda path, params=None, **kw: {"Items": [], "TotalRecordCount": 0})
+    assert quality.slot_empty("Women Make Film", 1, 11) is None
+    assert quality.slot_empty("", 1, 11) is None
+    assert quality.slot_empty("Women Make Film", 1, 0) is None
+
+
+def test_slot_empty_season_zero_is_wildcard(monkeypatch):
+    from media_lib import jellyfin, quality
+
+    series = _item("Show", "Series", None)
+    eps = [_item("E2", "Episode", "/d/S02E02.mkv", ParentIndexNumber=2, IndexNumber=2)]
+
+    def fake_get_json(path, params=None, **kw):
+        if path.startswith("/Shows/"):
+            return {"Items": eps, "TotalRecordCount": len(eps)}
+        return {"Items": [series], "TotalRecordCount": 1}
+
+    monkeypatch.setattr(jellyfin, "user_id", lambda: "u1")
+    monkeypatch.setattr(jellyfin, "get_json", fake_get_json)
+    assert quality.slot_empty("Show", 0, 2) is False
+    assert quality.slot_empty("Show", 1, 2) is True

@@ -66,3 +66,25 @@ def test_queue_refuses_a_held_copy_without_adding(monkeypatch):
                       "downloadUrl": "http://x/y"}, wanted="The Show")
     assert out["ok"] is False
     assert str(out.get("error", "")).startswith("gate-refused:")
+
+
+def test_post_age_days_prefers_tracker_minutes():
+    assert hunt.post_age_days({"ageMinutes": 2880}) == 2
+    assert hunt.post_age_days({"age": 3}) == 3
+    assert hunt.post_age_days({}) is None
+    assert hunt.post_age_days({"ageMinutes": "junk"}) is None
+
+
+def test_rank_flags_stale_usenet_posts():
+    old = {"title": "Ancient.Post.2018.NZB", "protocol": "usenet",
+           "grabs": 65, "downloadUrl": "http://x/y", "ageMinutes": 3000000}
+    new = {"title": "Fresh.Post.NZB", "protocol": "usenet",
+           "grabs": 1, "downloadUrl": "http://x/z", "ageMinutes": 60}
+    tor = {"title": "Show.S01E01.720p", "protocol": "torrent",
+           "seeders": 5, "size": 1}
+    out = hunt.plan([old, new, tor])
+    by_title = {r["title"]: r for r in out}
+    assert by_title["Ancient.Post.2018.NZB"]["stale_post"] is True
+    assert by_title["Ancient.Post.2018.NZB"]["age_days"] == 2083
+    assert by_title["Fresh.Post.NZB"]["stale_post"] is False
+    assert "stale_post" not in by_title["Show.S01E01.720p"]

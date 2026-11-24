@@ -20,6 +20,42 @@ from typing import Any, Dict, List, Optional
 
 _EP = re.compile(r"[Ss]?(\d{1,2})[EeXx](\d{1,2})")
 
+#: Usenet posts older than this (days) get flagged, never refused: grabs
+#: look healthy on ancient posts whose articles are long gone from the farm
+#: (a 2018 MVGroup post with 65 grabs aborted after 35 MB). A stale flag is
+#: a nudge to verify before spending block data, not a verdict.
+USENET_STALE_DAYS = 2000
+
+
+def post_age_days(result: Dict[str, Any]) -> Optional[int]:
+    """Age of a Prowlarr row in days, or None when unstated/unparseable.
+
+    Prefers the tracker's own ageMinutes; falls back to publishDate.
+    Pure — no network."""
+    has_minutes = result.get("ageMinutes") is not None
+    has_age = result.get("age") is not None
+    has_pub = bool(result.get("publishDate"))
+    if not (has_minutes or has_age or has_pub):
+        return None
+    if not has_minutes and not has_age and has_pub:
+        try:
+            from datetime import datetime, timezone
+            pub = str(result.get("publishDate"))
+            dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return max(int((datetime.now(timezone.utc) - dt).total_seconds() // 86400), 0)
+        except (TypeError, ValueError):
+            return None
+    try:
+        mins = result.get("ageMinutes")
+        if mins is None:
+            mins = (result.get("age") or 0) * 24 * 60
+        mins = int(mins)
+    except (TypeError, ValueError):
+        return None
+    return max(mins, 0) // 1440
+
 
 def title_keys(title: str) -> set:
     """Lowercase alphanumeric tokens — the only normalization allowed.
@@ -73,6 +109,14 @@ def plan(
         grabs = r.get("grabs") or 0
         if str(r.get("protocol", "")).lower() == "torrent" and seeds < min_seeders:
             continue
+        if str(r.get("protocol", "")).lower() == "usenet":
+            # Age signal, not a verdict: grabs look healthy on ancient posts
+            # whose articles are long gone (2018 post, 65 grabs, aborted at
+            # 35 MB). stale_post nudges the caller to verify before spending
+            # block data; it never refuses the pick.
+            age_days = post_age_days(r)
+            r["age_days"] = age_days
+            r["stale_post"] = age_days is not None and age_days > USENET_STALE_DAYS
         out.append((seeds + grabs, r))
     out.sort(key=lambda t: -t[0])
     return [r for _, r in out]
