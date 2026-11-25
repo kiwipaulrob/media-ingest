@@ -146,7 +146,7 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
   appends hostless junk rows named after whatever you passed as `keyword`. Edit
   `sabnzbd.ini` directly with the container **stopped** (SAB rewrites the ini on
   shutdown, so a live edit is discarded on the next restart). Full recipe, including how
-  to find the ini and prove the change: `references/sab-server-config-repair.md`.
+  to find the ini and prove the change: `../media-torrent-hunting/references/sabnzbd-provider-maintenance.md`.
 - **A second provider can be enabled, reachable and still unused.** Config state is not
   usage. Compare per-server lifetime/day bytes from `mode=server_stats`: a fill server
   showing megabytes against a primary showing hundreds of gigabytes has a dead login, not
