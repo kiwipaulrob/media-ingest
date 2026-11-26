@@ -88,6 +88,16 @@ entry (same pattern as torrent indexers) with these usenet-specific fields:
   fetches the NZB server-side; expect `{"status":true,"nzo_ids":[...]}`.
 - Sleep ~15-20s then read `mode=queue` and confirm the filename appears
   with a climbing percentage before reporting success.
+- `source.queue()` gates BEFORE spending: `guard_pick` refuses rows the
+  shortlist disqualifies (`stale_post`, HELD-BETTER / different-title per the
+  quality gate, verifiably-empty download slot via the shared
+  `quality.slot_empty()` pre-check) — a refusal names its reason, so read it
+  rather than re-queueing the same row by hand.
+- A gate refusal on a verifiably-empty slot is a fault in the pre-check, not
+  a hold — fix the check (covered by `tests/test_source.py`), never widen the
+  gate to let it through.
+- `gate=False` bypasses the shortlist and queues blind: single deliberate
+  test grabs only, never batches.
 - Read `mode=history` for prior failed attempts at the same titles BEFORE
   queueing a batch — a recent identical failure is a verdict on the post,
   not a stale result, and re-queueing it just re-spends block gigabytes.
